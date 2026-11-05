@@ -1,0 +1,18 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <UseWPF>true</UseWPF>
+    <UseWindowsForms>true</UseWindowsForms>
+    <EnableWindowsTargeting>true</EnableWindowsTargeting>
+    <ApplicationIcon>Assets/wake.ico</ApplicationIcon>
+    <AssemblyName>Wake</AssemblyName>
+    <Version>1.0.0</Version>
+    <IncludeSourceRevisionInInformationalVersion>false</IncludeSourceRevisionInInformationalVersion>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="../Wake.Core/Wake.Core.csproj" />
+    <Resource Include="Assets/wake.ico" /><Resource Include="Assets/wake.png" />
+    <Using Remove="System.Windows.Forms" /><Using Remove="System.Drawing" />
+  </ItemGroup>
+</Project>

@@ -1,0 +1,76 @@
+name: Windows app
+on:
+  push:
+    branches: [main]
+    tags: ['v*']
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+      - name: Test alarm core
+        run: dotnet run --project tests/Wake.Core.Tests -c Release
+      - name: Build WPF app
+        run: dotnet build Wake.sln -c Release
+      - name: Publish portable x64 app
+        run: dotnet publish src/Wake.Windows/Wake.Windows.csproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -o artifacts/win-x64
+      - name: Package
+        shell: pwsh
+        run: |
+          Copy-Item README.md, LICENSE -Destination artifacts/win-x64
+          Compress-Archive -Path artifacts/win-x64/* -DestinationPath artifacts/Wake-Windows-x64.zip
+          git archive --format=zip --output=artifacts/Wake-Windows-source.zip HEAD
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          Get-ChildItem artifacts/*.zip | ForEach-Object {
+            $hash = (Get-FileHash $_.FullName -Algorithm SHA256).Hash.ToLowerInvariant()
+            "$hash  $($_.Name)" | Out-File "$($_.FullName).sha256" -Encoding ascii
+          }
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Wake-Windows-x64
+          path: |
+            artifacts/*.zip
+            artifacts/*.sha256
+          if-no-files-found: error
+
+  release:
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: Wake-Windows-x64
+          path: artifacts
+      - name: Publish GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          RELEASE_TAG: ${{ github.ref_name }}
+        shell: bash
+        run: |
+          cat > release-notes.md <<'NOTES'
+          Native C# WPF Windows version of Wake, replacing the Tauri implementation.
+
+          Download **Wake-Windows-x64.zip**, extract it, and launch **Wake.exe**.
+          This is a portable, self-contained x64 build; no separate .NET installation is needed.
+          **Wake-Windows-source.zip** contains the source. SHA-256 files accompany both downloads.
+
+          Includes clock alarms, countdowns, typing/math challenges, ten synthesized ringtones,
+          custom audio, eight themes, tray operation, login startup and Windows wake-timer requests.
+
+          The build runs 23 core regression checks. Interactive Windows UI, audio, login and
+          sleep/wake behavior still need real-device acceptance testing (see docs/WINDOWS-TESTING.md).
+          This build is unsigned. Alarms require the app to be running; wake timers depend on
+          Windows power settings and hardware. macOS and website versions are not included.
+          NOTES
+          gh release create "$RELEASE_TAG" artifacts/*.zip artifacts/*.sha256 --verify-tag --title "Wake $RELEASE_TAG — Native Windows" --notes-file release-notes.md
