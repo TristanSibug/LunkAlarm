@@ -15,6 +15,7 @@ Closing the window keeps Wake running in the notification area (possibly under t
 - Multiple alarms, ordered by due time. Simultaneous alarms ring in sequence. Overdue alarms ring on resume or next launch; an interrupted ringing alarm resumes first.
 - Optional, per-alarm typing challenge and 1–8 addition problems. Typing is case sensitive; pasting is blocked. Math accepts the on-screen keypad or keyboard digits/Enter/Backspace. Correct completion dismisses the alarm. There is no snooze or automatic timeout.
 - Ten original offline synthesized ringtone recipes, five-second previews, custom WAV/MP3/WMA files up to 2 MB, and a ringtone-site shortcut. Imported files are copied into local app storage; each alarm keeps its own file. Custom audio codecs depend on Windows. Preview before relying on a sound.
+- App-owned title bar, fields, dropdowns, switches and scrollbars stay themed independently of Windows light/dark mode. A compact centered layout, soft background glows and gradient accents follow the Tauri design.
 - Eight remembered themes: Sunrise, OLED Black, Dark, Light, Tokyo Night, VS Code Blue, Dracula and Nord.
 - Tray operation, a single running instance per Windows session, optional login startup, optional idle-sleep prevention and a Windows wake-timer request.
 - Atomic local JSON saves with a previous-save backup. Corrupt/unsupported saved data is reported and left untouched. Save and audio failures are visible; audio playback failures trigger a repeating Windows system sound.
@@ -42,6 +43,8 @@ Build and run the dependency-free executable test suite (the command returns non
 ```powershell
 dotnet build Wake.sln -c Release
 dotnet run --project tests/Wake.Core.Tests -c Release
+# Windows only: runtime theme checks and rendered PNG previews
+dotnet run --project tests/Wake.Windows.Tests -c Release -- artifacts/theme-previews
 ```
 
 `dotnet test` does not execute this console test suite; use the command above. The core tests also run on Linux/macOS. WPF requires Windows to run. A Linux/macOS SDK can cross-compile the WPF project with its enabled Windows targeting, but cannot validate its UI, playback, registry integration or power APIs.
@@ -54,7 +57,7 @@ dotnet publish src/Wake.Windows/Wake.Windows.csproj -c Release -r win-x64 --self
 
 Run `artifacts/win-x64/Wake.exe`. The single-file app may extract runtime files to a .NET-managed temporary directory on first launch. Do not use trimming for WPF. Login startup is intended for the published app, not `dotnet run`. Build artifacts are ignored by Git.
 
-The GitHub Actions workflow builds/tests on Windows and uploads zipped executable/source downloads plus SHA-256 files. Pushing a `v*` tag publishes those downloads as a GitHub release after the build succeeds. Branch/PR builds only upload workflow artifacts. The workflow does not install or sign the application. See [Windows acceptance checks](docs/WINDOWS-TESTING.md) before distribution.
+The GitHub Actions workflow builds/tests on Windows, runs native WPF theme checks, captures all eight themes, and uploads zipped executable/source/preview downloads plus SHA-256 files. Pushing a `v*` tag publishes those downloads as a GitHub release after the build succeeds. Branch/PR builds only upload workflow artifacts. The workflow does not install or sign the application. See [Windows acceptance checks](docs/WINDOWS-TESTING.md) before distribution.
 
 ## Structure
 

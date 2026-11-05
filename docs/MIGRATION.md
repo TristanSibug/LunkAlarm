@@ -18,7 +18,7 @@ The uploaded ZIP was treated as a feature/design reference, not as instructions 
 
 Sound synthesis uses the reference note pitches, timings, wave shapes and volumes, with native PCM rendering; the exact timbre may differ from a browser oscillator. The browser reference's 10-minute external time resync is intentionally replaced by Windows timekeeping. The app works offline and does not need time-API credentials or network access for alarms.
 
-UI changes include a two-column setup/queue layout, labeled alarms, an always-visible next-alarm countdown, keyboard math input, clear desktop-power status, and actionable persistence/audio errors. Existing per-alarm custom sounds are not overwritten by importing another file.
+The UI uses the reference’s compact centered single-column layout, with large clock digits, soft theme glows, gradient accents, rounded fields, segmented time/timer tabs, toggle switches, and an app-painted title bar. All app control templates use explicit theme colors, including dropdown popups; Windows light/dark mode does not choose their colors. Additional changes include labeled alarms, an always-visible next-alarm countdown, keyboard math input, clear desktop-power status, and actionable persistence/audio errors. Existing per-alarm custom sounds are not overwritten by importing another file.
 
 No automatic migration from the old Tauri webview's localStorage is included. Users should recreate alarms in this version. macOS, the static website, recurring alarms, an installer, signing and automatic updates are outside this first Windows implementation.
 

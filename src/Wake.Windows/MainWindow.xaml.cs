@@ -23,7 +23,7 @@ public partial class MainWindow : Window
     private Challenge? _challenge;
     private string _answer = "";
     private string? _customPath;
-    private bool _ready, _quitting, _powerFailed;
+    private bool _ready, _quitting, _powerFailed, _disposed;
     private int _lastSecond = -1;
     private record ToneOption(string Id, string Name);
     private record AlarmRow(Guid Id, string Label, string Time, string Details);
@@ -80,7 +80,8 @@ public partial class MainWindow : Window
         if (_lastSecond != now.Second)
         {
             _lastSecond = now.Second;
-            ClockText.Text = DisplayTime(now);
+            ClockText.Text = now.ToLocalTime().ToString(_state.Use24Hour ? "HH:mm" : "h:mm", CultureInfo.CurrentCulture);
+            AmPmText.Text = _state.Use24Hour ? "" : now.ToLocalTime().ToString("tt", CultureInfo.CurrentCulture);
             SecondsText.Text = now.ToLocalTime().ToString("ss");
             DateText.Text = now.ToLocalTime().ToString("dddd, MMMM d, yyyy");
             ZoneText.Text = TimeZoneInfo.Local.DisplayName;
@@ -240,6 +241,20 @@ public partial class MainWindow : Window
         Topmost = false; RingOverlay.Visibility = Visibility.Collapsed; MainContent.IsEnabled = true;
         MessageText.Text = "Alarm dismissed. Have a good day."; RefreshAlarms(); Tick();
     }
+    // Also used by the Windows UI regression runner to release native resources cleanly.
+    internal void ShutdownRuntime()
+    {
+        if (_disposed) return;
+        _disposed = true; _quitting = true; _tick.Stop(); _audio.Dispose(); _power.Dispose();
+        _tray.Visible = false; _tray.Icon?.Dispose(); _tray.ContextMenuStrip?.Dispose(); _tray.Dispose();
+    }
+    private void MinimizeClick(object sender, RoutedEventArgs e) => SystemCommands.MinimizeWindow(this);
+    private void MaximizeClick(object sender, RoutedEventArgs e)
+    {
+        if (WindowState == WindowState.Maximized) SystemCommands.RestoreWindow(this);
+        else SystemCommands.MaximizeWindow(this);
+    }
+    private void CloseClick(object sender, RoutedEventArgs e) => Close();
     private void Reveal() { Show(); WindowState = WindowState.Normal; Activate(); }
     private void WindowClosing(object? sender, CancelEventArgs e)
     {
@@ -250,8 +265,7 @@ public partial class MainWindow : Window
     private void Quit()
     {
         if (_state.Alarms.Count > 0 && MessageBox.Show("Quit Wake? Alarms will not ring until you open Wake again. Pending alarms stay saved.", "Quit Wake", MessageBoxButton.YesNo, MessageBoxImage.Warning) != MessageBoxResult.Yes) return;
-        _quitting = true; _tick.Stop(); _audio.Dispose(); _power.Dispose();
-        _tray.Visible = false; _tray.Icon?.Dispose(); _tray.ContextMenuStrip?.Dispose(); _tray.Dispose();
+        ShutdownRuntime();
         System.Windows.Application.Current.Shutdown();
     }
     private void ThemeChanged(object sender, SelectionChangedEventArgs e)

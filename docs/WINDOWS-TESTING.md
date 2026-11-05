@@ -1,9 +1,9 @@
 # Windows acceptance checks
 
-The Linux development environment can build WPF and run the core tests. The following checks require a real Windows desktop and have **not** been claimed as executed on Linux. The Windows CI workflow compiles/publishes and runs the core tests; it does not automate these interactive checks.
+The Linux development environment can build WPF and run the core tests. The following checks require a real Windows desktop and have **not** been claimed as executed on Linux. The Windows CI workflow compiles/publishes, runs core tests, and runs a WPF UI regression program. That program creates the actual MainWindow, switches all eight themes, tests app colors against simulated light/dark system brushes, opens native dropdown popups, checks toggle/tab state and minimum width, and renders PNG previews. It does not automate these device-level interactive checks.
 
 1. Extract the portable build on Windows 10/11 x64 without .NET installed. Launch `Wake.exe`. Check that the window, icon, clock, date and local time zone appear. Open a second copy: it should report the existing instance rather than schedule duplicate alarms.
-2. Try all eight themes and 12/24-hour display, resize to the minimum window size, scroll, and navigate with Tab/Shift+Tab. Restart and verify the theme/format remain saved. Check the Windows time-settings shortcut.
+2. In Windows light mode and then dark mode, try all eight themes and 12/24-hour display, resize to the minimum window size, scroll, and navigate with Tab/Shift+Tab. Restart and verify the theme/format remain saved. Check the Windows time-settings shortcut.
 3. Preview all ten tones. Import a short WAV and MP3, preview them, and set alarms with each. Choose an empty or >2 MB file and verify it is rejected. Try an invalid file renamed `.mp3`; verify a visible warning and repeating system-sound fallback. Verify preview ends after five seconds and never interrupts a ringing alarm.
 4. Add a five-second countdown with no tests. Verify it does not ring early, brings Wake forward, plays continuously, and stops only when dismissed. Add two alarms due together; verify the second follows the first. Try malformed times, zero duration and out-of-range fields; verify no alarm is created.
 5. Add alarms with typing only, math only (1 and 8 problems), and both. Check wrong code, case mismatch, Ctrl+V, Shift+Insert and context-menu paste. Check wrong math answers, keyboard/keypad entry and deletion. Verify typing precedes math; completing the final test stops audio and removes only that alarm.
@@ -14,3 +14,5 @@ The Linux development environment can build WPF and run the core tests. The foll
 10. Back up `%LOCALAPPDATA%\WakeNative`. With Wake closed, corrupt `state.json`: startup must report an error without replacing it. Restore from backup. Simulate a write-denied data directory: save failure must be visible and Add/Remove/Dismiss must not silently claim durable success. Restore permissions after this test.
 
 The challenges are wake-up aids, not a security or kiosk mechanism. Task Manager, tray Quit and Windows shutdown can still stop the app.
+
+The theme test simulates contrary system brush resources without changing Windows preferences. Also check actual OS light/dark switching, keyboard navigation, title-bar drag/double-click, resizing, maximize/restore, Snap, 100%/150%/200% scaling, multiple monitors, and high contrast on a real machine. The selected app theme should remain consistent.

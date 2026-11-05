@@ -19,6 +19,14 @@ jobs:
         run: dotnet run --project tests/Wake.Core.Tests -c Release
       - name: Build WPF app
         run: dotnet build Wake.sln -c Release
+      - name: Check native theme rendering and capture previews
+        run: dotnet run --project tests/Wake.Windows.Tests -c Release -- artifacts/theme-previews
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: Native-theme-previews
+          path: artifacts/theme-previews/*.png
+          if-no-files-found: warn
       - name: Publish portable x64 app
         run: dotnet publish src/Wake.Windows/Wake.Windows.csproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -o artifacts/win-x64
       - name: Package
@@ -26,6 +34,7 @@ jobs:
         run: |
           Copy-Item README.md, LICENSE -Destination artifacts/win-x64
           Compress-Archive -Path artifacts/win-x64/* -DestinationPath artifacts/Wake-Windows-x64.zip
+          Compress-Archive -Path artifacts/theme-previews/*.png -DestinationPath artifacts/Wake-Theme-Previews.zip
           git archive --format=zip --output=artifacts/Wake-Windows-source.zip HEAD
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           Get-ChildItem artifacts/*.zip | ForEach-Object {
@@ -59,7 +68,12 @@ jobs:
         shell: bash
         run: |
           cat > release-notes.md <<'NOTES'
-          Native C# WPF Windows version of Wake, replacing the Tauri implementation.
+          Native C# WPF Windows version of Wake, with restored Tauri-style themes.
+
+          Fixes white window backgrounds and black-on-dark text caused by a missing derived-window
+          style. All fields, dropdowns/popups, switches, tabs, scrollbars and the title bar now use
+          app-owned theme colors instead of Windows light/dark defaults. Restores the compact
+          single-column layout, large centered clock, soft glows and gradient accents.
 
           Download **Wake-Windows-x64.zip**, extract it, and launch **Wake.exe**.
           This is a portable, self-contained x64 build; no separate .NET installation is needed.
@@ -68,7 +82,9 @@ jobs:
           Includes clock alarms, countdowns, typing/math challenges, ten synthesized ringtones,
           custom audio, eight themes, tray operation, login startup and Windows wake-timer requests.
 
-          The build runs 23 core regression checks. Interactive Windows UI, audio, login and
+          The build runs 23 core regression checks plus Windows WPF runtime color/layout checks
+          for all eight themes against simulated light/dark system brushes. Wake-Theme-Previews.zip
+          contains actual WPF render captures from the Windows runner. Interactive UI, audio, login and
           sleep/wake behavior still need real-device acceptance testing (see docs/WINDOWS-TESTING.md).
           This build is unsigned. Alarms require the app to be running; wake timers depend on
           Windows power settings and hardware. macOS and website versions are not included.
