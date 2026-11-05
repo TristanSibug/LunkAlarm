@@ -57,7 +57,7 @@ dotnet publish src/Wake.Windows/Wake.Windows.csproj -c Release -r win-x64 --self
 
 Run `artifacts/win-x64/Wake.exe`. The single-file app may extract runtime files to a .NET-managed temporary directory on first launch. Do not use trimming for WPF. Login startup is intended for the published app, not `dotnet run`. Build artifacts are ignored by Git.
 
-The GitHub Actions workflow builds/tests on Windows, runs native WPF theme checks, captures all eight themes, and uploads zipped executable/source/preview downloads plus SHA-256 files. Pushing a `v*` tag publishes those downloads as a GitHub release after the build succeeds. Branch/PR builds only upload workflow artifacts. The workflow does not install or sign the application. See [Windows acceptance checks](docs/WINDOWS-TESTING.md) before distribution.
+The GitHub Actions workflow builds/tests on Windows, runs native WPF theme checks, captures all eight themes, and uploads zipped executable/source/preview downloads plus SHA-256 files. Pushing a `v*` tag publishes those downloads as a GitHub release after the build succeeds. A main-branch commit containing `[release]` can also publish the existing `v<app-version>` tag if a tag event is delayed or unavailable. Branch/PR builds only upload workflow artifacts. The workflow does not install or sign the application. See [Windows acceptance checks](docs/WINDOWS-TESTING.md) before distribution.
 
 ## Structure
 
