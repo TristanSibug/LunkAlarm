@@ -47,7 +47,7 @@ public partial class MainWindow : Window
         var menu = new Forms.ContextMenuStrip();
         menu.Items.Add("Open Wake", null, (_, _) => Dispatcher.Invoke(Reveal));
         menu.Items.Add("Quit Wake…", null, (_, _) => Dispatcher.Invoke(Quit));
-        using var iconStream = System.Windows.Application.GetResourceStream(new Uri("pack://application:,,,/Assets/wake.ico"))!.Stream;
+        using var iconStream = System.Windows.Application.GetResourceStream(new Uri("pack://application:,,,/Wake;component/Assets/wake.ico"))!.Stream;
         _tray = new Forms.NotifyIcon { Icon = new System.Drawing.Icon(iconStream), Text = "Wake — Alarm Clock", Visible = true, ContextMenuStrip = menu };
         _tray.DoubleClick += (_, _) => Dispatcher.Invoke(Reveal);
         _audio.Warning += message => { MessageText.Text = message; RingWarning.Text = message; };

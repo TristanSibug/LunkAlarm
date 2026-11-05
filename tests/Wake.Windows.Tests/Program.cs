@@ -93,9 +93,15 @@ internal static class Program
             Element<ScrollViewer>("MainContent").ScrollToBottom(); Pump();
             Capture(window, Path.Combine(output, "Sunrise-options.png"));
             Console.WriteLine($"{checks} Windows UI checks passed; captures: {output}");
+            Console.WriteLine($"::notice title=Native theme checks::{checks} Windows UI checks passed. All eight themes rendered.");
             return 0;
         }
-        catch (Exception ex) { Console.Error.WriteLine(ex); return 1; }
+        catch (Exception ex)
+        {
+            Console.Error.WriteLine(ex);
+            Console.WriteLine("::error title=Windows theme regression::" + ex.ToString().Replace("%", "%25").Replace("\r", "%0D").Replace("\n", "%0A"));
+            return 1;
+        }
         finally
         {
             window?.ShutdownRuntime(); window?.Close(); app.Shutdown();
