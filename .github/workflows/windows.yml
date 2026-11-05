@@ -1,7 +1,7 @@
 name: Windows app
 on:
   push:
-    branches: [main]
+    branches: [main, release/windows-1.0.1]
     tags: ['v*']
   pull_request:
   workflow_dispatch:
@@ -60,7 +60,7 @@ jobs:
           if-no-files-found: error
 
   release:
-    if: startsWith(github.ref, 'refs/tags/v') || (github.ref == 'refs/heads/main' && contains(github.event.head_commit.message, '[release]'))
+    if: github.ref == 'refs/heads/release/windows-1.0.1' || startsWith(github.ref, 'refs/tags/v') || (github.ref == 'refs/heads/main' && contains(github.event.head_commit.message, '[release]'))
     needs: build
     runs-on: ubuntu-latest
     permissions:
@@ -99,4 +99,12 @@ jobs:
           This build is unsigned. Alarms require the app to be running; wake timers depend on
           Windows power settings and hardware. macOS and website versions are not included.
           NOTES
-          gh release create "$RELEASE_TAG" artifacts/*.zip artifacts/*.sha256 --verify-tag --title "Wake $RELEASE_TAG — Native Windows" --notes-file release-notes.md
+          if output=$(gh release create "$RELEASE_TAG" artifacts/*.zip artifacts/*.sha256 --verify-tag --title "Wake $RELEASE_TAG — Native Windows" --notes-file release-notes.md 2>&1); then
+            echo "$output"
+          else
+            output="${output//'%'/'%25'}"
+            output="${output//$'\r'/'%0D'}"
+            output="${output//$'\n'/'%0A'}"
+            echo "::error title=GitHub release publishing::$output"
+            exit 1
+          fi
