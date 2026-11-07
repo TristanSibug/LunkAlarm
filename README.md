@@ -1,6 +1,12 @@
-# Wake — native Windows alarm clock
+# Wake — Alarm Clock
 
-A C# / WPF implementation of Wake, based on the supplied Tauri alarm clock. The Windows app uses native controls, Windows audio and Windows power APIs. It has **no Tauri, Rust, JavaScript, WebView or browser dependency**. The macOS and website versions are future work; this repository currently implements Windows only.
+A C# / WPF implementation of Wake, based on the supplied Tauri alarm clock. The Windows app uses native controls, Windows audio and Windows power APIs. It has **no Tauri, Rust, JavaScript, WebView or browser dependency**. The standalone website lives in `web/` and reuses the original browser UI. The native macOS version is future work.
+
+## Deploy the website with Vercel
+
+Import this repository into a **separate Vercel project** with **Root Directory `web`** and **Framework Preset Other**. No build/install commands, database or environment variables are required. Deploy, then add `alarm.reeeserve.online` in the new project's Domains settings and enter the exact DNS record shown by Vercel at your DNS provider.
+
+See [the Namecheap + Vercel deployment guide](docs/WEBSITE-DEPLOYMENT.md) for the full steps. Upload/deploy the contents of `web/`, not the Windows build or the whole repository. Alarms and settings are stored in each browser; Supabase integration is not included. Keep the page open and the device awake for alarms.
 
 ## Run on Windows
 
@@ -68,6 +74,6 @@ tests/Wake.Core.Tests/  Executable regression suite (no test-framework packages)
 docs/                  Windows acceptance checks and migration notes
 ```
 
-The scheduling core is independent of WPF and can support future platforms. A native macOS UI can use the same behavior specification; a static website needs its own browser implementation with explicit background/sleep limitations.
+The scheduling core is independent of WPF and can support future platforms. The website uses its own JavaScript scheduler and cannot provide Windows power-management capabilities.
 
 MIT license. The supplied app's icon and original sound recipes are reused.

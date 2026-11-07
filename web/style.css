@@ -1,0 +1,759 @@
+/* =========================================================
+   WAKE - alarm clock styles
+
+   HOW THEMES WORK
+   Every color in this file is a variable like var(--bg) or var(--accent).
+   Each theme below is just a different set of values for those variables.
+   The page picks a theme with <html data-theme="tokyo">, and the whole
+   app changes color at once. To add a theme: copy a block, change the
+   name and the colors, then add it to the THEMES list in app.js.
+   ========================================================= */
+
+/* ---------- Shared sizes and fonts (the same in every theme) ---------- */
+:root {
+  --radius: 22px;
+  --font: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI Variable Display",
+          "Segoe UI", system-ui, Roboto, Helvetica, Arial, sans-serif;
+  /* A fixed-width font for the typing-test code (0 and O look different in it) */
+  --mono: ui-monospace, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
+}
+
+/* ---------- THEME: Sunrise (the default) ----------
+   What each variable means:
+   --bg            page background
+   --glow-a/b      two soft colored glows in the corners (use transparent for none)
+   --card          card background        --card-border  thin card outline
+   --text          main text              --muted        softer text
+   --accent        main highlight color   --accent-2     second color (buttons fade between the two)
+   --on-accent     text color drawn ON the accent buttons
+   --good/warn/danger  status colors (green / yellow / red)
+   --field         background of inputs   --hover  hovered buttons   --soft  light button fill
+   --tab-track/--tab-active   the "At a time / In how long" switch
+   --switch-off/--knob        on/off switches
+   --dialog-bg     pop-up windows         --overlay-bg  the ringing screen
+   --code-bg       typing code + answer boxes
+   --clock-glow    glow behind the big clock digits */
+:root,
+:root[data-theme="sunrise"] {
+  color-scheme: dark;                  /* makes built-in inputs (time box, dropdown) dark too */
+  --bg: #0a0c16;
+  --glow-a: rgba(124, 92, 255, 0.28);
+  --glow-b: rgba(255, 107, 122, 0.20);
+  --card: rgba(255, 255, 255, 0.055);
+  --card-border: rgba(255, 255, 255, 0.09);
+  --text: #f4f2ff;
+  --muted: #9a9bb8;
+  --accent: #ffa94d;
+  --accent-2: #ff6b7a;
+  --on-accent: #1a0f05;
+  --good: #4ade80;
+  --warn: #fbbf24;
+  --danger: #ff6b7a;
+  --field: rgba(0, 0, 0, 0.28);
+  --hover: rgba(255, 255, 255, 0.12);
+  --soft: rgba(255, 255, 255, 0.08);
+  --tab-track: rgba(0, 0, 0, 0.3);
+  --tab-active: rgba(255, 255, 255, 0.12);
+  --switch-off: rgba(255, 255, 255, 0.14);
+  --knob: #ffffff;
+  --dialog-bg: #151829;
+  --overlay-bg: rgba(8, 9, 18, 0.95);
+  --code-bg: rgba(0, 0, 0, 0.4);
+  --clock-glow: 0 0 40px rgba(255, 169, 77, 0.25);
+}
+
+/* ---------- THEME: OLED Black (pure black, saves battery on OLED screens) ---------- */
+:root[data-theme="oled"] {
+  color-scheme: dark;
+  --bg: #000000;
+  --glow-a: transparent;
+  --glow-b: transparent;
+  --card: #0c0c0e;
+  --card-border: rgba(255, 255, 255, 0.12);
+  --text: #f2f2f5;
+  --muted: #9a9aa3;
+  --accent: #ffa94d;
+  --accent-2: #ff6b7a;
+  --on-accent: #1a0f05;
+  --good: #4ade80;
+  --warn: #fbbf24;
+  --danger: #ff6b7a;
+  --field: #000000;
+  --hover: rgba(255, 255, 255, 0.12);
+  --soft: rgba(255, 255, 255, 0.09);
+  --tab-track: #1a1a1d;
+  --tab-active: #34343a;
+  --switch-off: #34343a;
+  --knob: #ffffff;
+  --dialog-bg: #0c0c0e;
+  --overlay-bg: rgba(0, 0, 0, 0.97);
+  --code-bg: #000000;
+  --clock-glow: none;
+}
+
+/* ---------- THEME: Dark (soft dark gray, not pure black) ---------- */
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --bg: #17181c;
+  --glow-a: transparent;
+  --glow-b: transparent;
+  --card: #212329;
+  --card-border: rgba(255, 255, 255, 0.08);
+  --text: #ececf1;
+  --muted: #9a9ba6;
+  --accent: #ffa94d;
+  --accent-2: #ff6b7a;
+  --on-accent: #1a0f05;
+  --good: #4ade80;
+  --warn: #fbbf24;
+  --danger: #ff7a85;
+  --field: #181a1f;
+  --hover: rgba(255, 255, 255, 0.1);
+  --soft: rgba(255, 255, 255, 0.07);
+  --tab-track: #181a1f;
+  --tab-active: #343740;
+  --switch-off: #3b3e48;
+  --knob: #ffffff;
+  --dialog-bg: #212329;
+  --overlay-bg: rgba(23, 24, 28, 0.97);
+  --code-bg: #181a1f;
+  --clock-glow: none;
+}
+
+/* ---------- THEME: Light ---------- */
+:root[data-theme="light"] {
+  color-scheme: light;
+  --bg: #f3f2fa;
+  --glow-a: rgba(124, 92, 255, 0.14);
+  --glow-b: rgba(255, 107, 122, 0.12);
+  --card: rgba(255, 255, 255, 0.78);
+  --card-border: rgba(20, 20, 60, 0.1);
+  --text: #1c1b2e;
+  --muted: #5b5c76;
+  --accent: #c4520a;
+  --accent-2: #d6336c;
+  --on-accent: #ffffff;
+  --good: #15803d;
+  --warn: #b45309;
+  --danger: #c81e4d;
+  --field: rgba(20, 20, 60, 0.05);
+  --hover: rgba(20, 20, 60, 0.08);
+  --soft: rgba(20, 20, 60, 0.06);
+  --tab-track: rgba(20, 20, 60, 0.07);
+  --tab-active: #ffffff;
+  --switch-off: rgba(20, 20, 60, 0.2);
+  --knob: #ffffff;
+  --dialog-bg: #ffffff;
+  --overlay-bg: rgba(243, 242, 250, 0.97);
+  --code-bg: rgba(20, 20, 60, 0.06);
+  --clock-glow: none;
+}
+
+/* ---------- THEME: Tokyo Night ---------- */
+:root[data-theme="tokyo-night"] {
+  color-scheme: dark;
+  --bg: #1a1b26;
+  --glow-a: rgba(122, 162, 247, 0.12);
+  --glow-b: rgba(187, 154, 247, 0.10);
+  --card: #24283b;
+  --card-border: rgba(192, 202, 245, 0.1);
+  --text: #c0caf5;
+  --muted: #8c93bf;
+  --accent: #7aa2f7;
+  --accent-2: #bb9af7;
+  --on-accent: #16161e;
+  --good: #9ece6a;
+  --warn: #e0af68;
+  --danger: #f7768e;
+  --field: #16161e;
+  --hover: rgba(192, 202, 245, 0.1);
+  --soft: rgba(192, 202, 245, 0.07);
+  --tab-track: #16161e;
+  --tab-active: #2f334d;
+  --switch-off: #3b4261;
+  --knob: #c0caf5;
+  --dialog-bg: #1f2335;
+  --overlay-bg: rgba(22, 22, 30, 0.97);
+  --code-bg: #16161e;
+  --clock-glow: 0 0 40px rgba(122, 162, 247, 0.22);
+}
+
+/* ---------- THEME: VS Code Blue (deep blue editor look) ---------- */
+:root[data-theme="vscode-blue"] {
+  color-scheme: dark;
+  --bg: #002451;
+  --glow-a: transparent;
+  --glow-b: transparent;
+  --card: #003370;
+  --card-border: rgba(157, 182, 221, 0.22);
+  --text: #e8f0ff;
+  --muted: #a9c0e6;
+  --accent: #5db0ff;
+  --accent-2: #3a86ff;
+  --on-accent: #00183a;
+  --good: #8bd49c;
+  --warn: #ffc58f;
+  --danger: #ff9da4;
+  --field: #001b42;
+  --hover: rgba(255, 255, 255, 0.1);
+  --soft: rgba(255, 255, 255, 0.07);
+  --tab-track: #001b42;
+  --tab-active: #0a4a94;
+  --switch-off: #1a5296;
+  --knob: #ffffff;
+  --dialog-bg: #00306a;
+  --overlay-bg: rgba(0, 28, 64, 0.97);
+  --code-bg: #001b42;
+  --clock-glow: none;
+}
+
+/* ---------- THEME: Dracula ---------- */
+:root[data-theme="dracula"] {
+  color-scheme: dark;
+  --bg: #282a36;
+  --glow-a: rgba(189, 147, 249, 0.12);
+  --glow-b: rgba(255, 121, 198, 0.08);
+  --card: #343746;
+  --card-border: rgba(248, 248, 242, 0.1);
+  --text: #f8f8f2;
+  --muted: #aab0d0;
+  --accent: #bd93f9;
+  --accent-2: #ff79c6;
+  --on-accent: #282a36;
+  --good: #50fa7b;
+  --warn: #f1fa8c;
+  --danger: #ff8585;
+  --field: #21222c;
+  --hover: rgba(248, 248, 242, 0.1);
+  --soft: rgba(248, 248, 242, 0.07);
+  --tab-track: #21222c;
+  --tab-active: #44475a;
+  --switch-off: #4b4f66;
+  --knob: #f8f8f2;
+  --dialog-bg: #2d2f3d;
+  --overlay-bg: rgba(40, 42, 54, 0.97);
+  --code-bg: #21222c;
+  --clock-glow: 0 0 40px rgba(189, 147, 249, 0.22);
+}
+
+/* ---------- THEME: Nord ---------- */
+:root[data-theme="nord"] {
+  color-scheme: dark;
+  --bg: #2e3440;
+  --glow-a: transparent;
+  --glow-b: transparent;
+  --card: #3b4252;
+  --card-border: rgba(216, 222, 233, 0.1);
+  --text: #eceff4;
+  --muted: #a3b1c6;
+  --accent: #88c0d0;
+  --accent-2: #81a1c1;
+  --on-accent: #2e3440;
+  --good: #a3be8c;
+  --warn: #ebcb8b;
+  --danger: #f0a0a8;
+  --field: #2b303b;
+  --hover: rgba(216, 222, 233, 0.1);
+  --soft: rgba(216, 222, 233, 0.07);
+  --tab-track: #2b303b;
+  --tab-active: #4c566a;
+  --switch-off: #4c566a;
+  --knob: #eceff4;
+  --dialog-bg: #353b49;
+  --overlay-bg: rgba(46, 52, 64, 0.97);
+  --code-bg: #2b303b;
+  --clock-glow: none;
+}
+
+/* =========================================================
+   Everything below uses ONLY the variables above,
+   so it looks right in every theme.
+   ========================================================= */
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  font-family: var(--font);
+  color: var(--text);
+  background-color: var(--bg);
+  /* Two soft glows over the background color */
+  background-image:
+    radial-gradient(60% 50% at 15% 0%, var(--glow-a), transparent 70%),
+    radial-gradient(55% 45% at 100% 100%, var(--glow-b), transparent 70%);
+  background-attachment: fixed;
+  -webkit-font-smoothing: antialiased;
+}
+
+.hidden { display: none !important; }
+
+/* ---------- Page layout: one centered column ---------- */
+.app {
+  max-width: 480px;
+  margin: 0 auto;
+  padding: 28px 16px 40px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+/* ---------- Clock ---------- */
+.clock-card {
+  text-align: center;
+  padding: 18px 8px 10px;
+}
+
+.clock-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 18px;
+}
+.clock-buttons { display: flex; gap: 8px; }
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12.5px;
+  color: var(--muted);
+  padding: 6px 12px;
+  border-radius: 999px;
+  background: var(--card);
+  border: 1px solid var(--card-border);
+}
+.badge .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--muted); }
+.badge[data-state="online"] .dot  { background: var(--good); box-shadow: 0 0 8px var(--good); }
+.badge[data-state="offline"] .dot { background: var(--warn); box-shadow: 0 0 8px var(--warn); }
+
+.clock {
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  gap: 10px;
+  line-height: 1;
+}
+.clock-hm {
+  font-size: clamp(72px, 22vw, 112px);
+  font-weight: 200;                    /* thin digits look elegant */
+  letter-spacing: -0.03em;
+  font-variant-numeric: tabular-nums;  /* every digit same width, so nothing jiggles */
+  text-shadow: var(--clock-glow);
+}
+.clock-side {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
+  padding-top: 0.55em;
+  font-size: clamp(16px, 5vw, 22px);
+}
+.clock-sec {
+  font-variant-numeric: tabular-nums;
+  font-weight: 500;
+  background: linear-gradient(135deg, var(--accent), var(--accent-2));
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+.clock-ampm { color: var(--muted); font-weight: 500; font-size: 0.8em; min-height: 1em; }
+
+.date { margin-top: 14px; font-size: 17px; font-weight: 500; }
+.zone { margin-top: 4px; font-size: 12.5px; color: var(--muted); }
+
+/* ---------- Cards ---------- */
+.card {
+  background: var(--card);
+  border: 1px solid var(--card-border);
+  border-radius: var(--radius);
+  padding: 20px;
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+}
+.card-title { margin: 0 0 14px; font-size: 15px; font-weight: 600; color: var(--muted); letter-spacing: 0.02em; }
+
+.field-label {
+  display: block;
+  margin: 16px 0 8px;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+/* ---------- Tabs (the two ways to set an alarm) ---------- */
+.tabs {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 4px;
+  padding: 4px;
+  background: var(--tab-track);
+  border-radius: 14px;
+}
+.tab {
+  border: 0;
+  padding: 10px;
+  border-radius: 11px;
+  background: transparent;
+  color: var(--muted);
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s, color 0.2s;
+}
+.tab[aria-selected="true"] {
+  background: var(--tab-active);
+  color: var(--text);
+}
+
+/* ---------- Inputs ---------- */
+.big-input, .text-input, .select, .timer-box input {
+  width: 100%;
+  font: inherit;
+  color: var(--text);
+  background: var(--field);
+  border: 1px solid var(--card-border);
+  border-radius: 14px;
+  padding: 12px 14px;
+  outline: none;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+.big-input { font-size: 30px; font-weight: 300; text-align: center; padding: 10px; }
+.big-input:focus, .text-input:focus, .select:focus, .timer-box input:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 25%, transparent);
+}
+
+.timer-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+.timer-box { display: flex; flex-direction: column; align-items: center; gap: 6px; font-size: 12px; color: var(--muted); }
+.timer-box input { font-size: 28px; font-weight: 300; text-align: center; padding: 10px 4px; }
+
+.presets { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+
+.ringtone-row { display: flex; gap: 8px; }
+.ringtone-row .select { flex: 1; }
+
+.ringtone-links { margin-top: 10px; font-size: 13px; display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+.sep { color: var(--muted); }
+
+/* ---------- Wake-up tests: on/off switches ---------- */
+.tests { border-top: 1px solid var(--card-border); }
+.option {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 14px 0;
+  border-bottom: 1px solid var(--card-border);
+  cursor: pointer;
+}
+.option-text strong { display: block; font-size: 15px; font-weight: 600; }
+.option-text span { display: block; margin-top: 2px; font-size: 12.5px; color: var(--muted); line-height: 1.4; }
+
+/* The switch: a real checkbox hidden on top, with a pretty track drawn underneath */
+.switch { position: relative; width: 50px; height: 30px; flex: none; }
+.switch input { position: absolute; inset: 0; width: 100%; height: 100%; margin: 0; opacity: 0; cursor: pointer; z-index: 1; }
+.switch .track {
+  position: absolute;
+  inset: 0;
+  border-radius: 999px;
+  background: var(--switch-off);
+  transition: background 0.2s;
+}
+.switch .track::after {              /* the round knob */
+  content: '';
+  position: absolute;
+  top: 3px; left: 3px;
+  width: 24px; height: 24px;
+  border-radius: 50%;
+  background: var(--knob);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.35);
+  transition: transform 0.2s;
+}
+.switch input:checked + .track { background: linear-gradient(135deg, var(--accent), var(--accent-2)); }
+.switch input:checked + .track::after { transform: translateX(20px); }
+.switch input:focus-visible + .track { outline: 2px solid var(--accent); outline-offset: 2px; }
+.switch input:focus-visible { outline: none; }
+
+/* Row of buttons 1 to 8 for "how many math problems" */
+.count-picker { padding: 14px 0 4px; }
+.count-label { display: block; margin-bottom: 10px; font-size: 13px; color: var(--muted); }
+.count-row { display: grid; grid-template-columns: repeat(8, 1fr); gap: 6px; }
+.count-btn {
+  border: 1px solid var(--card-border);
+  background: var(--field);
+  color: var(--text);
+  border-radius: 12px;
+  padding: 11px 0;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.count-btn:hover { background: var(--hover); }
+.count-btn[aria-pressed="true"] {
+  background: linear-gradient(135deg, var(--accent), var(--accent-2));
+  border-color: transparent;
+  color: var(--on-accent);
+}
+
+.hint { margin: 12px 0 0; font-size: 12.5px; color: var(--muted); line-height: 1.5; }
+
+/* ---------- Buttons ---------- */
+button { font: inherit; }
+button:focus-visible, input:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+.chip {
+  border: 1px solid var(--card-border);
+  background: var(--card);
+  color: var(--text);
+  padding: 8px 14px;
+  border-radius: 999px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.chip:hover { background: var(--hover); }
+.chip.preview[data-playing="true"] {
+  background: color-mix(in srgb, var(--accent) 22%, transparent);
+  border-color: var(--accent);
+}
+
+.link-btn {
+  border: 0;
+  background: none;
+  padding: 2px 0;
+  color: var(--accent);
+  cursor: pointer;
+  font-size: 13px;
+}
+.link-btn:hover { text-decoration: underline; }
+
+.primary {
+  width: 100%;
+  margin-top: 22px;
+  border: 0;
+  padding: 15px;
+  border-radius: 16px;
+  font-size: 17px;
+  font-weight: 700;
+  color: var(--on-accent);
+  background: linear-gradient(135deg, var(--accent), var(--accent-2));
+  box-shadow: 0 10px 30px -10px color-mix(in srgb, var(--accent-2) 70%, transparent);
+  cursor: pointer;
+  transition: transform 0.12s, filter 0.2s;
+}
+.primary:hover { filter: brightness(1.08); }
+.primary:active { transform: scale(0.98); }
+
+.form-msg { min-height: 1.3em; margin: 12px 0 0; font-size: 13.5px; text-align: center; color: var(--good); }
+.form-msg.error { color: var(--danger); }
+
+/* ---------- Alarm list ---------- */
+.alarm-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 10px; }
+.alarm-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 14px 16px;
+  background: var(--field);
+  border: 1px solid var(--card-border);
+  border-radius: 16px;
+}
+.alarm-time { font-size: 28px; font-weight: 300; font-variant-numeric: tabular-nums; }
+.alarm-meta { margin-top: 2px; font-size: 12.5px; color: var(--muted); }
+.alarm-meta .remaining { color: var(--accent); font-variant-numeric: tabular-nums; }
+.alarm-tests { margin-top: 2px; font-size: 12px; color: var(--muted); }
+.delete-btn {
+  flex: none;
+  border: 1px solid var(--card-border);
+  background: transparent;
+  color: var(--muted);
+  width: 36px; height: 36px;
+  border-radius: 50%;
+  font-size: 18px;
+  cursor: pointer;
+}
+.delete-btn:hover { color: var(--danger); border-color: var(--danger); }
+.empty { margin: 0; color: var(--muted); font-size: 14px; }
+
+.footnote { text-align: center; color: var(--muted); font-size: 12.5px; margin: 4px 0 0; }
+
+/* ---------- Pop-up windows ---------- */
+.dialog {
+  max-width: 380px;
+  width: calc(100% - 32px);
+  border: 1px solid var(--card-border);
+  border-radius: var(--radius);
+  background: var(--dialog-bg);
+  color: var(--text);
+  padding: 22px;
+}
+.dialog::backdrop { background: rgba(0, 0, 0, 0.6); backdrop-filter: blur(4px); }
+.dialog h3 { margin: 0 0 8px; }
+.dialog p { margin: 0 0 14px; color: var(--muted); font-size: 14px; line-height: 1.5; }
+.site-list { list-style: none; margin: 0 0 16px; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+.site-btn {
+  width: 100%;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  text-align: left;
+  padding: 12px 14px;
+  border-radius: 14px;
+  border: 1px solid var(--card-border);
+  background: var(--card);
+  color: var(--text);
+  font-weight: 600;
+  cursor: pointer;
+}
+.site-btn:hover { background: var(--hover); }
+.site-btn span { font-weight: 400; font-size: 12.5px; color: var(--muted); }
+
+/* ---------- Theme picker ----------
+   app.js builds one .theme-swatch button per theme. The little picture
+   (.sw-preview) gets its colors from the THEMES list in app.js. */
+.theme-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin: 12px 0 16px; }
+.theme-swatch {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 8px;
+  border-radius: 16px;
+  border: 2px solid var(--card-border);
+  background: var(--field);
+  color: var(--text);
+  font-size: 13px;
+  font-weight: 600;
+  text-align: left;
+  cursor: pointer;
+}
+.theme-swatch:hover { background: var(--hover); }
+.theme-swatch[aria-pressed="true"] { border-color: var(--accent); }
+.sw-preview {
+  height: 58px;
+  border-radius: 10px;
+  padding: 10px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  border: 1px solid rgba(128, 128, 128, 0.25);
+}
+.sw-time { width: 55%; height: 8px; border-radius: 4px; opacity: 0.9; }   /* stands for the clock digits */
+.sw-bar  { width: 100%; height: 10px; border-radius: 5px; }               /* stands for the Add alarm button */
+
+/* ---------- Full-screen "alarm is ringing" ---------- */
+.overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 10;
+  display: flex;
+  padding: 20px;
+  overflow-y: auto;                    /* small screens can scroll */
+  background:
+    radial-gradient(60% 50% at 50% 30%, color-mix(in srgb, var(--accent) 32%, transparent), transparent 70%),
+    var(--overlay-bg);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+}
+/* margin:auto centers the box, and still lets tall content scroll */
+.ring-box { width: 100%; max-width: 380px; margin: auto; text-align: center; }
+.bell { color: var(--accent); animation: ring 0.9s ease-in-out infinite; transform-origin: 50% 10%; }
+.ring-time { margin-top: 6px; font-size: clamp(48px, 16vw, 68px); font-weight: 200; font-variant-numeric: tabular-nums; line-height: 1.1; white-space: nowrap; }
+.ring-label { margin-top: 2px; font-size: 18px; color: var(--muted); }
+.step-info { margin-top: 6px; min-height: 1.2em; font-size: 12.5px; color: var(--accent); text-transform: uppercase; letter-spacing: 0.08em; }
+
+.challenge { margin-top: 18px; }
+.challenge-title { font-size: 13px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: 0.07em; }
+.challenge-msg { min-height: 1.4em; margin-top: 10px; font-size: 14px; color: var(--danger); }
+
+/* Typing test */
+.code {
+  margin: 14px 0;
+  padding: 16px 10px;
+  font-family: var(--mono);
+  font-size: 34px;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  border-radius: 16px;
+  background: var(--code-bg);
+  border: 1px solid var(--card-border);
+  /* The code cannot be highlighted, so it cannot be copy-pasted */
+  user-select: none;
+  -webkit-user-select: none;
+}
+.code-input { text-align: center; font-family: var(--mono); font-size: 24px; letter-spacing: 0.14em; }
+
+/* Math test */
+.problem { margin: 12px 0; font-size: 52px; font-weight: 300; font-variant-numeric: tabular-nums; }
+.answer {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 62px;
+  font-size: 38px;
+  font-weight: 300;
+  font-variant-numeric: tabular-nums;
+  border-radius: 16px;
+  background: var(--code-bg);
+  border: 1px solid var(--card-border);
+}
+.answer:empty::before { content: 'Your answer'; font-size: 15px; color: var(--muted); }
+
+.keypad { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-top: 4px; }
+.key {
+  padding: 15px 0;
+  border: 1px solid var(--card-border);
+  border-radius: 16px;
+  background: var(--soft);
+  color: var(--text);
+  font-size: 26px;
+  font-weight: 400;
+  cursor: pointer;
+  transition: background 0.1s, transform 0.1s;
+}
+.key:hover { background: var(--hover); }
+.key:active { transform: scale(0.95); }
+.key.small { font-size: 17px; color: var(--muted); }
+.key.enter {
+  font-size: 19px;
+  font-weight: 700;
+  border-color: transparent;
+  color: var(--on-accent);
+  background: linear-gradient(135deg, var(--accent), var(--accent-2));
+}
+
+/* Wrong answer: the box shakes left and right */
+.shake { animation: shake 0.35s; }
+@keyframes shake {
+  0%, 100% { transform: translateX(0); }
+  20% { transform: translateX(-9px); }
+  40% { transform: translateX(9px); }
+  60% { transform: translateX(-6px); }
+  80% { transform: translateX(6px); }
+}
+
+/* The bell wiggles left and right */
+@keyframes ring {
+  0%, 100% { transform: rotate(0deg); }
+  20% { transform: rotate(14deg); }
+  40% { transform: rotate(-12deg); }
+  60% { transform: rotate(8deg); }
+  80% { transform: rotate(-6deg); }
+}
+
+/* Anyone who asked their computer for less motion gets no wiggle */
+@media (prefers-reduced-motion: reduce) {
+  .bell, .shake { animation: none; }
+  * { transition: none !important; }
+}
+
+/* Browser-specific status and narrow-screen wrapping. */
+.clock-top { flex-wrap: wrap; }
+.clock-buttons { flex-wrap: wrap; margin-left: auto; }
+.browser-notice { margin: -4px 4px 0; color: var(--muted); font-size: 12px; line-height: 1.5; text-align: center; }
+@media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation: none !important; transition: none !important; } }

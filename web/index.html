@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<!--
+  WAKE - alarm clock  (page structure)
+  This file only describes WHAT is on the screen.
+    style.css = how it looks (and the themes)
+    app.js    = what it does
+  Standalone browser edition: upload this folder to a static web host.
+-->
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <!-- Makes the page fit phone screens properly -->
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Wake — Alarm Clock</title>
+  <meta name="description" content="Your calm, customizable alarm clock. Set timers, choose a ringtone, and wake up with typing or math challenges." />
+  <link rel="icon" type="image/png" href="icon.png" />
+
+  <!-- Apply the saved theme BEFORE the page is drawn, so you never see
+       a flash of the wrong colors when opening the app. -->
+  <script>
+    try {
+      var savedTheme = JSON.parse(localStorage.getItem('wake.theme'));
+      if (savedTheme) document.documentElement.setAttribute('data-theme', savedTheme);
+    } catch (err) { /* no saved theme yet: the default look is used */ }
+  </script>
+
+  <link rel="stylesheet" href="style.css" />
+</head>
+
+<body>
+  <!-- id="mainApp" lets app.js lock the whole page while an alarm is ringing -->
+  <main id="mainApp" class="app">
+
+    <!-- ============ 1. THE CLOCK ============ -->
+    <section class="clock-card">
+      <div class="clock-top">
+        <!-- Shows if the time came from the internet or from this device -->
+        <span id="syncBadge" class="badge" data-state="checking">
+          <span class="dot"></span><span id="syncText">Checking time...</span>
+        </span>
+        <div class="clock-buttons">
+          <button id="enableSoundBtn" class="chip" type="button">Enable sound</button>
+          <!-- Opens the theme picker -->
+          <button id="themeBtn" class="chip" type="button">Theme</button>
+          <!-- Switches between 12-hour and 24-hour display -->
+          <button id="formatBtn" class="chip" type="button" aria-label="Switch between 12 hour and 24 hour clock">12h</button>
+        </div>
+      </div>
+
+      <div class="clock" aria-live="off">
+        <span id="clockHM" class="clock-hm">--:--</span>
+        <span class="clock-side">
+          <span id="clockSec" class="clock-sec">--</span>
+          <span id="clockAmPm" class="clock-ampm"></span>
+        </span>
+      </div>
+
+      <div id="dateText" class="date"></div>
+      <div id="zoneText" class="zone"></div>
+    </section>
+
+    <p class="browser-notice" role="note">Keep this page open, sound enabled, and your device awake. Background tabs may be delayed; a website cannot wake a sleeping device.</p>
+
+    <!-- ============ 2. ADD AN ALARM ============ -->
+    <section id="setupCard" class="card">
+      <h2 class="card-title">New alarm</h2>
+
+      <!-- Two ways to set the alarm: pick a clock time, or pick how long to wait -->
+      <div class="tabs" role="tablist">
+        <button id="tabTime" class="tab" type="button" role="tab" data-mode="time">At a time</button>
+        <button id="tabTimer" class="tab" type="button" role="tab" data-mode="timer">In how long</button>
+      </div>
+
+      <!-- Way 1: specific time -->
+      <div id="panelTime" class="panel">
+        <label class="field-label" for="timeInput">Ring at</label>
+        <input id="timeInput" class="big-input" type="time" value="07:00" />
+      </div>
+
+      <!-- Way 2: countdown from now -->
+      <div id="panelTimer" class="panel hidden">
+        <span class="field-label">Ring in</span>
+        <div class="timer-row">
+          <label class="timer-box"><input id="hoursInput" type="number" min="0" max="99" value="0" inputmode="numeric" /><span>hours</span></label>
+          <label class="timer-box"><input id="minutesInput" type="number" min="0" max="59" value="30" inputmode="numeric" /><span>min</span></label>
+          <label class="timer-box"><input id="secondsInput" type="number" min="0" max="59" value="0" inputmode="numeric" /><span>sec</span></label>
+        </div>
+        <!-- Quick buttons. Each one fills the boxes above (see app.js) -->
+        <div class="presets">
+          <button class="chip" type="button" data-minutes="5">5 min</button>
+          <button class="chip" type="button" data-minutes="10">10 min</button>
+          <button class="chip" type="button" data-minutes="25">25 min</button>
+          <button class="chip" type="button" data-minutes="60">1 hour</button>
+          <button class="chip" type="button" data-minutes="480">8 hours</button>
+        </div>
+      </div>
+
+      <!-- Ringtone picker -->
+      <label class="field-label" for="ringtoneSelect">Ringtone</label>
+      <div class="ringtone-row">
+        <select id="ringtoneSelect" class="select"></select>
+        <button id="previewBtn" class="chip preview" type="button">Preview</button>
+      </div>
+      <div class="ringtone-links">
+        <button id="uploadBtn" class="link-btn" type="button">Use my own file</button>
+        <span class="sep">·</span>
+        <button id="onlineBtn" class="link-btn" type="button">Find more ringtones online</button>
+        <!-- Hidden file picker; the "Use my own file" button opens it -->
+        <input id="fileInput" type="file" accept="audio/*" hidden />
+      </div>
+
+      <!-- Wake-up tests: both are OFF until you switch them on -->
+      <span class="field-label">Wake-up tests</span>
+      <div class="tests">
+        <label class="option">
+          <span class="option-text">
+            <strong>Typing test</strong>
+            <span>Type a random 8-character code to stop the alarm</span>
+          </span>
+          <span class="switch"><input id="typingToggle" type="checkbox" /><span class="track"></span></span>
+        </label>
+
+        <label class="option">
+          <span class="option-text">
+            <strong>Math test</strong>
+            <span>Solve addition problems on a keypad to stop the alarm</span>
+          </span>
+          <span class="switch"><input id="mathToggle" type="checkbox" /><span class="track"></span></span>
+        </label>
+
+        <!-- Only shown when the Math test switch is on -->
+        <div id="mathCountWrap" class="count-picker hidden">
+          <span class="count-label">How many problems?</span>
+          <div class="count-row" role="group" aria-label="Number of math problems">
+            <button class="count-btn" type="button" data-count="1">1</button>
+            <button class="count-btn" type="button" data-count="2">2</button>
+            <button class="count-btn" type="button" data-count="3">3</button>
+            <button class="count-btn" type="button" data-count="4">4</button>
+            <button class="count-btn" type="button" data-count="5">5</button>
+            <button class="count-btn" type="button" data-count="6">6</button>
+            <button class="count-btn" type="button" data-count="7">7</button>
+            <button class="count-btn" type="button" data-count="8">8</button>
+          </div>
+        </div>
+      </div>
+      <p class="hint">Each alarm remembers the tests you chose when you added it. An alarm keeps ringing until you finish them, or until you tap Stop if none are on.</p>
+
+      <button id="setBtn" class="primary" type="button">Add alarm</button>
+      <!-- Friendly messages show up here (aria-live = screen readers read it out) -->
+      <p id="formMsg" class="form-msg" aria-live="polite"></p>
+    </section>
+
+    <!-- ============ 3. LIST OF ALARMS ============ -->
+    <section class="card">
+      <h2 class="card-title">Your alarms</h2>
+      <ul id="alarmList" class="alarm-list"></ul>
+      <p id="emptyText" class="empty">No alarms yet. Add one above.</p>
+    </section>
+
+    <p id="footnote" class="footnote">Alarms and themes are saved in this browser on this device.</p>
+  </main>
+
+  <!-- ============ POP-UP: ringtone websites ============ -->
+  <dialog id="onlineDialog" class="dialog">
+    <h3>Find more ringtones</h3>
+    <p>
+      These sites have free sounds. Download one you like, close this window,
+      then press <strong>Use my own file</strong>.
+    </p>
+    <ul class="site-list">
+      <li><button class="site-btn" type="button" data-url="https://mixkit.co/free-sound-effects/alarm/">Mixkit<span>Free alarm sounds</span></button></li>
+      <li><button class="site-btn" type="button" data-url="https://pixabay.com/sound-effects/search/alarm/">Pixabay<span>Free sound effects</span></button></li>
+      <li><button class="site-btn" type="button" data-url="https://www.zedge.net/find/ringtones/alarm">Zedge<span>Popular phone ringtones</span></button></li>
+    </ul>
+    <button id="closeDialogBtn" class="chip" type="button">Close</button>
+  </dialog>
+
+  <!-- ============ POP-UP: theme picker ============ -->
+  <dialog id="themeDialog" class="dialog">
+    <h3>Theme</h3>
+    <!-- The swatches are created by app.js from the THEMES list -->
+    <div id="themeGrid" class="theme-grid"></div>
+    <button id="closeThemeBtn" class="chip" type="button">Done</button>
+  </dialog>
+
+  <!-- ============ FULL-SCREEN: shown while an alarm is ringing ============ -->
+  <div id="ringOverlay" class="overlay hidden" role="alertdialog" aria-live="assertive" aria-label="Alarm ringing">
+    <div class="ring-box">
+      <!-- Simple bell drawn with SVG so it looks the same on every computer -->
+      <svg class="bell" viewBox="0 0 24 24" width="64" height="64" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"></path>
+        <path d="M13.7 21a2 2 0 0 1-3.4 0"></path>
+      </svg>
+      <div id="ringTime" class="ring-time">--:--</div>
+      <div class="ring-label">Time to wake up</div>
+      <p class="hint">If the alarm is silent, click or tap here to enable sound.</p>
+      <!-- Says "Step 1 of 2" when both tests are on -->
+      <div id="stepInfo" class="step-info"></div>
+
+      <!-- STEP: no tests chosen, so just a Stop button -->
+      <div id="stepStop" class="challenge hidden">
+        <button id="stopBtn" class="primary" type="button">Stop alarm</button>
+      </div>
+
+      <!-- STEP: typing test -->
+      <div id="stepTyping" class="challenge hidden">
+        <div class="challenge-title">Type this code to stop the alarm</div>
+        <!-- The code itself. It cannot be selected or copied. -->
+        <div id="codeText" class="code"></div>
+        <input id="codeInput" class="text-input code-input" type="text" maxlength="8"
+               autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false"
+               placeholder="Type the code here" aria-label="Type the code shown above" />
+        <div id="typingMsg" class="challenge-msg" aria-live="polite"></div>
+      </div>
+
+      <!-- STEP: math test -->
+      <div id="stepMath" class="challenge hidden">
+        <div id="mathProgress" class="challenge-title">Problem 1 of 3</div>
+        <div id="mathProblem" class="problem">-- + -- = ?</div>
+        <div id="mathAnswer" class="answer" aria-live="polite"></div>
+        <div id="mathMsg" class="challenge-msg" aria-live="polite"></div>
+        <div class="keypad">
+          <button class="key" type="button" data-key="1">1</button>
+          <button class="key" type="button" data-key="2">2</button>
+          <button class="key" type="button" data-key="3">3</button>
+          <button class="key" type="button" data-key="4">4</button>
+          <button class="key" type="button" data-key="5">5</button>
+          <button class="key" type="button" data-key="6">6</button>
+          <button class="key" type="button" data-key="7">7</button>
+          <button class="key" type="button" data-key="8">8</button>
+          <button class="key" type="button" data-key="9">9</button>
+          <button class="key small" type="button" data-key="del" aria-label="Delete last digit">Del</button>
+          <button class="key" type="button" data-key="0">0</button>
+          <button class="key enter" type="button" data-key="ok" aria-label="Submit answer">OK</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
