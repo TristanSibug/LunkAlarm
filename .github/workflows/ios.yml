@@ -107,6 +107,7 @@ jobs:
               summary.write('### Xcode diagnostics\n\n```text\n' + '\n'.join(errors) + '\n```\n')
           PY
       - name: Package source and unsigned builds
+        if: always() && steps.simulator.outcome == 'success' && steps.device.outcome == 'success'
         run: |
           git archive --format=zip --output=LunkAlarm-iOS-source.zip HEAD ios
           ditto -c -k --sequesterRsrc --keepParent artifacts/ios-build/Build/Products/Debug-iphonesimulator/LunkAlarm.app LunkAlarm-iOS-Simulator.zip
