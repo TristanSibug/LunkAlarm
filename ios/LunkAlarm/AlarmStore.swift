@@ -20,7 +20,7 @@ final class AlarmStore {
     private let service = NativeAlarmService()
     private var systemIDs = Set<UUID>()
     private var alertingIDs = Set<UUID>()
-    private var isActive = true
+    private var isActive = false
     private var isUITesting = false
     private var muteOnReturn = false
     private var challengeTimer: Task<Void, Never>?

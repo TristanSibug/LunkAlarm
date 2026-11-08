@@ -21,7 +21,7 @@ private struct AlarmRootView: View {
         themedContent
             .task { await store.observeAlarms() }
             .task { await store.observeAuthorization() }
-            .onChange(of: scenePhase) { _, phase in sceneChanged(phase) }
+            .onChange(of: scenePhase, initial: true) { _, phase in sceneChanged(phase) }
             .onChange(of: store.state.settings) { _, _ in store.saveSettings() }
             .onReceive(NotificationCenter.default.publisher(for: .lunkAlarmIntent)) { _ in store.refresh() }
             .onReceive(NotificationCenter.default.publisher(for: AVAudioSession.interruptionNotification), perform: handleInterruption)
