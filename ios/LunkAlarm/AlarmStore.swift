@@ -368,8 +368,14 @@ final class AlarmStore {
         let ids = Set(alarm.nativeAlarmIDs)
         for native in try service.manager.alarms where ids.contains(native.id) {
             if onlyAlerting && native.state != .alerting { continue }
-            if native.state == .alerting { try service.stop(id: native.id) }
-            else { try service.cancel(id: native.id) }
+            if native.state == .alerting {
+                try service.stop(id: native.id)
+                // Stopping a weekly occurrence may preserve its future schedule.
+                // Delete/disable/completion must cancel that retained schedule too.
+                if !onlyAlerting, try service.manager.alarms.contains(where: { $0.id == native.id }) {
+                    try service.cancel(id: native.id)
+                }
+            } else { try service.cancel(id: native.id) }
             systemIDs.remove(native.id); alertingIDs.remove(native.id)
         }
     }
