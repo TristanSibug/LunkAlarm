@@ -5,3 +5,12 @@ artifacts/
 *.user
 
 **/node_modules/
+
+# Native iOS local build/signing state
+**/.build/
+**/.swiftpm/
+**/DerivedData/
+**/xcuserdata/
+*.xcuserstate
+*.ipa
+*.mobileprovision

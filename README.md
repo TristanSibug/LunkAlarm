@@ -2,6 +2,10 @@
 
 A C# / WPF implementation of Wake, based on the supplied Tauri alarm clock. The Windows app uses native controls, Windows audio and Windows power APIs. It has **no Tauri, Rust, JavaScript, WebView or browser dependency**. The standalone website lives in `web/` and reuses the original browser UI. The native macOS version is future work.
 
+## Native iPhone app
+
+The native SwiftUI app is in **`ios/`**. Open `ios/LunkAlarm.xcodeproj` with Xcode 26 or later; it targets iOS 26+ and uses AlarmKit for system-scheduled alarms. It retains the website's themes, clock-first view, wheel pickers, sound previews/imports, and ringtone-site links. See [iOS setup, cloud builds, signing, and device testing](ios/README.md). macOS Monterey cannot run the required Xcode; GitHub Actions provides an unsigned cloud build, and iPhone installation still requires Apple signing/provisioning or TestFlight.
+
 ## Deploy the website with Vercel
 
 Import this repository into a **separate Vercel project** with **Root Directory `web`** and **Framework Preset Other**. No build/install commands, database or environment variables are required. Deploy, then add `alarm.reeeserve.online` in the new project's Domains settings and enter the exact DNS record shown by Vercel at your DNS provider.

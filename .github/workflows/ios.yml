@@ -1,0 +1,61 @@
+name: Native iOS app
+on:
+  push:
+    branches: [main]
+    paths: ['ios/**', '.github/workflows/ios.yml']
+  pull_request:
+    paths: ['ios/**', '.github/workflows/ios.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  build:
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Select Xcode 26
+        run: |
+          set -euo pipefail
+          xcode_path=$(find /Applications -maxdepth 1 -name 'Xcode_26*.app' | sort -V | tail -1)
+          if [ -z "$xcode_path" ]; then echo "Xcode 26 is required for AlarmKit"; exit 1; fi
+          sudo xcode-select -s "$xcode_path/Contents/Developer"
+          xcodebuild -version
+      - name: Test native scheduling and persistence
+        run: swift test --package-path ios
+      - name: Check generated project
+        run: |
+          python3 ios/scripts/generate_project.py
+          git diff --exit-code -- ios/LunkAlarm.xcodeproj
+      - name: Build iPhone simulator app
+        run: |
+          set -o pipefail
+          xcodebuild -project ios/LunkAlarm.xcodeproj -scheme LunkAlarm \
+            -sdk iphonesimulator -destination 'generic/platform=iOS Simulator' \
+            -configuration Debug -derivedDataPath artifacts/ios-build \
+            CODE_SIGNING_ALLOWED=NO build | tee ios-build.log
+      - name: Build device app without signing
+        run: |
+          set -o pipefail
+          xcodebuild -project ios/LunkAlarm.xcodeproj -scheme LunkAlarm \
+            -sdk iphoneos -destination 'generic/platform=iOS' \
+            -configuration Release -derivedDataPath artifacts/ios-device \
+            CODE_SIGNING_ALLOWED=NO build | tee ios-device-build.log
+      - name: Package source and unsigned builds
+        run: |
+          git archive --format=zip --output=LunkAlarm-iOS-source.zip HEAD ios
+          ditto -c -k --sequesterRsrc --keepParent artifacts/ios-build/Build/Products/Debug-iphonesimulator/LunkAlarm.app LunkAlarm-iOS-Simulator.zip
+          mkdir -p artifacts/unsigned/Payload
+          cp -R artifacts/ios-device/Build/Products/Release-iphoneos/LunkAlarm.app artifacts/unsigned/Payload/
+          cd artifacts/unsigned
+          zip -qr ../../LunkAlarm-iOS-unsigned.ipa Payload
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: LunkAlarm-iOS
+          path: |
+            LunkAlarm-iOS-source.zip
+            LunkAlarm-iOS-Simulator.zip
+            LunkAlarm-iOS-unsigned.ipa
+            ios-build.log
+            ios-device-build.log
+          if-no-files-found: warn
