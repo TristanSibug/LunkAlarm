@@ -54,6 +54,7 @@ final class AlarmStore {
     }
     var theme: AlarmTheme { AlarmTheme.find(state.settings.themeID) }
     var orderedAlarms: [AlarmRecord] { state.alarms.sorted { $0.target < $1.target } }
+    var savedAlarms: [AlarmRecord] { orderedAlarms.filter { !$0.isTimer } }
     var selectedSound: (name: String, filename: String)? {
         if let tone = RingtoneCatalog.tones.first(where: { $0.id == state.settings.ringtoneID }) {
             return (tone.name, tone.filename)
@@ -90,35 +91,41 @@ final class AlarmStore {
             guard let selectedSound, SoundService.url(filename: selectedSound.filename) != nil else {
                 throw NativeAlarmError.soundUnavailable
             }
-            try await service.authorize()
+            if !isUITesting { try await service.authorize() }
             authorization = service.manager.authorizationState
             let settings = state.settings
             let target = soundCheck ? Date().addingTimeInterval(5) : settings.mode == .time
-                ? try AlarmScheduling.nextTime(hour: settings.hour, minute: settings.minute)
+                ? try AlarmRoutine.next(hour: settings.hour, minute: settings.minute, days: settings.repeatDays ?? Array(1...7))
                 : try AlarmScheduling.countdown(seconds: settings.durationSeconds)
             let filename = try SoundService.alarmFilename(original: selectedSound.filename, level: settings.soundLevel ?? 1, gradual: settings.gradualVolume == true)
             var record = AlarmRecord(target: target, isTimer: soundCheck || settings.mode == .timer,
                 ringtoneID: settings.ringtoneID, soundFilename: filename,
                 soundName: selectedSound.name, typing: soundCheck ? false : settings.typing, mathCount: soundCheck ? 0 : settings.mathCount)
+            if !record.isTimer {
+                let name = (settings.alarmName ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
+                guard !name.isEmpty else { errorMessage = "Please fill in the alarm name."; return }
+                record.name = name; record.repeatDays = settings.repeatDays ?? Array(1...7)
+                record.enabled = true; record.clockHour = settings.hour; record.clockMinute = settings.minute
+            }
             record.playbackSoundFilename = selectedSound.filename
             record.soundLevel = settings.soundLevel ?? 1
             record.gradualVolume = settings.gradualVolume == true
             record.typingCodeLength = settings.typingCodeLength
             record.typingTimeLimit = settings.typingTimeLimit
             record.mathTimeLimit = settings.mathTimeLimit
-            let recoveryDates = record.hasTests ? AlarmRecovery.dates(after: record.target) : []
+            let recoveryDates = record.hasTests ? (record.days.isEmpty ? AlarmRecovery.dates(after: record.target) : [60.0, 120, 180].map { record.target.addingTimeInterval($0) }) : []
             record.challengeAlarmIDs = recoveryDates.map { _ in UUID() }
             // Persist first, then ask iOS to schedule. A crash between the two leaves a
             // visible 'Not scheduled' record, never an invisible OS alarm.
             var next = state; next.alarms.append(record)
             guard commit(next) else { return }
             do {
-                try await service.schedule(record, tint: theme.accent)
+                if !isUITesting { try await service.schedule(record, tint: theme.accent) }
                 systemIDs.insert(record.id)
                 for (id, date) in zip(record.challengeAlarmIDs ?? [], recoveryDates) {
                     var recovery = record
-                    recovery.id = id; recovery.target = date; recovery.challengeAlarmIDs = nil
-                    try await service.schedule(recovery, tint: theme.accent)
+                    recovery = recoveryRecord(record, id: id, date: date)
+                    if !isUITesting { try await service.schedule(recovery, tint: theme.accent) }
                     systemIDs.insert(id)
                 }
                 message = "Alarm set for " + record.target.formatted(date: .abbreviated, time: .shortened) + "."
@@ -155,6 +162,53 @@ final class AlarmStore {
             }
             if ringing?.id == alarm.id { endChallengeSession() }
         } catch { errorMessage = "Could not cancel the iOS alarm: \(error.localizedDescription)" }
+    }
+    private func recoveryRecord(_ alarm: AlarmRecord, id: UUID, date: Date) -> AlarmRecord {
+        var result = alarm
+        result.id = id; result.target = date; result.challengeAlarmIDs = nil
+        if alarm.days.isEmpty { result.repeatDays = [] }
+        else {
+            let calendar = Calendar.current
+            let shift = calendar.dateComponents([.day], from: calendar.startOfDay(for: alarm.target), to: calendar.startOfDay(for: date)).day ?? 0
+            result.repeatDays = alarm.days.map { ($0 - 1 + shift) % 7 + 1 }.sorted()
+            result.clockHour = calendar.component(.hour, from: date)
+            result.clockMinute = calendar.component(.minute, from: date)
+        }
+        return result
+    }
+    func setEnabled(_ alarm: AlarmRecord, _ enabled: Bool) async {
+        guard !readOnly, !saving, ringing?.id != alarm.id else { return }
+        saving = true
+        defer { saving = false }
+        do {
+            var updated = state.alarms.first(where: { $0.id == alarm.id }) ?? alarm
+            try stopNativeAlarms(updated, onlyAlerting: false)
+            updated.enabled = false; updated.challengeAlarmIDs = nil
+            var next = state
+            guard let index = next.alarms.firstIndex(where: { $0.id == alarm.id }) else { return }
+            next.alarms[index] = updated
+            guard commit(next), enabled else { return }
+            updated.target = try AlarmRoutine.next(hour: updated.clockHour ?? Calendar.current.component(.hour, from: updated.target), minute: updated.clockMinute ?? Calendar.current.component(.minute, from: updated.target), days: updated.days)
+            updated.enabled = true; updated.status = .scheduled
+            let dates = updated.hasTests ? (updated.days.isEmpty ? AlarmRecovery.dates(after: updated.target) : [60.0, 120, 180].map { updated.target.addingTimeInterval($0) }) : []
+            updated.challengeAlarmIDs = dates.map { _ in UUID() }
+            next = state; next.alarms[index] = updated
+            guard commit(next) else { return }
+            do {
+                if !isUITesting {
+                    try await service.schedule(updated, tint: theme.accent)
+                    for (id, date) in zip(updated.challengeAlarmIDs ?? [], dates) {
+                        let backup = recoveryRecord(updated, id: id, date: date)
+                        try await service.schedule(backup, tint: theme.accent)
+                    }
+                }
+            } catch {
+                try stopNativeAlarms(updated, onlyAlerting: false)
+                next = state; next.alarms[index].enabled = false
+                _ = commit(next)
+                throw error
+            }
+        } catch { errorMessage = error.localizedDescription }
     }
     func preview() {
         if sound.previewing { sound.stop(); return }
@@ -216,9 +270,9 @@ final class AlarmStore {
             let pieces = event.split(separator: ":", maxSplits: 1)
             guard pieces.count == 2, let id = UUID(uuidString: String(pieces[1])),
                   let alarm = next.alarms.first(where: { $0.nativeAlarmIDs.contains(id) }) else { continue }
-            if pieces[0] == "stop" { stoppedIDs.insert(alarm.id) }
+            if pieces[0] == "stop" || (pieces[0] == "open" && alarm.hasTests) { stoppedIDs.insert(alarm.id) }
         }
-        next.alarms = AlarmReconciliation.reconcile(next.alarms, systemIDs: systemIDs, stoppedIDs: stoppedIDs, now: Date())
+        next.alarms = AlarmReconciliation.reconcile(next.alarms, systemIDs: systemIDs, stoppedIDs: stoppedIDs, now: Date(), alertingIDs: alertingIDs)
         if next != state, !commit(next) { return }
         UserDefaults.standard.removeObject(forKey: AlarmIntentInbox.key)
         if !isActive {
@@ -234,7 +288,7 @@ final class AlarmStore {
             }
         }
         if ringing == nil,
-           let nextAlarm = orderedAlarms.first(where: { nativeAlertIsSounding($0) || $0.status == .needsChallenge }) {
+           let nextAlarm = orderedAlarms.first(where: {  $0.isEnabled && (nativeAlertIsSounding($0) || $0.status == .needsChallenge) }) {
             begin(nextAlarm)
         }
     }
@@ -292,9 +346,17 @@ final class AlarmStore {
             for task in pending { await task.value }
             do {
                 try stopNativeAlarms(currentRecord ?? alarm, onlyAlerting: false)
-                var next = state; next.alarms.removeAll { $0.id == alarm.id }
+                var next = state
+                if alarm.isTimer { next.alarms.removeAll { $0.id == alarm.id } }
+                else if let index = next.alarms.firstIndex(where: { $0.id == alarm.id }) {
+                    next.alarms[index].enabled = false
+                    next.alarms[index].challengeAlarmIDs = nil
+                    next.alarms[index].status = .scheduled
+                }
                 guard commit(next) else { return }
-                endChallengeSession(); message = nil; refresh()
+                endChallengeSession(); message = nil
+                if !alarm.isTimer && !alarm.days.isEmpty { await setEnabled(alarm, true) }
+                refresh()
             } catch { errorMessage = "Could not stop the iOS alarm: \(error.localizedDescription)" }
         }
     }
@@ -369,7 +431,7 @@ final class AlarmStore {
                     guard !Task.isCancelled, watchdogRevision == revision, ringing?.id == alarm.id else { return }
                     var timeoutAlarm = alarm
                     timeoutAlarm.id = pair.0; timeoutAlarm.target = pair.1
-                    timeoutAlarm.challengeAlarmIDs = nil
+                    timeoutAlarm.challengeAlarmIDs = nil; timeoutAlarm.repeatDays = []
                     try await service.schedule(timeoutAlarm, tint: theme.accent)
                     systemIDs.insert(pair.0)
                     // A newer generation owns cleanup of older IDs. Leave these

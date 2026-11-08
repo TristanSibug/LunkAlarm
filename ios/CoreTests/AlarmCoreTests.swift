@@ -232,4 +232,31 @@ final class AlarmCoreTests: XCTestCase {
         XCTAssertTrue(dates.allSatisfy { $0 > start })
     }
 
+    func testWeeklyAlarmsChooseSelectedDaysAndRejectInvalidDays() throws {
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = TimeZone(identifier: "Asia/Manila")!
+        let monday = calendar.date(from: DateComponents(year: 2026, month: 11, day: 9, hour: 8))!
+        let next = try AlarmRoutine.next(hour: 7, minute: 0, days: [2,4,6], now: monday, calendar: calendar)
+        XCTAssertEqual(calendar.component(.weekday, from: next), 4)
+        XCTAssertEqual(calendar.component(.hour, from: next), 7)
+        let daily = try AlarmRoutine.next(hour: 7, minute: 0, days: Array(1...7), now: monday, calendar: calendar)
+        XCTAssertEqual(calendar.component(.weekday, from: daily), 3)
+        XCTAssertEqual(AlarmRoutine.summary([2,3,4,5,6]), "Weekdays")
+        XCTAssertEqual(AlarmRoutine.summary([]), "Once")
+        XCTAssertThrowsError(try AlarmRoutine.next(hour: 7, minute: 0, days: [0], now: monday))
+        XCTAssertThrowsError(try AlarmRoutine.next(hour: 7, minute: 0, days: [2,2], now: monday))
+    }
+    func testSavedOneShotIsRetainedAndDisabledWhileFinishedTimerIsRemoved() throws {
+        let now = Date()
+        var saved = AlarmRecord(target: now.addingTimeInterval(-30), isTimer: false, ringtoneID: "classic-beep", soundFilename: "classic-beep.wav", soundName: "Classic Beep", typing: false, mathCount: 0)
+        saved.name = "Morning routine"; saved.repeatDays = []; saved.enabled = true
+        var timer = saved; timer.id = UUID(); timer.isTimer = true
+        let result = AlarmReconciliation.reconcile([saved, timer], systemIDs: [], stoppedIDs: [], now: now)
+        XCTAssertEqual(result.count, 1)
+        XCTAssertEqual(result[0].name, "Morning routine")
+        XCTAssertFalse(result[0].isEnabled)
+        var state = SavedState(); state.alarms = result
+        XCTAssertEqual(try JSONDecoder().decode(SavedState.self, from: JSONEncoder().encode(state)).validated(), state)
+    }
+
 }

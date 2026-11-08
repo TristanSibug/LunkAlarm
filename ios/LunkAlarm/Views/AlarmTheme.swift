@@ -16,6 +16,10 @@ struct AlarmTheme: Identifiable, Sendable {
     var onAccent: Color { isLight ? .white : Color(hex: 0x160f12) }
     var gradient: LinearGradient { LinearGradient(colors: [accent, accent2], startPoint: .leading, endPoint: .trailing) }
     static func find(_ id: String) -> AlarmTheme { all.first { $0.id == id } ?? all[0] }
+    // Light palettes, neutral darks, warm palettes, then green/blue/purple families.
+    static var arranged: [AlarmTheme] {
+        ["light", "linen", "sea-glass", "oled", "dark", "sunrise", "ember", "forest", "nord", "deep-ocean", "vscode-blue", "tokyo-night", "amethyst", "dracula"].map(find)
+    }
     static let all: [AlarmTheme] = [
         AlarmTheme(id: "sunrise", name: "Sunrise", background: Color(hex: 0x0a0c16), card: Color(hex: 0x171923), text: Color(hex: 0xf4f2ff), muted: Color(hex: 0x9a9bb8), accent: Color(hex: 0xffa94d), accent2: Color(hex: 0xff6b7a), glow: true),
         AlarmTheme(id: "oled", name: "OLED Black", background: .black, card: Color(hex: 0x0c0c0e), text: Color(hex: 0xf2f2f5), muted: Color(hex: 0x9a9aa3), accent: Color(hex: 0xffa94d), accent2: Color(hex: 0xff6b7a)),

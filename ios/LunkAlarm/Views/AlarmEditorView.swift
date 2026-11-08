@@ -3,6 +3,7 @@ import UniformTypeIdentifiers
 
 struct AlarmEditorView: View {
     @Bindable var store: AlarmStore
+    var onAdded: (() -> Void)? = nil
     @State private var ringtoneOpen = false
     @State private var onlineOpen = false
     @State private var importing = false
@@ -12,7 +13,15 @@ struct AlarmEditorView: View {
     private enum RingtoneAction { case file, online }
     var body: some View {
         AlarmCard(theme: store.theme) {
-            Text("New alarm").font(.system(size: 14, weight: .medium)).foregroundStyle(store.theme.muted)
+            if onAdded == nil { Text("New alarm").font(.system(size: 14, weight: .medium)).foregroundStyle(store.theme.muted) }
+            if store.state.settings.mode == .time {
+                VStack(alignment: .leading, spacing: 10) {
+                    sectionLabel("Alarm name")
+                    TextField("Please fill in the alarm name", text: Binding(get: { store.state.settings.alarmName ?? "" }, set: { store.state.settings.alarmName = $0 }))
+                        .padding(12).background(store.theme.field, in: RoundedRectangle(cornerRadius: 12))
+                        .accessibilityIdentifier("alarmNameField")
+                }
+            }
             HStack(spacing: 4) {
                 modeButton("At a time", mode: .time)
                 modeButton("In how long", mode: .timer)
@@ -21,6 +30,7 @@ struct AlarmEditorView: View {
                 sectionLabel(store.state.settings.mode == .time ? "Ring at" : "Ring in")
                 if store.state.settings.mode == .time { timeWheels } else { durationWheels }
             }
+            if store.state.settings.mode == .time { repeatControls }
             VStack(alignment: .leading, spacing: 12) {
                 sectionLabel("Ringtone")
                 HStack(spacing: 10) {
@@ -41,7 +51,11 @@ struct AlarmEditorView: View {
             wakeUpTests
             if let message = store.message { Text(message).font(.caption).foregroundStyle(store.theme.accent) }
             Button {
-                Task { await store.addAlarm() }
+                Task {
+                    let previous = store.state.alarms.count
+                    await store.addAlarm()
+                    if store.state.alarms.count > previous { onAdded?() }
+                }
             } label: {
                 HStack { if store.saving { ProgressView() }; Text(store.saving ? "Scheduling…" : "Add alarm") }
             }.buttonStyle(AccentButtonStyle(theme: store.theme)).disabled(store.saving || store.readOnly)
@@ -69,6 +83,37 @@ struct AlarmEditorView: View {
         .onChange(of: store.state.settings.soundLevel) { _, level in store.sound.updatePreviewVolume(level ?? 1) }
     }
 
+    private var repeatControls: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack {
+                sectionLabel("Repeat")
+                Spacer()
+                Button {
+                    store.state.settings.repeatDays = selectedDays.count == 7 ? [] : Array(1...7)
+                } label: {
+                    Label("Daily", systemImage: selectedDays.count == 7 ? "checkmark.square.fill" : "square")
+                        .font(.system(size: 13))
+                }.buttonStyle(.plain).foregroundStyle(store.theme.accent).accessibilityIdentifier("dailyRepeat")
+            }
+            HStack(spacing: 6) {
+                ForEach(1...7, id: \.self) { day in
+                    Button {
+                        var days = selectedDays
+                        if days.contains(day) { days.removeAll { $0 == day } } else { days.append(day) }
+                        store.state.settings.repeatDays = days.sorted()
+                    } label: {
+                        Text(["S", "M", "T", "W", "T", "F", "S"][day - 1])
+                            .font(.system(size: 14, weight: .medium)).frame(maxWidth: .infinity).padding(.vertical, 12)
+                            .foregroundStyle(selectedDays.contains(day) ? store.theme.onAccent : store.theme.muted)
+                            .background(selectedDays.contains(day) ? store.theme.accent : store.theme.field, in: RoundedRectangle(cornerRadius: 12))
+                    }.buttonStyle(.plain).accessibilityLabel(["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"][day - 1])
+                        .accessibilityAddTraits(selectedDays.contains(day) ? .isSelected : [])
+                }
+            }
+            Text(AlarmRoutine.summary(selectedDays)).font(.caption).foregroundStyle(store.theme.muted)
+        }
+    }
+    private var selectedDays: [Int] { store.state.settings.repeatDays ?? Array(1...7) }
     private func sectionLabel(_ text: String) -> some View {
         Text(text.uppercased()).font(.system(size: 11, weight: .medium)).tracking(0.7).foregroundStyle(store.theme.muted)
     }

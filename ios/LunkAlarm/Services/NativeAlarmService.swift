@@ -20,7 +20,7 @@ struct NativeAlarmService {
         let open = AlarmButton(text: "Open LunkAlarm",
                                textColor: .white, systemImageName: "arrow.up.right")
         let presentation = AlarmPresentation(alert: AlarmPresentation.Alert(
-            title: "\(alarm.soundName)", stopButton: stop, secondaryButton: alarm.hasTests ? nil : open,
+            title: "\(alarm.isTimer ? alarm.soundName : alarm.displayName)", stopButton: stop, secondaryButton: alarm.hasTests ? nil : open,
             secondaryButtonBehavior: alarm.hasTests ? nil : .custom))
         let attributes = AlarmAttributes(presentation: presentation,
                                          metadata: LunkAlarmMetadata(soundName: alarm.soundName, hasTests: alarm.hasTests),
@@ -28,8 +28,12 @@ struct NativeAlarmService {
         let stopIntent: (any LiveActivityIntent)? = alarm.hasTests ? OpenWakeTestsIntent(id: alarm.id) : nil
         // Both modes use an absolute deadline, keeping our persisted deadline and iOS in sync.
         // No snooze/countdown controls: these are one-shot alarms, including relative durations.
+        let weekdays: [Locale.Weekday] = [.sunday, .monday, .tuesday, .wednesday, .thursday, .friday, .saturday]
+        let schedule: Alarm.Schedule = !alarm.isTimer && !alarm.days.isEmpty
+            ? .relative(.init(time: .init(hour: alarm.clockHour ?? Calendar.current.component(.hour, from: alarm.target), minute: alarm.clockMinute ?? Calendar.current.component(.minute, from: alarm.target)), repeats: .weekly(alarm.days.map { weekdays[$0 - 1] })))
+            : .fixed(alarm.target)
         let configuration = AlarmManager.AlarmConfiguration(
-            schedule: .fixed(alarm.target), attributes: attributes,
+            schedule: schedule, attributes: attributes,
             stopIntent: stopIntent, secondaryIntent: alarm.hasTests ? nil : OpenLunkAlarmIntent(id: alarm.id),
             sound: .named(alarm.soundFilename))
         _ = try await manager.schedule(id: alarm.id, configuration: configuration)

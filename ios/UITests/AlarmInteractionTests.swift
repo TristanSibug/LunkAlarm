@@ -10,7 +10,9 @@ final class AlarmInteractionTests: XCTestCase {
     }
     @MainActor private func openEditor(_ app: XCUIApplication) {
         XCTAssertTrue(app.descendants(matching: .any)["alarmSwipeHint"].waitForExistence(timeout: 10))
-        app.swipeUp(velocity: .fast)
+        app.swipeDown(velocity: .fast)
+        XCTAssertTrue(app.staticTexts["savedAlarmsTitle"].waitForExistence(timeout: 5))
+        app.buttons["newAlarmButton"].tap()
         XCTAssertTrue(app.staticTexts["New alarm"].waitForExistence(timeout: 5))
     }
     @MainActor private func capture(_ app: XCUIApplication, name: String) {
@@ -41,13 +43,10 @@ final class AlarmInteractionTests: XCTestCase {
         // A fast downward adjustment of the picker must not close the page.
         picker.swipeDown(velocity: .fast)
         XCTAssertTrue(app.staticTexts["New alarm"].exists)
-        let hint = app.descendants(matching: .any)["alarmSwipeHint"]
-        let start = hint.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5))
-        let end = start.withOffset(CGVector(dx: 0, dy: 160))
-        start.press(forDuration: 0.05, thenDragTo: end, withVelocity: .fast, thenHoldForDuration: 0)
-        let closed = XCTNSPredicateExpectation(predicate: NSPredicate(format: "exists == false"), object: app.staticTexts["New alarm"])
-        wait(for: [closed], timeout: 5)
-        XCTAssertTrue(app.descendants(matching: .any)["alarmSwipeHint"].exists)
+        app.buttons["Done"].tap()
+        XCTAssertTrue(app.staticTexts["savedAlarmsTitle"].waitForExistence(timeout: 5))
+        app.buttons["Clock"].tap()
+        XCTAssertTrue(app.descendants(matching: .any)["alarmSwipeHint"].waitForExistence(timeout: 5))
     }
     @MainActor func testLoopingProblemCountAndFourPresets() {
         let app = launch()
@@ -122,6 +121,7 @@ final class AlarmInteractionTests: XCTestCase {
         for _ in 0..<5 where !typing.isHittable { app.swipeUp(velocity: .slow) }
         typing.tap()
         let length = app.pickers["typingLengthPicker"]
+        XCTAssertTrue(length.waitForExistence(timeout: 5))
         for _ in 0..<4 where !length.isHittable { app.swipeUp(velocity: .slow) }
         let timer = app.pickers["typingTimerPicker"]
         XCTAssertTrue(length.waitForExistence(timeout: 5))
@@ -164,6 +164,23 @@ final class AlarmInteractionTests: XCTestCase {
         app.buttons["Find more ringtones online"].tap()
         XCTAssertTrue(app.navigationBars["Find more ringtones"].waitForExistence(timeout: 5))
         XCTAssertTrue(app.descendants(matching: .any)["ringtoneProviderMixkit"].exists)
+    }
+
+    @MainActor func testSavedAlarmNameDaysAndDisablePersistInList() {
+        let app = launch()
+        openEditor(app)
+        let name = app.textFields["alarmNameField"]
+        name.tap(); name.typeText("Morning routine")
+        app.swipeUp(velocity: .slow)
+        let add = app.buttons["scheduleAlarm"]
+        for _ in 0..<8 where !add.isHittable { app.swipeUp(velocity: .slow) }
+        add.tap()
+        XCTAssertTrue(app.staticTexts["savedAlarmsTitle"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["Morning routine"].exists)
+        let toggle = app.switches["Enable Morning routine"]
+        toggle.coordinate(withNormalizedOffset: CGVector(dx: 0.9, dy: 0.5)).tap()
+        XCTAssertTrue(app.staticTexts["Morning routine"].exists)
+        capture(app, name: "ios-saved-alarms")
     }
 
 }

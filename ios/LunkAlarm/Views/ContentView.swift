@@ -6,7 +6,8 @@ struct ContentView: View {
     @Environment(\.openURL) private var openURL
     @State private var pickerOpen = false
     @State private var themeOpen = false
-    @State private var alarmsOpen = false
+    @State private var editorOpen = false
+    @State private var timersOpen = false
     @Namespace private var clockSpace
 
     var body: some View {
@@ -16,18 +17,8 @@ struct ContentView: View {
                 VStack(spacing: 0) {
                     toolbar.padding(.horizontal, 20).padding(.top, 12).padding(.bottom, 8)
                     if pickerOpen {
-                        ScrollView {
-                            VStack(spacing: 20) {
-                                clock(width: geometry.size.width, height: 270)
-                                AlarmEditorView(store: store)
-                                alarmList
-                                Text("Alarms and themes are saved on this iPhone.")
-                                    .font(.caption2).foregroundStyle(store.theme.muted).padding(.bottom, 16)
-                            }.padding(.horizontal, 16).frame(maxWidth: 680).frame(maxWidth: .infinity)
-                        }.scrollDismissesKeyboard(.interactively)
-                            .gesture(AlarmNavigationSwipe(direction: .down) { pickerOpen = false })
-                            .accessibilityAction(named: "Return to clock") { pickerOpen = false }
-                            .transition(.opacity.combined(with: .move(edge: .bottom)))
+                        SavedAlarmsView(store: store, returnToClock: { pickerOpen = false }, add: { editorOpen = true })
+                            .transition(.opacity.combined(with: .move(edge: .top)))
                     } else {
                         VStack {
                             Spacer(minLength: 8)
@@ -40,16 +31,29 @@ struct ContentView: View {
                             }
                         }.frame(maxWidth: .infinity, maxHeight: .infinity)
                             .contentShape(Rectangle())
-                            .gesture(AlarmNavigationSwipe(direction: .up) { pickerOpen = true })
-                            .accessibilityAction(named: "Add alarm") { pickerOpen = true }
+                            .gesture(AlarmNavigationSwipe(direction: .down) { pickerOpen = true })
+                            .accessibilityAction(named: "View alarms") { pickerOpen = true }
                     }
                 }
             }.foregroundStyle(store.theme.text)
                 .animation(reduceMotion ? nil : .spring(response: 0.48, dampingFraction: 0.88), value: pickerOpen)
         }
         .sheet(isPresented: $themeOpen) { themeSheet }
-        .sheet(isPresented: $alarmsOpen) {
-            SheetShell(title: "Your alarms", theme: store.theme) { alarmList }
+        .sheet(isPresented: $timersOpen) {
+            SheetShell(title: "Active timers", theme: store.theme) {
+                ForEach(store.orderedAlarms.filter { $0.isTimer }) { alarm in
+                    HStack {
+                        Text(alarm.target, style: .timer).monospacedDigit()
+                        Spacer()
+                        Button("Cancel", role: .destructive) { store.remove(alarm) }
+                    }.padding(.vertical, 12)
+                }
+            }
+        }
+        .sheet(isPresented: $editorOpen) {
+            SheetShell(title: "New alarm", theme: store.theme) {
+                AlarmEditorView(store: store, onAdded: { editorOpen = false })
+            }
         }
         .fullScreenCover(isPresented: Binding(get: { store.ringing != nil }, set: { _ in })) {
             RingingView(store: store).interactiveDismissDisabled()
@@ -81,64 +85,25 @@ struct ContentView: View {
             ClockFaceView(use24Hour: store.state.settings.use24Hour, theme: store.theme,
                           digitSize: min(pickerOpen ? 146 : 260, max(64, min((width - 55) * 0.36, height * 0.46))))
                 .matchedGeometryEffect(id: "clock", in: clockSpace)
+            if store.state.alarms.contains(where: { $0.isTimer }) {
+                Button("Active timers") { timersOpen = true }.buttonStyle(ChipStyle(theme: store.theme))
+            }
             HStack(spacing: 10) {
                 VStack(spacing: 7) {
-                    Image(systemName: pickerOpen ? "chevron.down" : "chevron.up").font(.system(size: 14, weight: .medium))
-                    Text(pickerOpen ? "Swipe down to return to clock" : "Swipe up to add alarm").font(.system(size: 12))
+                    Image(systemName: "chevron.down").font(.system(size: 14, weight: .medium))
+                    Text("Swipe down to view alarms").font(.system(size: 12))
                 }.foregroundStyle(store.theme.muted).padding(.vertical, 8)
                     .accessibilityElement(children: .ignore)
-                    .accessibilityLabel(pickerOpen ? "Return to clock" : "Add alarm")
-                    .accessibilityHint(pickerOpen ? "Swipe down on the page when it is at the top." : "Swipe up to open the alarm picker.")
-                    .accessibilityAction { pickerOpen.toggle() }
+                    .accessibilityLabel("Swipe down to view alarms")
+                    .accessibilityAction { pickerOpen = true }
                     .accessibilityIdentifier("alarmSwipeHint")
-                if !pickerOpen && !store.state.alarms.isEmpty {
-                    Button("Your alarms (\(store.state.alarms.count))") { alarmsOpen = true }.buttonStyle(ChipStyle(theme: store.theme))
-                }
             }
         }.padding(.vertical, pickerOpen ? 18 : 10).frame(maxWidth: .infinity)
-    }
-    private var alarmList: some View {
-        AlarmCard(theme: store.theme) {
-            HStack {
-                Text("Your alarms").font(.system(size: 14, weight: .medium))
-                Spacer()
-                Text("\(store.state.alarms.count)").font(.caption)
-            }.foregroundStyle(store.theme.muted)
-            if store.state.alarms.isEmpty {
-                Text("No alarms yet. Add one above.").font(.system(size: 13)).foregroundStyle(store.theme.muted)
-            }
-            ForEach(store.orderedAlarms) { alarm in
-                HStack(alignment: .top, spacing: 12) {
-                    VStack(alignment: .leading, spacing: 6) {
-                        Text(alarm.target.formatted(.dateTime.hour().minute().locale(Locale(identifier: store.state.settings.use24Hour ? "en_GB" : "en_US"))))
-                            .font(.system(size: 28, weight: .light)).monospacedDigit()
-                        Text(alarm.target.formatted(date: .abbreviated, time: .omitted) + " · " + alarm.soundName)
-                            .font(.caption).foregroundStyle(store.theme.muted)
-                        if alarm.status == .notScheduled {
-                            Text("Not scheduled by iOS. Remove and add again.").font(.caption).foregroundStyle(.orange)
-                        }
-                        if alarm.hasTests {
-                            Text([alarm.typing ? "Typing test" : nil, alarm.mathCount > 0 ? "\(alarm.mathCount) math problems" : nil].compactMap { $0 }.joined(separator: " · "))
-                                .font(.caption).foregroundStyle(store.theme.muted)
-                        }
-                        if alarm.status == .needsChallenge {
-                            Button("Finish wake-up tests") { alarmsOpen = false; store.begin(alarm) }
-                                .font(.caption.weight(.semibold)).foregroundStyle(store.theme.accent)
-                        }
-                    }
-                    Spacer(minLength: 0)
-                    Button(role: .destructive) { store.remove(alarm) } label: { Image(systemName: "trash").padding(10) }
-                        .accessibilityLabel("Delete alarm at \(alarm.target.formatted(date: .omitted, time: .shortened))")
-                        .disabled(store.readOnly || store.saving)
-                }.padding(.vertical, 8)
-                if alarm.id != store.orderedAlarms.last?.id { Divider().overlay(store.theme.border) }
-            }
-        }
     }
     private var themeSheet: some View {
         SheetShell(title: "Theme", theme: store.theme) {
             LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 12) {
-                ForEach(AlarmTheme.all) { theme in
+                ForEach(AlarmTheme.arranged) { theme in
                     Button { store.state.settings.themeID = theme.id } label: {
                         VStack(alignment: .leading, spacing: 14) {
                             HStack {

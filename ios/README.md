@@ -92,3 +92,13 @@ python3 ios/scripts/generate_project.py
 ```
 
 The app reuses the original repository's icon and sound recipes under its license. `PrivacyInfo.xcprivacy` declares app-owned UserDefaults access and no tracking/data collection. Update the privacy declaration if future account, analytics, or networking features change that behavior.
+
+## Saved routines (1.3)
+
+Swipe down from the clock to Your alarms, then tap the floating + to create an alarm. Swipe up at the top of the list or use Clock to return. At a time alarms require a name, support Once (no days), Daily or selected weekdays, and remain until deleted. A completed Once alarm turns off. Repeat schedules use native AlarmKit weekly schedules; completing wake-up tests rearms the routine. Each routine can be disabled without deleting it. Existing time alarms migrate as named “Alarm”, one-shot entries.
+
+In how long countdowns never appear in saved routines. Only active countdown ownership is retained internally for system-alert cleanup and crash recovery; completed countdowns are removed. Active timers can be cancelled from the clock.
+
+Recurring routines with tests use native weekly recovery alerts at +1, +2 and +3 minutes (including weekday rollover at midnight), so recovery continues on future scheduled days without requiring a background app launch. One-shot recovery remains +20/+40/+60 seconds. Question timeout alerts remain fixed absolute deadlines. Verify recurring alarms on a locked physical iPhone across successive scheduled days, completing tests, disabling, deletion and time-zone changes before relying on them.
+
+Themes retain the same two-column tiles, now ordered as light palettes, neutral dark palettes, warm palettes, then green/blue/purple families.

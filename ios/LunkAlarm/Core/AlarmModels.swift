@@ -14,6 +14,8 @@ public struct ImportedSound: Codable, Identifiable, Equatable, Sendable {
 }
 
 public struct AlarmSettings: Codable, Equatable, Sendable {
+    public var alarmName: String?
+    public var repeatDays: [Int]?
     public var themeID = "sunrise"
     public var use24Hour = false
     public var mode = AlarmMode.time
@@ -50,6 +52,14 @@ public struct AlarmRecord: Codable, Identifiable, Equatable, Sendable {
     public var typingCodeLength: Int?
     public var typingTimeLimit: Int?
     public var mathTimeLimit: Int?
+    public var name: String?
+    public var repeatDays: [Int]?
+    public var enabled: Bool?
+    public var clockHour: Int?
+    public var clockMinute: Int?
+    public var isEnabled: Bool { enabled != false }
+    public var displayName: String { name?.isEmpty == false ? name! : "Alarm" }
+    public var days: [Int] { repeatDays ?? [] }
     public var challengeAlarmIDs: [UUID]?
     public var nativeAlarmIDs: [UUID] { [id] + (challengeAlarmIDs ?? []) }
     public var hasTests: Bool { typing || mathCount > 0 }
@@ -75,6 +85,8 @@ public struct SavedState: Codable, Equatable, Sendable {
               Set(importedSounds.map(\.id)).count == importedSounds.count,
               (0...8).contains(settings.mathCount), (0...23).contains(settings.hour),
               (0...59).contains(settings.minute),
+              AlarmRoutine.validDays(settings.repeatDays),
+              alarms.allSatisfy({ AlarmRoutine.validDays($0.repeatDays) && ($0.clockHour.map { (0...23).contains($0) } ?? true) && ($0.clockMinute.map { (0...59).contains($0) } ?? true) }),
               WakeTestOptions.valid(codeLength: settings.typingCodeLength, typingTime: settings.typingTimeLimit, mathTime: settings.mathTimeLimit),
               settings.soundLevel.map({ (0.1...1).contains($0) }) ?? true,
               (0...AlarmScheduling.maximumDuration).contains(settings.durationSeconds),
@@ -161,4 +173,27 @@ public enum WakeTestOptions {
 public enum AlarmRecovery {
     public static let offsets: [TimeInterval] = [20, 40, 60]
     public static func dates(after target: Date) -> [Date] { offsets.map { target.addingTimeInterval($0) } }
+}
+
+public enum AlarmRoutine {
+    public static func validDays(_ days: [Int]?) -> Bool {
+        guard let days else { return true }
+        return Set(days).count == days.count && days.allSatisfy { (1...7).contains($0) }
+    }
+    public static func next(hour: Int, minute: Int, days: [Int], now: Date = Date(), calendar: Calendar = .current) throws -> Date {
+        guard validDays(days) else { throw AlarmDataError.invalidTime }
+        if days.isEmpty { return try AlarmScheduling.nextTime(hour: hour, minute: minute, now: now, calendar: calendar) }
+        guard (0...23).contains(hour), (0...59).contains(minute) else { throw AlarmDataError.invalidTime }
+        let dates = days.compactMap { calendar.nextDate(after: now, matching: DateComponents(hour: hour, minute: minute, second: 0, weekday: $0), matchingPolicy: .nextTime, repeatedTimePolicy: .first) }
+        guard let date = dates.min() else { throw AlarmDataError.invalidTime }
+        return date
+    }
+    public static func summary(_ days: [Int]) -> String {
+        if days.count == 7 { return "Daily" }
+        if days.isEmpty { return "Once" }
+        if Set(days) == Set([2,3,4,5,6]) { return "Weekdays" }
+        if Set(days) == Set([1,7]) { return "Weekends" }
+        let names = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"]
+        return days.sorted().map { names[$0 - 1] }.joined(separator: " · ")
+    }
 }
