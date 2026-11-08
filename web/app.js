@@ -336,9 +336,6 @@ function getAudioContext() {
   if (!audioCtx) {
     const AudioContextClass = window.AudioContext || window.webkitAudioContext;
     audioCtx = new AudioContextClass();
-    audioCtx.addEventListener('statechange', () => {
-      $('enableSoundBtn').textContent = audioCtx.state === 'running' ? 'Sound ready' : 'Enable sound';
-    });
   }
   if (audioCtx.state === 'suspended') audioCtx.resume().catch(() => {});
   return audioCtx;
@@ -435,15 +432,12 @@ function stopSound() {
   sound = { loopTimer: null, stopTimer: null, master: null, audioEl: null };
 }
 
-// If the alarm is ringing but the browser was still blocking sound
-// (for example after reloading the page), the first click or key press
-// is allowed to turn sound on. This is called from those events.
+// A normal click or key press unlocks sound, including for saved alarms
+// after a reload. No separate sound-enable control is needed.
 function wakeAudio() {
-  if (!state.ringing) return;
+  getAudioContext();
   if (sound.audioEl) {
     if (sound.audioEl.paused) sound.audioEl.play().catch(() => {});
-  } else if (audioCtx && audioCtx.state !== 'running') {
-    audioCtx.resume();
   }
 }
 
@@ -1501,7 +1495,7 @@ document.addEventListener('keydown', (event) => {
     event.preventDefault();
   }
 });
-document.addEventListener('pointerdown', wakeAudio);
+document.addEventListener('click', wakeAudio);
 
 
 // Open ringtone sources without giving the destination access to this tab.
@@ -1510,14 +1504,6 @@ function openLink(url) { window.open(url, '_blank', 'noopener,noreferrer'); }
 // Browsers may pause background work; catch up immediately on return.
 document.addEventListener('visibilitychange', () => {
   if (!document.hidden) tick();
-});
-
-// An explicit gesture enables audio after a new page load.
-$('enableSoundBtn').addEventListener('click', () => {
-  getAudioContext().resume().then(() => {
-    $('enableSoundBtn').textContent = 'Sound ready';
-    if (state.ringing) wakeAudio();
-  }).catch(() => showMessage('Sound is blocked. Check the browser site sound setting and try Preview.', true));
 });
 
 /* ---------------------------------------------------------

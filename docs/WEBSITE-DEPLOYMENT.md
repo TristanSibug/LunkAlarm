@@ -62,7 +62,7 @@ Return to Vercel's Domains screen and refresh/check the domain. DNS propagation 
 https://alarm.reeeserve.online
 ```
 
-Test on the final domain: click **Enable sound**, preview a ringtone, add a short timer, complete typing/math tests, change theme, and reload to confirm saved settings. Browser data on the temporary `.vercel.app` address does not automatically transfer to the custom domain because browser storage is origin-specific.
+Test on the final domain: click **Add alarm**, preview a ringtone, add a short timer, complete typing/math tests, change theme, and reload to confirm saved settings. Normal clicks and key presses activate browser audio; no separate sound button is needed. Browser data on the temporary `.vercel.app` address does not automatically transfer to the custom domain because browser storage is origin-specific.
 
 ## Supabase
 

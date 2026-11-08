@@ -350,7 +350,7 @@ body {
   line-height: 1;
 }
 .clock-hm {
-  font-size: clamp(72px, 22vw, 112px);
+  font-size: clamp(72px, 28.6vw, 145.6px);
   font-weight: 200;                    /* thin digits look elegant */
   letter-spacing: -0.03em;
   font-variant-numeric: tabular-nums;  /* every digit same width, so nothing jiggles */
@@ -863,7 +863,7 @@ button:focus-visible, input:focus-visible { outline: 2px solid var(--accent); ou
     align-items: center; justify-content: center; padding: 24px 0;
   }
   .clock { gap: clamp(8px, 2cqi, 16px); }
-  .clock-hm { font-size: clamp(80px, 28cqi, 200px); }
+  .clock-hm { font-size: clamp(80px, 36.4cqi, 260px); }
   .clock-side { font-size: clamp(20px, 5cqi, 32px); }
   .date { font-size: clamp(17px, 3.8cqi, 23px); margin-top: 20px; }
   .zone { margin-top: 7px; }
@@ -1105,7 +1105,7 @@ html.clock-focus .clock-card {
 }
 html.clock-focus .clock-top { flex: none; margin-bottom: 0; }
 html.clock-focus .clock-face { display: flex; flex: 1; flex-direction: column; align-items: center; justify-content: center; padding: 24px 0; }
-html.clock-focus .clock-hm { font-size: clamp(72px, min(28cqi, 30dvh), 240px); }
+html.clock-focus .clock-hm { font-size: clamp(72px, min(36.4cqi, 39dvh), 312px); }
 html.clock-focus .clock-side { font-size: clamp(18px, 5cqi, 36px); }
 html.clock-focus .clock-picker-toggle { background: linear-gradient(135deg, var(--accent), var(--accent-2)); border-color: transparent; color: var(--on-accent); }
 html.clock-focus #setupCard, html.clock-focus #alarmsCard, html.clock-focus .browser-tools { display: none; }

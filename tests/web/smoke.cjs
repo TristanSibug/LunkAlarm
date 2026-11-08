@@ -47,12 +47,11 @@ let browser;
   assert.equal(await page.locator('#ringtoneSelect option').count(), 10);
   await page.evaluate(() => document.fonts.ready);
   assert(await page.evaluate(() => [...document.fonts].some(font => font.family === 'Wake Clock' && font.status === 'loaded')));
-  assert.equal(await page.locator('.clock-buttons #enableSoundBtn').count(), 1);
+  assert.equal(await page.locator('#enableSoundBtn').count(), 0);
   assert(await page.locator('#clockHM').evaluate(el => !getComputedStyle(el).fontFamily.includes('Wake Clock')));
-  console.log('PASS offline startup, original clock font, numeric field font, and top sound button');
-  await page.locator('#enableSoundBtn').click();
-  await page.waitForFunction(() => document.querySelector('#enableSoundBtn').textContent === 'Sound ready');
-  console.log('PASS audio context enabled by user gesture');
+  console.log('PASS offline startup, original clock font, numeric field font, and simplified toolbar');
+  await page.waitForFunction(() => audioCtx?.state === 'running');
+  console.log('PASS audio context enabled by opening the alarm picker');
   const picker = page.locator('#ringtonePicker');
   const menu = page.locator('#ringtoneMenu');
   await picker.click();
@@ -325,16 +324,16 @@ let browser;
   await touch.close();
   console.log('PASS expanding desktop form, collapsible alarms/count, saved preference, keyboard focus, panel scrolling and phone layout');
 
-  // Keep the approved form layout; the restored three-button toolbar can wrap above the clock.
+  // Keep the form layout and the two-button toolbar aligned above the clock.
   for (const width of [520, 462, 375, 320]) {
     await page.setViewportSize({ width, height: 900 });
     await page.locator('#timeInput').waitFor({ state: 'visible' });
     const layout = await page.evaluate(() => {
       const box = id => document.getElementById(id).getBoundingClientRect();
-      const sound = box('enableSoundBtn'), theme = box('themeBtn');
+      const format = box('formatBtn'), theme = box('themeBtn');
       return {
         overflow: document.documentElement.scrollWidth > innerWidth,
-        headerOffset: Math.abs(sound.y + sound.height / 2 - theme.y - theme.height / 2),
+        headerOffset: Math.abs(format.y + format.height / 2 - theme.y - theme.height / 2),
         formTop: box('setupCard').top + scrollY,
         pickerHeight: box('ringtonePicker').height,
         timeAlign: getComputedStyle(document.getElementById('timeInput')).textAlign,
@@ -547,6 +546,22 @@ let browser;
   await intro.route('https://**/*', route => route.abort()); await intro.goto(url);
   assert(await intro.locator('#setupCard').isHidden());
   assert(await intro.evaluate(() => document.documentElement.scrollHeight <= innerHeight));
+  for (const width of [320, 375, 520, 1100]) {
+    await intro.setViewportSize({ width, height: 440 });
+    const fits = await intro.evaluate(() => {
+      for (const [time, period] of [['12:59', 'PM'], ['23:59', '']]) {
+        $('clockHM').textContent = time; $('clockAmPm').textContent = period;
+        const digits = $('clockHM').getBoundingClientRect();
+        const side = document.querySelector('.clock-side').getBoundingClientRect();
+        const action = $('alarmPickerToggle').getBoundingClientRect();
+        if (digits.left < 0 || side.right > innerWidth || action.bottom > innerHeight) return false;
+      }
+      renderClock();
+      return true;
+    });
+    assert(fits, `Enlarged clock or Add alarm clipped at ${width}px`);
+  }
+  await intro.setViewportSize({ width: 1100, height: 800 });
   await openPicker(intro);
   assert.match(await intro.locator('#alarmPickerToggle').innerText(), /Hide alarm picker/);
   await intro.locator('#tabTimer').click(); await intro.locator('.presets [data-minutes="5"]').click();
