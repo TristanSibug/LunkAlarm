@@ -1,0 +1,10 @@
+{
+  "commit": "81480f9a9c17e4c2204587edb6deaad32536ad62",
+  "run": "https://github.com/TristanSibug/LunkAlarm/actions/runs/42472276346",
+  "status": "success",
+  "simulator": "success",
+  "device": "success",
+  "launch": "success",
+  "errors": [],
+  "screenshot": "ios-clock.png"
+}
