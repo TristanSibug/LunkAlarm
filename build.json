@@ -1,15 +1,16 @@
 {
-  "commit": "782a8c438b0027560eb356c2d55394b786981931",
-  "run": "https://github.com/TristanSibug/LunkAlarm/actions/runs/42487814460",
-  "status": "failure",
+  "commit": "a6b4768ae13cd73808754316def56d85f298c3b5",
+  "run": "https://github.com/TristanSibug/LunkAlarm/actions/runs/42488869769",
+  "status": "success",
   "simulator": "success",
   "device": "success",
-  "launch": "failure",
-  "uiTests": "skipped",
+  "launch": "success",
+  "uiTests": "success",
   "errors": [],
-  "screenshot": null,
-  "ios-launch.log": [
-    "Simulator 25C22EBC-57CC-4272-8C91-050D3D572B32 (Shutdown)"
-  ],
-  "uiPreviews": []
+  "screenshot": "ios-clock.png",
+  "uiPreviews": [
+    "ios-ui-preview-1.png",
+    "ios-ui-preview-2.png",
+    "ios-ui-preview-3.png"
+  ]
 }
