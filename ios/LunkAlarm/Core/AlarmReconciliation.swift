@@ -10,6 +10,7 @@ public enum AlarmReconciliation {
             if !record.isEnabled { return record }
             if !record.isTimer && !record.hasTests && record.target <= now && !alertingIDs.contains(record.id) {
                 if record.days.isEmpty { record.enabled = false }
+                else if !existsPrimary(record, systemIDs) { record.status = .notScheduled }
                 else { record.target = (try? AlarmRoutine.next(hour: record.clockHour ?? Calendar.current.component(.hour, from: record.target), minute: record.clockMinute ?? Calendar.current.component(.minute, from: record.target), days: record.days, now: now)) ?? record.target }
                 return record
             }

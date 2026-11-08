@@ -259,4 +259,17 @@ final class AlarmCoreTests: XCTestCase {
         XCTAssertEqual(try JSONDecoder().decode(SavedState.self, from: JSONEncoder().encode(state)).validated(), state)
     }
 
+    func testRecurringAlarmAdvancesOnlyWhenSystemStillOwnsItsSchedule() {
+        let now = Date()
+        var alarm = AlarmRecord(target: now.addingTimeInterval(-60), isTimer: false, ringtoneID: "classic-beep", soundFilename: "classic-beep.wav", soundName: "Classic Beep", typing: false, mathCount: 0)
+        alarm.repeatDays = Array(1...7); alarm.clockHour = 7; alarm.clockMinute = 0
+        let active = AlarmReconciliation.reconcile([alarm], systemIDs: [alarm.id], stoppedIDs: [], now: now, alertingIDs: [alarm.id])
+        XCTAssertEqual(active[0].target, alarm.target)
+        let next = AlarmReconciliation.reconcile([alarm], systemIDs: [alarm.id], stoppedIDs: [], now: now)
+        XCTAssertGreaterThan(next[0].target, now)
+        let missing = AlarmReconciliation.reconcile([alarm], systemIDs: [], stoppedIDs: [], now: now)
+        XCTAssertEqual(missing[0].status, .notScheduled)
+        XCTAssertTrue(missing[0].isEnabled)
+    }
+
 }

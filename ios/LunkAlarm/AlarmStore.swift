@@ -183,7 +183,7 @@ final class AlarmStore {
         do {
             var updated = state.alarms.first(where: { $0.id == alarm.id }) ?? alarm
             try stopNativeAlarms(updated, onlyAlerting: false)
-            updated.enabled = false; updated.challengeAlarmIDs = nil
+            updated.enabled = false; updated.challengeAlarmIDs = nil; updated.status = .scheduled
             var next = state
             guard let index = next.alarms.firstIndex(where: { $0.id == alarm.id }) else { return }
             next.alarms[index] = updated
@@ -293,7 +293,7 @@ final class AlarmStore {
         }
     }
     func begin(_ alarm: AlarmRecord) {
-        guard !finishing else { return }
+        guard !finishing, alarm.isEnabled else { return }
         sound.stop()
         ringing = alarm
         challenge = TimedWakeChallenge(typing: alarm.typing, mathCount: alarm.mathCount,
