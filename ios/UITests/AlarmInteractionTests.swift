@@ -56,10 +56,15 @@ final class AlarmInteractionTests: XCTestCase {
         let math = app.switches["mathTestToggle"]
         for _ in 0..<4 where !math.isHittable { app.swipeUp(velocity: .slow) }
         XCTAssertTrue(math.isHittable)
-        math.tap()
+        math.coordinate(withNormalizedOffset: CGVector(dx: 0.9, dy: 0.5)).tap()
+        XCTAssertEqual(math.value as? String, "1")
         let picker = app.pickers["mathProblemPicker"]
+        guard picker.waitForExistence(timeout: 5) else {
+            capture(app, name: "ios-math-picker-missing")
+            XCTFail("Enabling math must reveal its paired wheels")
+            return
+        }
         for _ in 0..<3 where !picker.isHittable { app.swipeUp(velocity: .slow) }
-        XCTAssertTrue(picker.waitForExistence(timeout: 5))
         let wheel = picker.pickerWheels.firstMatch
         wheel.adjust(toPickerWheelValue: "8")
         XCTAssertEqual(wheel.value as? String, "8")
