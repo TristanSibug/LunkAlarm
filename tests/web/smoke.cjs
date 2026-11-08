@@ -23,14 +23,26 @@ let browser;
   await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
   const url = `http://127.0.0.1:${server.address().port}`;
   await mkdir(output, { recursive: true });
+  async function openPicker(target) {
+    if (await target.locator('#ringOverlay').isVisible()) return;
+    if (await target.locator('#alarmPickerToggle').getAttribute('aria-expanded') === 'false') await target.locator('#alarmPickerToggle').click();
+    await target.locator('#setupCard').waitFor({ state: 'visible' });
+    await target.evaluate(async () => { if (clockViewTransition) await clockViewTransition.finished; });
+  }
+
   browser = await chromium.launch({ executablePath: process.env.CHROMIUM_PATH || (existsSync('/usr/bin/chromium') ? '/usr/bin/chromium' : undefined), headless: true });
-  const page = await browser.newPage({ viewport: { width: 1100, height: 1000 } });
+  const page = await browser.newPage({ viewport: { width: 1100, height: 1000 }, reducedMotion: 'reduce' });
   const errors = [];
   page.on('pageerror', error => errors.push(error.message));
   // External clocks unavailable/offline must not prevent alarms working.
   await page.route('https://**/*', route => route.abort());
   await page.goto(url);
   assert.equal(await page.title(), 'LunkAlarm');
+  assert(await page.locator('#setupCard').isHidden());
+  assert(await page.locator('#alarmsCard').isHidden());
+  assert.equal(await page.locator('#alarmPickerToggle').getAttribute('aria-expanded'), 'false');
+  await page.screenshot({ path: path.join(output, 'clock-initial.png') });
+  await openPicker(page);
   await page.waitForFunction(() => document.querySelector('#syncText').textContent.includes('Offline'));
   assert.equal(await page.locator('#ringtoneSelect option').count(), 10);
   await page.evaluate(() => document.fonts.ready);
@@ -276,7 +288,7 @@ let browser;
   await page.evaluate(() => localStorage.setItem('wake.alarms', JSON.stringify(Array.from({ length: 30 }, (_, i) => ({
     id: 'desktop-' + i, targetMs: Date.now() + (i + 1) * 3600000, ringtoneId: 'classic-beep', typing: false, mathCount: 0, ringing: false
   })))));
-  await page.reload();
+  await page.reload(); await openPicker(page);
   assert.equal(await page.locator('.alarm-item').count(), 30);
   assert.equal(await sidebarToggle.getAttribute('aria-expanded'), 'true');
   assert.equal(await page.locator('#alarmsCount').innerText(), '30');
@@ -293,7 +305,7 @@ let browser;
   await page.locator('.delete-btn').first().focus(); await page.keyboard.press('Escape');
   assert.equal(await sidebarToggle.getAttribute('aria-expanded'), 'false');
   assert(await sidebarToggle.evaluate(el => el === document.activeElement));
-  await page.reload();
+  await page.reload(); await openPicker(page);
   assert.equal(await sidebarToggle.getAttribute('aria-expanded'), 'false');
   assert.equal(await page.locator('#alarmsCount').innerText(), '29');
   await page.setViewportSize({ width: 375, height: 812 });
@@ -304,10 +316,10 @@ let browser;
   assert.equal(await sidebarToggle.getAttribute('aria-expanded'), 'false');
   await sidebarToggle.click();
   assert.equal(await page.locator('.alarm-item').count(), 29);
-  await page.evaluate(() => localStorage.setItem('wake.alarms', '[]')); await page.reload();
+  await page.evaluate(() => localStorage.setItem('wake.alarms', '[]')); await page.reload(); await openPicker(page);
   await page.locator('#formatBtn').click();
   const touch = await browser.newPage({ viewport: { width: 1024, height: 768 }, hasTouch: true, isMobile: true });
-  await touch.route('https://**/*', route => route.abort()); await touch.goto(url);
+  await touch.route('https://**/*', route => route.abort()); await touch.goto(url); await openPicker(touch);
   assert.equal(await touch.locator('.app').evaluate(el => getComputedStyle(el).display), 'flex');
   assert(await touch.evaluate(() => document.documentElement.scrollHeight > innerHeight));
   await touch.close();
@@ -331,7 +343,7 @@ let browser;
     });
     assert.equal(layout.overflow, false);
     assert(layout.headerOffset < 2, `Toolbar buttons misaligned at ${width}px`);
-    assert(layout.formTop < 355, `Form pushed down at ${width}px`);
+    assert(layout.formTop < 440, `Form pushed down at ${width}px`);
     assert.equal(layout.pickerHeight, 36);
     assert.equal(layout.timeAlign, 'left');
     assert(layout.timeFits, `Native time input overflow at ${width}px`);
@@ -364,7 +376,7 @@ let browser;
   wave.writeUInt16LE(16, 34); wave.write('data', 36); wave.writeUInt32LE(160, 40);
   await page.locator('#fileInput').setInputFiles({ name: 'My morning.wav', mimeType: 'audio/wav', buffer: wave });
   await page.waitForFunction(() => document.querySelector('#ringtonePickerLabel').textContent.includes('My morning.wav'));
-  await page.reload();
+  await page.reload(); await openPicker(page);
   assert.match(await picker.innerText(), /My morning.wav/);
   await picker.click();
   assert.equal(await menu.getByRole('option').count(), 11);
@@ -401,25 +413,27 @@ let browser;
   console.log('PASS timer rings, typing then math enforce correct answers, dismiss removes alarm, and tab branding stays correct');
   await page.locator('#typingToggle').uncheck(); await page.locator('#mathToggle').uncheck();
   await page.locator('#secondsInput').fill('45'); await page.locator('#setBtn').click();
-  await page.reload();
+  await page.reload(); await openPicker(page);
   assert.equal(await page.locator('.alarm-item').count(), 1);
   assert.equal(await page.locator('#tabTimer').getAttribute('aria-selected'), 'true');
-  await page.locator('.delete-btn').click(); await page.reload();
+  await page.locator('.delete-btn').click(); await page.reload(); await openPicker(page);
   assert.equal(await page.locator('.alarm-item').count(), 0);
   console.log('PASS pending alarms and removal survive reload');
   // Two already-due alarms must be delivered sequentially after restoring storage.
   await page.evaluate(() => localStorage.setItem('wake.alarms', JSON.stringify([1, 2].map(i => ({
     id: String(i), targetMs: Date.now() - 1000, ringtoneId: 'classic-beep', typing: false, mathCount: 0, ringing: false
   })))));
-  await page.reload();
+  await page.reload(); await openPicker(page);
   for (let n = 0; n < 2; n++) {
     await page.locator('#ringOverlay').waitFor({ state: 'visible' });
+    assert(await page.locator('#mainApp').evaluate(el => !el.classList.contains('picker-open')));
     await page.locator('#stopBtn').click();
     if (n === 0) await page.waitForFunction(() => JSON.parse(localStorage.getItem('wake.alarms')).length === 1);
   }
   await page.locator('#ringOverlay').waitFor({ state: 'hidden' });
   assert.equal(await page.locator('.alarm-item').count(), 0);
   console.log('PASS simultaneous alarms queue instead of disappearing');
+  await openPicker(page);
   // Read-only storage should show a failure, not report a successful saved alarm.
   await page.evaluate(() => { Storage.prototype.setItem = () => { throw new DOMException('full', 'QuotaExceededError'); }; });
   await page.locator('#tabTimer').click();
@@ -432,7 +446,7 @@ let browser;
   const fallback = await browser.newPage();
   await fallback.addInitScript(() => { delete HTMLElement.prototype.showPopover; });
   await fallback.route('https://**/*', route => route.abort());
-  await fallback.goto(url);
+  await fallback.goto(url); await openPicker(fallback);
   assert(await fallback.locator('#ringtoneSelect').isVisible());
   assert(await fallback.locator('#ringtonePicker').isHidden());
   assert(await fallback.locator('#ringtoneMenu').isHidden());
@@ -442,7 +456,7 @@ let browser;
   console.log('PASS native select fallback on browsers without popover support');
   const mobile = await browser.newPage({ viewport: { width: 393, height: 852 }, hasTouch: true, isMobile: true, deviceScaleFactor: 2 });
   mobile.on('pageerror', error => errors.push(error.message));
-  await mobile.route('https://**/*', route => route.abort()); await mobile.goto(url);
+  await mobile.route('https://**/*', route => route.abort()); await mobile.goto(url); await openPicker(mobile);
   for (const width of [320, 375, 393, 430]) {
     await mobile.setViewportSize({ width, height: 852 });
     await mobile.locator('#timeInput').fill('23:59');
@@ -451,6 +465,32 @@ let browser;
       return el.type === 'time' && box.right <= card.right - 15 && box.left >= card.left + 15 && document.documentElement.scrollWidth <= innerWidth;
     }));
   }
+  for (const width of [320, 375, 393, 430, 520]) {
+    await mobile.setViewportSize({ width, height: 852 });
+    await mobile.locator('#tabTimer').tap();
+    await mobile.waitForFunction(() => {
+      const row = document.querySelector('.presets');
+      return row.clientWidth > 0 && [...row.children].some(button => !button.hidden);
+    });
+    await mobile.evaluate(() => new Promise(requestAnimationFrame));
+    const presets = await mobile.locator('.presets').evaluate(row => {
+      const buttons = [...row.querySelectorAll('.chip')];
+      const visible = buttons.filter(button => !button.hidden);
+      const boxes = visible.map(button => button.getBoundingClientRect());
+      return {
+        values: visible.map(button => Number(button.dataset.minutes)),
+        widths: boxes.map(box => box.width), tops: boxes.map(box => box.top),
+        inside: boxes.every(box => box.right <= row.getBoundingClientRect().right + 1),
+        trailingOnly: buttons.every((button, index) => button.hidden === (index >= visible.length))
+      };
+    });
+    assert.deepEqual(presets.values, [5, 10, 30, 60, 480].slice(0, presets.values.length));
+    assert(presets.trailingOnly && presets.inside);
+    assert(Math.max(...presets.widths) - Math.min(...presets.widths) < 1.5);
+    assert(Math.max(...presets.tops) - Math.min(...presets.tops) < 1);
+    if (width === 320) assert(presets.values.length <= 3);
+  }
+  console.log('PASS presets hide trailing choices instead of wrapping and distribute visible buttons evenly');
   await mobile.setViewportSize({ width: 393, height: 852 });
   await mobile.locator('#tabTimer').tap();
   await mobile.locator('#mobileDurationPicker').waitFor({ state: 'visible' });
@@ -502,6 +542,30 @@ let browser;
   await mobile.locator('#setupCard').screenshot({ path: path.join(output, 'mobile-native-time-fit.png') });
   await mobile.close();
   console.log('PASS mobile native time stays inside card; countdown touch swipes, snapping, tap/keyboard selection, presets, manual entry, and scheduled duration');
+  const intro = await browser.newPage({ viewport: { width: 1100, height: 800 } });
+  intro.on('pageerror', error => errors.push(error.message));
+  await intro.route('https://**/*', route => route.abort()); await intro.goto(url);
+  assert(await intro.locator('#setupCard').isHidden());
+  assert(await intro.evaluate(() => document.documentElement.scrollHeight <= innerHeight));
+  await openPicker(intro);
+  assert.match(await intro.locator('#alarmPickerToggle').innerText(), /Hide alarm picker/);
+  await intro.locator('#tabTimer').click(); await intro.locator('.presets [data-minutes="5"]').click();
+  await intro.locator('#setBtn').click();
+  await intro.locator('#alarmPickerToggle').click();
+  await intro.evaluate(async () => { if (clockViewTransition) await clockViewTransition.finished; });
+  assert(await intro.locator('#setupCard').isHidden());
+  assert.equal(await intro.locator('.alarm-item').count(), 1);
+  assert.match(await intro.locator('#clockAlarmsToggle').innerText(), /1/);
+  assert.equal(await intro.locator('#minutesInput').inputValue(), '05');
+  await intro.setViewportSize({ width: 520, height: 440 });
+  assert(await intro.evaluate(() => document.documentElement.scrollHeight <= innerHeight && document.documentElement.scrollWidth <= innerWidth));
+  await intro.screenshot({ path: path.join(output, 'clock-small-window.png') });
+  await intro.locator('#clockAlarmsToggle').click();
+  await intro.locator('#setupCard').waitFor({ state: 'visible' });
+  await intro.evaluate(async () => { if (clockViewTransition) await clockViewTransition.finished; });
+  assert(await intro.locator('.alarm-item').first().isVisible());
+  await intro.close();
+  console.log('PASS initial centered clock, animated Add/Hide flow, small windows, retained settings, and access to running alarms');
   assert.deepEqual(errors, []);
   console.log('PASS no uncaught browser errors; static website checks complete');
 })().catch(error => { console.error(error); process.exitCode = 1; }).finally(async () => {

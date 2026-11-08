@@ -6,7 +6,7 @@
     app.js    = what it does
   Standalone browser edition: upload this folder to a static web host.
 -->
-<html lang="en">
+<html lang="en" class="clock-focus">
 <head>
   <meta charset="UTF-8" />
   <!-- Makes the page fit phone screens properly -->
@@ -59,6 +59,10 @@
 
       <div id="dateText" class="date"></div>
       <div id="zoneText" class="zone"></div>
+      <div class="clock-actions">
+        <button id="alarmPickerToggle" class="clock-picker-toggle" type="button" aria-expanded="false" aria-controls="setupCard"><span id="alarmPickerIcon" aria-hidden="true">+</span> <span id="alarmPickerText">Add alarm</span></button>
+        <button id="clockAlarmsToggle" class="chip" type="button" aria-controls="alarmsCard" hidden>Your alarms</button>
+      </div>
       </div>
     </section>
 

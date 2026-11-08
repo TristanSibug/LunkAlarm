@@ -70,11 +70,15 @@ This version uses browser localStorage. It has no accounts or cross-device sync 
 
 ## Automatic layouts
 
+Each visit starts with a centered clock and an **Add alarm** button. Opening the picker transitions to the alarm workspace; **Hide alarm picker** beneath the clock returns to the clock view. Settings and running alarms remain active in either view. A **Your alarms** shortcut appears beside the button when saved alarms are present. The transition respects reduced-motion preferences, and the clock view adapts to small windows.
+
 Wide screens (at least 1000 CSS pixels) with a primary mouse/trackpad use a fixed-height workspace: clock on the left, expanded alarm setup in the middle, and a collapsible alarms sidebar on the right. The sidebar starts collapsed, shows the alarm count, and remembers your open/closed preference. Opening it reveals the list; closing it gives the space back to the form. Escape from inside the sidebar collapses it and returns focus to its toggle. The page itself does not scroll. Long lists and expanded settings in smaller windows can scroll inside their panels, and Add alarm stays visible.
 
 The desktop time picker has editable hour/minute fields, mouse-wheel and arrow-key/stepper controls, and an AM/PM toggle; it follows the 12/24-hour clock setting. Hover a number and scroll up to increase it or down to decrease it. The countdown uses the same styled controls for hours, minutes and seconds, with rollover between units and a duration range of zero through 99:59:59 (zero cannot be added as an alarm). Wheel handling is limited to the number being hovered; scrolling elsewhere and Ctrl-wheel zoom keep their normal behavior. At spacious panel widths, ringtone controls sit beside wake-up tests, with the two ringtone links on separate lines. Narrow panels stack those sections to keep everything accessible.
 
 Touch-first devices and narrower windows retain the stacked phone layout and native time input for At a time. The mobile countdown has separate swipe-and-snap wheels for hours, minutes and seconds, plus Type instead for numeric keyboard entry. Presets and both entry methods stay synchronized; the selected duration is captured when Add alarm is pressed. The native time field is constrained to the card width, including WebKit-specific sizing rules. Switching screen size or input capabilities updates the layout automatically without resetting alarms or reloading the page. This uses responsive CSS rather than unreliable device-name guessing.
+
+Countdown presets stay on a single row. As the available width shrinks, trailing choices are hidden instead of wrapping; visible choices share the row equally. Resizing restores choices when they fit again.
 
 ## Browser limitations
 

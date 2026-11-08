@@ -454,7 +454,9 @@ body {
 .timer-box { display: flex; flex-direction: column; align-items: center; gap: 6px; font-size: 12px; color: var(--muted); }
 .timer-box input { font-family: "Wake Clock", var(--font); font-size: 28px; font-weight: 300; text-align: center; padding: 10px 4px; }
 
-.presets { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+.presets { display: flex; flex-wrap: nowrap; gap: 8px; min-width: 0; margin-top: 12px; }
+.presets .chip { flex: 1 1 0; min-width: 0; white-space: nowrap; }
+.presets .chip[hidden] { display: none; }
 
 .ringtone-row { display: flex; align-items: center; gap: 8px; }
 .ringtone-control { flex: 1; min-width: 0; }
@@ -829,7 +831,8 @@ button:focus-visible, input:focus-visible { outline: 2px solid var(--accent); ou
 
 
 /* These grouping elements do not alter the approved phone layout. */
-.clock-face, .setup-fields, .setup-actions, .alarms-header, .alarms-panel { display: contents; }
+.setup-fields, .setup-actions, .alarms-header, .alarms-panel { display: contents; }
+.clock-face { display: block; }
 .sidebar-toggle { display: none; }
 .compact-hint { display: none; }
 
@@ -926,7 +929,7 @@ button:focus-visible, input:focus-visible { outline: 2px solid var(--accent); ou
   #setupCard .option-text strong { font-size: 14px; }
   #setupCard .option-text span { font-size: 11.5px; }
   #setupCard .timer-box input { font-size: 24px; padding-block: 6px; }
-  #setupCard .presets { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 5px; margin-top: 8px; }
+  #setupCard .presets { display: flex; gap: 5px; margin-top: 8px; }
   #setupCard .presets .chip { padding: 7px 2px; font-size: 11.5px; white-space: nowrap; }
   #setupCard .count-picker { padding-top: 10px; }
   #setupCard .count-label { margin-bottom: 8px; }
@@ -1076,3 +1079,42 @@ button:focus-visible, input:focus-visible { outline: 2px solid var(--accent); ou
 .duration-wheel-option[aria-selected="true"] { color: var(--text); font-size: 30px; }
 .duration-wheel-unit { display: block; margin-top: 8px; font-size: 12px; color: var(--muted); }
 .duration-entry-toggle { display: block; margin: 10px 0 0 auto; font-size: 12px; -webkit-tap-highlight-color: transparent; user-select: none; }
+
+
+/* Start with the clock; the workspace is an intentional, reversible action. */
+.clock-actions { display: flex; flex-wrap: wrap; justify-content: center; align-items: center; gap: 10px; margin-top: 24px; }
+.clock-picker-toggle {
+  display: inline-flex; align-items: center; gap: 8px; padding: 10px 18px;
+  border: 1px solid var(--card-border); border-radius: 999px; background: var(--card);
+  color: var(--text); font: inherit; font-size: 13px; font-weight: 600; cursor: pointer;
+}
+.clock-picker-toggle:hover { background: var(--hover); }
+#alarmPickerIcon { font-size: 20px; font-weight: 400; line-height: 1; }
+.clock-face { view-transition-name: clock-face; }
+.clock-top { view-transition-name: clock-toolbar; }
+html.clock-focus, html.clock-focus body { height: 100%; overflow: hidden; }
+html.clock-focus .app {
+  display: flex; flex-direction: column; width: 100%; max-width: 1200px;
+  height: 100vh; height: 100dvh; padding: clamp(16px, 2.2vw, 32px); gap: 12px;
+  overflow: hidden;
+}
+html.clock-focus .clock-card {
+  display: flex; flex-direction: column; flex: 1; width: 100%; max-width: 900px;
+  min-width: 0; min-height: 0; margin-inline: auto; padding: 0; overflow: auto;
+  container-type: inline-size;
+}
+html.clock-focus .clock-top { flex: none; margin-bottom: 0; }
+html.clock-focus .clock-face { display: flex; flex: 1; flex-direction: column; align-items: center; justify-content: center; padding: 24px 0; }
+html.clock-focus .clock-hm { font-size: clamp(72px, min(28cqi, 30dvh), 240px); }
+html.clock-focus .clock-side { font-size: clamp(18px, 5cqi, 36px); }
+html.clock-focus .clock-picker-toggle { background: linear-gradient(135deg, var(--accent), var(--accent-2)); border-color: transparent; color: var(--on-accent); }
+html.clock-focus #setupCard, html.clock-focus #alarmsCard, html.clock-focus .browser-tools { display: none; }
+html.clock-focus #footnote { flex: none; margin: 0; font-size: 11px; text-align: center; }
+.app.picker-open #setupCard, .app.picker-open #alarmsCard { animation: reveal-workspace .28s ease-out both; }
+@keyframes reveal-workspace { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
+::view-transition-group(clock-face), ::view-transition-group(clock-toolbar) { animation-duration: .32s; animation-timing-function: cubic-bezier(.2,.7,.2,1); }
+::view-transition-old(root), ::view-transition-new(root) { animation-duration: .22s; }
+@media (max-height: 500px) { html.clock-focus #footnote { display: none; } }
+@media (prefers-reduced-motion: reduce) {
+  ::view-transition-group(*), ::view-transition-old(*), ::view-transition-new(*) { animation-duration: 0s !important; }
+}

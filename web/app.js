@@ -914,6 +914,87 @@ function describeAlarm(alarm) {
   return parts.join(' · ');
 }
 
+// The clock is the default view on every visit; alarm state is independent of the view.
+let alarmPickerOpen = false;
+let clockViewTransition = null;
+let clockViewRequest = 0;
+function updateClockActions() {
+  $('alarmPickerToggle').setAttribute('aria-expanded', String(alarmPickerOpen));
+  $('alarmPickerText').textContent = alarmPickerOpen ? 'Hide alarm picker' : 'Add alarm';
+  $('alarmPickerIcon').textContent = alarmPickerOpen ? '−' : '+';
+  $('footnote').textContent = alarmPickerOpen ? 'Alarms and themes are saved in this browser on this device.' : 'Keep this page open and your device awake for alarms.';
+  $('clockAlarmsToggle').hidden = alarmPickerOpen || state.alarms.length === 0;
+  $('clockAlarmsToggle').textContent = 'Your alarms (' + state.alarms.length + ')';
+}
+function applyAlarmPickerView(open) {
+  if (!open) {
+    commitMobileDuration(); closeRingtonePicker();
+    if ($('setupCard').contains(document.activeElement) || $('alarmsCard').contains(document.activeElement)) $('alarmPickerToggle').focus({ preventScroll: true });
+  }
+  alarmPickerOpen = open;
+  document.documentElement.classList.toggle('clock-focus', !open);
+  $('mainApp').classList.toggle('picker-open', open);
+  $('setupCard').inert = !open; $('alarmsCard').inert = !open;
+  updateClockActions();
+  if (open) { renderCountdownFields(); fitDurationPresets(); }
+}
+function setAlarmPickerOpen(open) {
+  const request = ++clockViewRequest;
+  const update = () => { if (request === clockViewRequest) applyAlarmPickerView(open); };
+  if (clockViewTransition) clockViewTransition.skipTransition();
+  if (!document.startViewTransition || window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+    update(); return Promise.resolve();
+  }
+  const transition = document.startViewTransition(update);
+  clockViewTransition = transition;
+  transition.ready.catch(() => {});
+  return transition.finished.catch(() => {}).finally(() => { if (clockViewTransition === transition) clockViewTransition = null; });
+}
+function setupClockView() {
+  $('alarmPickerToggle').addEventListener('click', () => setAlarmPickerOpen(!alarmPickerOpen));
+  $('clockAlarmsToggle').addEventListener('click', async () => {
+    setAlarmsSidebar(true);
+    await setAlarmPickerOpen(true);
+    if (!desktopWorkspace.matches) $('alarmsCard').scrollIntoView({ behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'instant' : 'smooth', block: 'start' });
+    $('alarmsHeading').tabIndex = -1; $('alarmsHeading').focus({ preventScroll: true });
+  });
+  applyAlarmPickerView(false);
+}
+
+// Keep the largest leading set of presets that fits at its natural readable size.
+function fitDurationPresets() {
+  const row = document.querySelector('.presets');
+  const width = row.clientWidth;
+  if (!width) return;
+  const buttons = Array.from(row.querySelectorAll('.chip'));
+  const gap = parseFloat(getComputedStyle(row).columnGap) || 0;
+  const widths = buttons.map(button => {
+    button.hidden = false;
+    const oldWidth = button.style.width, oldFlex = button.style.flex;
+    button.style.width = 'max-content'; button.style.flex = '0 0 auto';
+    const measured = button.getBoundingClientRect().width;
+    button.style.width = oldWidth; button.style.flex = oldFlex;
+    return measured;
+  });
+  let used = 0, visible = 0;
+  for (const natural of widths) {
+    const next = used + (visible ? gap : 0) + natural;
+    if (next > width + .5) break;
+    used = next; visible++;
+  }
+  visible = Math.max(1, visible);
+  const focus = document.activeElement;
+  buttons.forEach((button, index) => { button.hidden = index >= visible; });
+  if (buttons.indexOf(focus) >= visible) buttons[visible - 1].focus({ preventScroll: true });
+}
+function setupDurationPresets() {
+  const row = document.querySelector('.presets');
+  if (window.ResizeObserver) new ResizeObserver(fitDurationPresets).observe(row);
+  window.addEventListener('resize', fitDurationPresets);
+  document.fonts?.ready.then(fitDurationPresets);
+  fitDurationPresets();
+}
+
 // The alarms rail is desktop-only; the full list always remains visible on phones.
 const desktopWorkspace = window.matchMedia('(min-width: 1000px) and (hover: hover) and (pointer: fine)');
 let alarmsSidebarOpen = loadSaved('wake.alarmsSidebarOpen', false) === true;
@@ -927,6 +1008,7 @@ function updateAlarmsSidebar() {
   button.setAttribute('aria-expanded', String(open));
   button.setAttribute('aria-label', (open ? 'Collapse your alarms' : 'Show your alarms') + ' (' + state.alarms.length + ')');
   button.title = open ? 'Collapse alarms sidebar' : 'Show your alarms';
+  updateClockActions();
   panel.inert = desktop && !open;
   if (desktop && !open) panel.setAttribute('aria-hidden', 'true');
   else panel.removeAttribute('aria-hidden');
@@ -1223,7 +1305,7 @@ function applyMode(mode) {
   $('panelTimer').classList.toggle('hidden', mode !== 'timer');
   $('tabTime').setAttribute('aria-selected', String(mode === 'time'));
   $('tabTimer').setAttribute('aria-selected', String(mode === 'timer'));
-  if (mode === 'timer') renderCountdownFields();
+  if (mode === 'timer') { renderCountdownFields(); fitDurationPresets(); }
 }
 
 // Updates the 12h/24h button text to show which mode is on.
@@ -1550,10 +1632,12 @@ function init() {
   // Show which time zone the clock is in, e.g. "Asia/Manila".
   $('zoneText').textContent = Intl.DateTimeFormat().resolvedOptions().timeZone;
 
+  setupClockView();
   fillRingtoneSelect();
   setupRingtonePicker();
   setupTimePicker();
   setupCountdownPicker();
+  setupDurationPresets();
   applyMode(state.mode);
   applyFormatButton();
   applyTestSettings();
