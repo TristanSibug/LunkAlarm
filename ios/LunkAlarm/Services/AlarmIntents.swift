@@ -35,7 +35,12 @@ struct OpenWakeTestsIntent: LiveActivityIntent {
     init() {}
     init(id: UUID) { alarmID = id.uuidString }
     func perform() async throws -> some IntentResult {
-        await MainActor.run { AlarmIntentInbox.record(id: alarmID, stopped: true) }
+        try await MainActor.run {
+            if let id = UUID(uuidString: alarmID), try AlarmManager.shared.alarms.contains(where: { $0.id == id }) {
+                try AlarmManager.shared.stop(id: id)
+            }
+            AlarmIntentInbox.record(id: alarmID, stopped: true)
+        }
         return .result()
     }
 }

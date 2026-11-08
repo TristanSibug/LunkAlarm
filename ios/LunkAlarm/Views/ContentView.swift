@@ -50,7 +50,7 @@ struct ContentView: View {
             RingingView(store: store).interactiveDismissDisabled()
                 .preferredColorScheme(store.theme.isLight ? .light : .dark)
         }
-        .alert("LunkAlarm", isPresented: Binding(get: { store.errorMessage != nil }, set: { if !$0 { store.errorMessage = nil } })) {
+        .alert("LunkAlarm", isPresented: Binding(get: { store.errorMessage != nil && store.ringing == nil }, set: { if !$0 { store.errorMessage = nil } })) {
             if store.authorizationLabel == "Alarms disabled" {
                 Button("Open Settings") { if let url = URL(string: UIApplication.openSettingsURLString) { openURL(url) } }
             }
