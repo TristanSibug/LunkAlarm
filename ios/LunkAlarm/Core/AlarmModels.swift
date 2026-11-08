@@ -113,6 +113,15 @@ public enum AlarmScheduling {
     }
 }
 
+public enum AlarmTimeWheel {
+    public static func resolvedHour(previous: Int, selected: Int, use24Hour: Bool) -> Int {
+        guard !use24Hour else { return selected }
+        if previous % 12 == 11 && selected % 12 == 0 { return previous < 12 ? 12 : 0 }
+        if previous % 12 == 0 && selected % 12 == 11 { return previous < 12 ? 23 : 11 }
+        return selected // Direct AM/PM changes keep the same displayed hour.
+    }
+}
+
 public enum RingtoneCatalog {
     public struct Tone: Identifiable, Sendable {
         public let id: String

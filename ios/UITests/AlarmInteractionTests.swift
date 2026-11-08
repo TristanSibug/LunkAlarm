@@ -30,11 +30,13 @@ final class AlarmInteractionTests: XCTestCase {
         period.adjust(toPickerWheelValue: "AM")
         hour.adjust(toPickerWheelValue: "11")
         hour.adjust(toPickerWheelValue: "12")
-        XCTAssertEqual(period.value as? String, "PM")
+        let noon = XCTNSPredicateExpectation(predicate: NSPredicate(format: "value == 'PM'"), object: period)
+        wait(for: [noon], timeout: 5)
         hour.adjust(toPickerWheelValue: "11")
         period.adjust(toPickerWheelValue: "PM")
         hour.adjust(toPickerWheelValue: "12")
-        XCTAssertEqual(period.value as? String, "AM")
+        let midnight = XCTNSPredicateExpectation(predicate: NSPredicate(format: "value == 'AM'"), object: period)
+        wait(for: [midnight], timeout: 5)
         capture(app, name: "ios-alarm-time")
         // A fast downward adjustment of the picker must not close the page.
         picker.swipeDown(velocity: .fast)
@@ -100,8 +102,10 @@ final class AlarmInteractionTests: XCTestCase {
         let progressReset = XCTNSPredicateExpectation(predicate: NSPredicate(format: "label BEGINSWITH '0 /'"), object: app.staticTexts["mathProgress"])
         wait(for: [progressReset], timeout: 14)
         XCTAssertEqual(app.switches["challengeSoundToggle"].value as? String, "1")
-        app.switches["challengeSoundToggle"].tap()
-        XCTAssertEqual(app.switches["challengeSoundToggle"].value as? String, "0")
+        let sound = app.switches["challengeSoundToggle"]
+        sound.coordinate(withNormalizedOffset: CGVector(dx: 0.9, dy: 0.5)).tap()
+        let muted = XCTNSPredicateExpectation(predicate: NSPredicate(format: "value == '0'"), object: sound)
+        wait(for: [muted], timeout: 3)
         capture(app, name: "ios-timed-math")
     }
 }

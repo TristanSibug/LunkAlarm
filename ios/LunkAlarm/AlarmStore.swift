@@ -308,7 +308,10 @@ final class AlarmStore {
         }
     }
     private func checkChallengeDeadline() {
-        guard isActive, !finishing, challenge?.expireIfNeeded() == true else { return }
+        // Avoid a mutating inout access to the observable challenge every 250 ms.
+        // Only publish a change when a deadline actually expires.
+        guard isActive, !finishing, let deadline = challenge?.deadline, Date() >= deadline,
+              challenge?.expireIfNeeded() == true else { return }
         handleChallengeTimeout()
     }
     private func handleChallengeTimeout() {

@@ -156,4 +156,13 @@ final class AlarmCoreTests: XCTestCase {
         state.alarms[0].challengeAlarmIDs = [alarm.id]
         XCTAssertThrowsError(try state.validated())
     }
+    func testTimeWheelCrossesNoonMidnightAndSupportsManualPeriodChanges() {
+        XCTAssertEqual(AlarmTimeWheel.resolvedHour(previous: 11, selected: 0, use24Hour: false), 12)
+        XCTAssertEqual(AlarmTimeWheel.resolvedHour(previous: 23, selected: 12, use24Hour: false), 0)
+        XCTAssertEqual(AlarmTimeWheel.resolvedHour(previous: 12, selected: 23, use24Hour: false), 11)
+        XCTAssertEqual(AlarmTimeWheel.resolvedHour(previous: 0, selected: 11, use24Hour: false), 23)
+        XCTAssertEqual(AlarmTimeWheel.resolvedHour(previous: 7, selected: 19, use24Hour: false), 19)
+        XCTAssertEqual(AlarmTimeWheel.resolvedHour(previous: 12, selected: 0, use24Hour: false), 0)
+        XCTAssertEqual(AlarmTimeWheel.resolvedHour(previous: 23, selected: 12, use24Hour: true), 12)
+    }
 }

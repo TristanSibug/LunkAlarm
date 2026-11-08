@@ -36,7 +36,14 @@ struct NativeTimePicker: UIViewRepresentable {
         init(_ parent: NativeTimePicker) { self.parent = parent }
         @objc func changed(_ picker: UIDatePicker) {
             let parts = Calendar.current.dateComponents([.hour, .minute], from: picker.date)
-            parent.hour = parts.hour ?? 0
+            let selected = parts.hour ?? 0
+            let resolved = AlarmTimeWheel.resolvedHour(previous: parent.hour, selected: selected, use24Hour: parent.use24Hour)
+            if resolved != selected {
+                var corrected = Calendar.current.dateComponents([.year, .month, .day, .hour, .minute, .second], from: picker.date)
+                corrected.hour = resolved
+                if let date = Calendar.current.date(from: corrected) { picker.setDate(date, animated: false) }
+            }
+            parent.hour = resolved
             parent.minute = parts.minute ?? 0
         }
     }
