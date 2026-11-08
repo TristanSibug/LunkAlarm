@@ -1,10 +1,18 @@
 {
-  "commit": "81480f9a9c17e4c2204587edb6deaad32536ad62",
-  "run": "https://github.com/TristanSibug/LunkAlarm/actions/runs/42472276346",
-  "status": "success",
+  "commit": "09fda9ea75ce71ff49443d20ce7b621fda0b9dc0",
+  "run": "https://github.com/TristanSibug/LunkAlarm/actions/runs/42482588103",
+  "status": "failure",
   "simulator": "success",
   "device": "success",
   "launch": "success",
-  "errors": [],
-  "screenshot": "ios-clock.png"
+  "uiTests": "failure",
+  "errors": [
+    "/Users/runner/work/LunkAlarm/LunkAlarm/ios/UITests/AlarmInteractionTests.swift:29: error: -[LunkAlarmUITests.AlarmInteractionTests testSwipeNavigationAndNativeTimeWheel] : XCTAssertEqual failed: (\"Optional(\"7 o\u2019clock\")\") is not equal to (\"Optional(\"7\")\")",
+    "/Users/runner/work/LunkAlarm/LunkAlarm/ios/UITests/AlarmInteractionTests.swift:37: error: -[LunkAlarmUITests.AlarmInteractionTests testSwipeNavigationAndNativeTimeWheel] : XCTAssertEqual failed: (\"Optional(\"PM\")\") is not equal to (\"Optional(\"AM\")\")"
+  ],
+  "screenshot": "ios-clock.png",
+  "uiPreviews": [
+    "ios-ui-preview-1.png",
+    "ios-ui-preview-2.png"
+  ]
 }
