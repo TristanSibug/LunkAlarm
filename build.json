@@ -1,8 +1,8 @@
 {
-  "commit": "4aa5e070359812d322913d2890f5ed8fab81f0b2",
-  "run": "https://github.com/TristanSibug/LunkAlarm/actions/runs/42483872861",
-  "status": "cancelled",
-  "simulator": "cancelled",
+  "commit": "51d9f7a3085d446da6de7545b122932a484417b4",
+  "run": "https://github.com/TristanSibug/LunkAlarm/actions/runs/42483925522",
+  "status": "failure",
+  "simulator": "failure",
   "device": "skipped",
   "launch": "skipped",
   "uiTests": "skipped",
