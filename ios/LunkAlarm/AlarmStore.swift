@@ -341,7 +341,10 @@ final class AlarmStore {
                 }
                 guard !Task.isCancelled, watchdogRevision == revision else { return }
                 var timeoutAlarm = alarm
-                timeoutAlarm.id = nativeID; timeoutAlarm.target = deadline
+                // Foreground checks enforce the exact deadline. A one-second
+                // backup grace lets them replace this guard before iOS presents
+                // a duplicate system alert over the answering screen.
+                timeoutAlarm.id = nativeID; timeoutAlarm.target = deadline.addingTimeInterval(1)
                 timeoutAlarm.challengeAlarmIDs = nil
                 try await service.schedule(timeoutAlarm, tint: theme.accent)
                 if Task.isCancelled || watchdogRevision != revision || ringing?.id != alarm.id {

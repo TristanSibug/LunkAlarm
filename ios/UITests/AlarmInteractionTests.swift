@@ -76,15 +76,16 @@ final class AlarmInteractionTests: XCTestCase {
         XCTAssertTrue(problem.waitForExistence(timeout: 10))
         XCTAssertFalse(app.buttons["OK"].exists)
         XCTAssertEqual(app.switches["challengeSoundToggle"].value as? String, "0")
-        let numbers = problem.label.split(separator: "+").compactMap { Int($0.trimmingCharacters(in: .whitespaces)) }
-        XCTAssertEqual(numbers.count, 2)
-        let answer = String(numbers.reduce(0, +))
-        for character in answer.count == 1 ? "0" : "99" { app.buttons[String(character)].tap() }
-        XCTAssertEqual(app.staticTexts["mathAnswer"].label, "Your answer")
         for remaining in stride(from: 3, through: 1, by: -1) {
             XCTAssertTrue(app.staticTexts["mathProgress"].label.hasPrefix("\(3 - remaining) /"))
             let values = problem.label.split(separator: "+").compactMap { Int($0.trimmingCharacters(in: .whitespaces)) }
-            for digit in String(values.reduce(0, +)) { app.buttons[String(digit)].tap() }
+            XCTAssertEqual(values.count, 2)
+            let answer = String(values.reduce(0, +))
+            if remaining == 2 {
+                for digit in answer.count == 1 ? "0" : "99" { app.buttons[String(digit)].tap() }
+                XCTAssertEqual(app.staticTexts["mathAnswer"].label, "Your answer")
+            }
+            for digit in answer { app.buttons[String(digit)].tap() }
         }
         XCTAssertTrue(app.descendants(matching: .any)["alarmSwipeHint"].waitForExistence(timeout: 5))
         XCTAssertFalse(app.staticTexts["Alarm dismissed. Have a good day."].exists)
