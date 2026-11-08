@@ -29,6 +29,10 @@ report = {
     "errors": errors[:40],
     "screenshot": "ios-clock.png" if screenshot.exists() else None,
 }
+for filename in ("ios-launch.log", "ios-ui-test.log"):
+    path = Path(filename)
+    if path.exists() and report["status"] != "success":
+        report[filename] = path.read_text().splitlines()[-70:]
 previews = []
 for index, path in enumerate(sorted(Path("artifacts/ios-ui-previews").glob("*.png"))[:8]):
     name = f"ios-ui-preview-{index + 1}.png"
