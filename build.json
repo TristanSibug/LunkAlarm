@@ -1,18 +1,14 @@
 {
-  "commit": "09fda9ea75ce71ff49443d20ce7b621fda0b9dc0",
-  "run": "https://github.com/TristanSibug/LunkAlarm/actions/runs/42482588103",
-  "status": "failure",
-  "simulator": "success",
-  "device": "success",
-  "launch": "success",
-  "uiTests": "failure",
+  "commit": "4aa5e070359812d322913d2890f5ed8fab81f0b2",
+  "run": "https://github.com/TristanSibug/LunkAlarm/actions/runs/42483872861",
+  "status": "cancelled",
+  "simulator": "cancelled",
+  "device": "skipped",
+  "launch": "skipped",
+  "uiTests": "skipped",
   "errors": [
-    "/Users/runner/work/LunkAlarm/LunkAlarm/ios/UITests/AlarmInteractionTests.swift:29: error: -[LunkAlarmUITests.AlarmInteractionTests testSwipeNavigationAndNativeTimeWheel] : XCTAssertEqual failed: (\"Optional(\"7 o\u2019clock\")\") is not equal to (\"Optional(\"7\")\")",
-    "/Users/runner/work/LunkAlarm/LunkAlarm/ios/UITests/AlarmInteractionTests.swift:37: error: -[LunkAlarmUITests.AlarmInteractionTests testSwipeNavigationAndNativeTimeWheel] : XCTAssertEqual failed: (\"Optional(\"PM\")\") is not equal to (\"Optional(\"AM\")\")"
+    "/Users/runner/work/LunkAlarm/LunkAlarm/ios/LunkAlarm/LunkAlarmApp.swift:8:26: error: the compiler is unable to type-check this expression in reasonable time; try breaking up the expression into distinct sub-expressions"
   ],
-  "screenshot": "ios-clock.png",
-  "uiPreviews": [
-    "ios-ui-preview-1.png",
-    "ios-ui-preview-2.png"
-  ]
+  "screenshot": null,
+  "uiPreviews": []
 }

@@ -1,9 +1,7 @@
 # LunkAlarm native iOS build
 
-Commit: `09fda9ea75ce71ff49443d20ce7b621fda0b9dc0`  
-Status: **failure**  
-[Build and downloads](https://github.com/TristanSibug/LunkAlarm/actions/runs/42482588103)
-
-![Native simulator launch](ios-clock.png)
+Commit: `4aa5e070359812d322913d2890f5ed8fab81f0b2`  
+Status: **cancelled**  
+[Build and downloads](https://github.com/TristanSibug/LunkAlarm/actions/runs/42483872861)
 
 This branch contains generated build reports only. Source lives on main under ios/. Device builds are unsigned and need provisioning before installation.
