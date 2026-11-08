@@ -1,12 +1,12 @@
 # LunkAlarm for iPhone and iPad
 
-A native SwiftUI implementation of the website's clock, themes, alarms, countdowns, sound picker, imports, and wake-up tests. It uses Apple's **AlarmKit on iOS 26 or later** to schedule one-shot system alarms. There is no WebView, JavaScript runtime, server, Supabase dependency, or sound-enable button.
+A native SwiftUI implementation of the website's clock, themes, alarms, countdowns, sound picker, imports, and wake-up tests. It uses Apple's **AlarmKit on iOS 26 or later** to schedule system alarms and weekly routines. There is no WebView, JavaScript runtime, server, Supabase dependency, or sound-enable button.
 
 The website in `web/` remains separately deployable. **Find more ringtones online** still opens the same Mixkit, Pixabay, and Zedge pages in the browser; this app does not scrape or embed their catalogues.
 
 ## What is included
 
-- A centered large clock on launch, local date/time zone, and 12/24-hour display. Swipe up to reveal alarm settings; a fast swipe down when the page is at the top returns to the clock. Wheel/control interactions do not dismiss the page. VoiceOver exposes equivalent actions. Reduced Motion disables the transition.
+- A centered large clock on launch, local date/time zone, and 12/24-hour display. Swipe down to view saved alarms; the floating + opens the editor. Swipe up at the top of the saved list or use Clock to return. Wheel/control interactions do not dismiss the page. VoiceOver exposes equivalent actions. Reduced Motion disables the transition.
 - Fourteen app-owned themes (the original eight, plus Linen, Sea Glass, Forest, Ember, Amethyst, and Deep Ocean) that remain independent of the iPhone's light/dark setting.
 - Apple's native heading-free time wheel with unpadded 12-hour hours and AM/PM rollover, duration wheels, and paired looping test controls: 1–8 math problems / 5–12 seconds per question, and 4–10 code characters / 15–30 seconds. Wake-up tests start expanded and collapse with their header arrow. The presets are 5 min, 10 min, 30 min, and 1 hour; trailing choices hide when space is limited.
 - Ten offline PCM ringtones rendered from the existing app's synthesizer recipes; six-second previews.
@@ -25,7 +25,7 @@ Requires **Xcode 26 or later** and a Mac that can run it. macOS Monterey cannot 
 2. Open `ios/LunkAlarm.xcodeproj` in Xcode.
 3. Select the **LunkAlarm** target → **Signing & Capabilities** → select your Apple development team. Change `online.reeeserve.LunkAlarm` if that bundle identifier is unavailable for your team.
 4. Select your connected iPhone or an iOS 26+ simulator and press Run. On an iPhone, enable Developer Mode when prompted.
-5. Swipe up, set a short duration, optionally check the sound, allow the system's Alarms permission, and test playback with the app visible and the phone locked.
+5. Swipe down, tap +, set a short duration, optionally check the sound, allow the system's Alarms permission, and test playback with the app visible and the phone locked.
 
 Use the Files app or Safari downloads to obtain a sound, then open **Ringtone → Use my own file**. Imported audio stays on the iPhone. Permissions, alarms, and sound volume are controlled by iOS; the website's internet-time services are not used to alter system alarm deadlines.
 
@@ -45,7 +45,7 @@ The workflow also updates an [`ios-build-reports` branch](https://github.com/Tri
 
 AlarmKit schedules alerts with iOS; the app does not need to remain on screen for a scheduled alarm. It requests AlarmKit permission rather than ordinary notification permission. Both At a time and In how long resolve to one fixed system deadline, matching the website's one-shot behavior. Duration alarms use fixed schedules rather than a pausable countdown Live Activity, so no widget extension is required.
 
-Time-of-day selection uses the next matching local time. A nonexistent daylight-saving time moves to the next valid time; a repeated time uses the first future occurrence. Alarms are not daily repeats. Changing time zones after scheduling does not move a deadline to a new local hour.
+Time-of-day selection uses the next matching local time. A nonexistent daylight-saving time moves to the next valid time; a repeated time uses the first future occurrence. New time alarms support daily and selected-weekday repeats. Changing time zones after scheduling does not move a deadline to a new local hour.
 
 **iOS retains control of system alarm presentation and stopping.** LunkAlarm cannot suppress the system banner, automatically force itself over another app or the Lock Screen, or prevent force-quit. The wake-up-tests action opens LunkAlarm; entering tests pauses the system sound and starts a quiet timed answering session. Users can enable sound with the top-right switch. The timeout resets the tests and turns sound on; if the app is suspended, the separately scheduled system timeout alarm can alert instead. Returning from the background mutes sound for answering again. Finishing tests cancels the original alert and every timeout owned by that alarm. In-app answering audio uses media volume, which may differ from iOS alert volume. No public API locks these two system volume controls together.
 

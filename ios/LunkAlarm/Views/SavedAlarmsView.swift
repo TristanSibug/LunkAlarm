@@ -48,11 +48,13 @@ struct SavedAlarmsView: View {
                 if alarm.mathCount > 0 { Label("\(alarm.mathCount) problems", systemImage: "plus.forwardslash.minus") }
             }.font(.caption).foregroundStyle(store.theme.muted)
             HStack {
+                HStack(spacing: 0) {
                 ForEach(1...7, id: \.self) { day in
                     Text(["S", "M", "T", "W", "T", "F", "S"][day - 1])
                         .font(.system(size: 12)).foregroundStyle(alarm.days.contains(day) ? store.theme.accent : store.theme.muted)
                         .frame(maxWidth: .infinity)
                 }
+                }.frame(maxWidth: .infinity)
                 Menu {
                     Button("Delete alarm", role: .destructive) { store.remove(alarm) }
                 } label: { Image(systemName: "ellipsis").padding(10) }

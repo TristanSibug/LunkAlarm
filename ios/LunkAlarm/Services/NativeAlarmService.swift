@@ -26,8 +26,8 @@ struct NativeAlarmService {
                                          metadata: LunkAlarmMetadata(soundName: alarm.soundName, hasTests: alarm.hasTests),
                                          tintColor: tint)
         let stopIntent: (any LiveActivityIntent)? = alarm.hasTests ? OpenWakeTestsIntent(id: alarm.id) : nil
-        // Both modes use an absolute deadline, keeping our persisted deadline and iOS in sync.
-        // No snooze/countdown controls: these are one-shot alarms, including relative durations.
+        // Saved routines repeat in local wall-clock time. Timers and one-shot
+        // recovery/question guards use fixed deadlines; no snooze controls.
         let weekdays: [Locale.Weekday] = [.sunday, .monday, .tuesday, .wednesday, .thursday, .friday, .saturday]
         let schedule: Alarm.Schedule = !alarm.isTimer && !alarm.days.isEmpty
             ? .relative(.init(time: .init(hour: alarm.clockHour ?? Calendar.current.component(.hour, from: alarm.target), minute: alarm.clockMinute ?? Calendar.current.component(.minute, from: alarm.target)), repeats: .weekly(alarm.days.map { weekdays[$0 - 1] })))
