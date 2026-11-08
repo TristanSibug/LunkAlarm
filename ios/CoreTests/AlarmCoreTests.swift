@@ -165,4 +165,71 @@ final class AlarmCoreTests: XCTestCase {
         XCTAssertEqual(AlarmTimeWheel.resolvedHour(previous: 12, selected: 0, use24Hour: false), 0)
         XCTAssertEqual(AlarmTimeWheel.resolvedHour(previous: 23, selected: 12, use24Hour: true), 12)
     }
+    func testSelectedCodeLengthsAndTimersSurviveEveryReset() {
+        let start = Date(timeIntervalSince1970: 1000)
+        for length in WakeTestOptions.codeLengths {
+            for typingTime in [15, 30] {
+                for mathTime in [5, 12] {
+                    var test = TimedWakeChallenge(typing: true, mathCount: 2, codeLength: length,
+                        typingTimeLimit: typingTime, mathTimeLimit: mathTime, now: start)
+                    XCTAssertEqual(test.code.count, length)
+                    XCTAssertEqual(test.deadline, start.addingTimeInterval(Double(typingTime)))
+                    XCTAssertTrue(test.submit(code: test.code, now: start.addingTimeInterval(1)))
+                    let firstDeadline = start.addingTimeInterval(Double(1 + mathTime))
+                    XCTAssertEqual(test.deadline, firstDeadline)
+                    XCTAssertEqual(test.submit(digits: String(test.left + test.right), now: start.addingTimeInterval(2)), .correct)
+                    XCTAssertEqual(test.answered, 1)
+                    let expiry = start.addingTimeInterval(Double(2 + mathTime))
+                    XCTAssertTrue(test.expireIfNeeded(now: expiry))
+                    XCTAssertEqual(test.code.count, length)
+                    XCTAssertTrue(test.typingPending)
+                    XCTAssertEqual(test.answered, 0)
+                    XCTAssertEqual(test.deadline, expiry.addingTimeInterval(Double(typingTime)))
+                }
+            }
+        }
+    }
+    func testWakeTestSettingsAreOptionalValidatedAndSnapshottedPerAlarm() throws {
+        var state = SavedState()
+        var alarm = AlarmRecord(target: Date(), isTimer: true, ringtoneID: "classic-beep", soundFilename: "classic-beep.wav", soundName: "Classic Beep", typing: true, mathCount: 3)
+        alarm.typingCodeLength = 10; alarm.typingTimeLimit = 15; alarm.mathTimeLimit = 5
+        state.alarms = [alarm]
+        state.settings.typingCodeLength = 4; state.settings.typingTimeLimit = 30; state.settings.mathTimeLimit = 12
+        let restored = try JSONDecoder().decode(SavedState.self, from: JSONEncoder().encode(state)).validated()
+        XCTAssertEqual(restored.alarms[0].typingCodeLength, 10)
+        XCTAssertEqual(restored.alarms[0].typingTimeLimit, 15)
+        XCTAssertEqual(restored.alarms[0].mathTimeLimit, 5)
+        XCTAssertEqual(restored.settings.typingCodeLength, 4)
+        // An older installation has no new keys; defaults remain 8 / 30 / 10.
+        var object = try XCTUnwrap(JSONSerialization.jsonObject(with: JSONEncoder().encode(state)) as? [String: Any])
+        var settings = try XCTUnwrap(object["settings"] as? [String: Any])
+        for key in ["typingCodeLength", "typingTimeLimit", "mathTimeLimit"] { settings.removeValue(forKey: key) }
+        object["settings"] = settings
+        let old = try JSONDecoder().decode(SavedState.self, from: JSONSerialization.data(withJSONObject: object))
+        XCTAssertNil(old.settings.typingCodeLength)
+        XCTAssertNil(old.settings.typingTimeLimit)
+        XCTAssertNil(old.settings.mathTimeLimit)
+        state.settings.typingCodeLength = 3; XCTAssertThrowsError(try state.validated())
+        state.settings.typingCodeLength = 11; XCTAssertThrowsError(try state.validated())
+        state.settings.typingCodeLength = 4
+        state.settings.typingTimeLimit = 14; XCTAssertThrowsError(try state.validated())
+        state.settings.typingTimeLimit = 31; XCTAssertThrowsError(try state.validated())
+        state.settings.typingTimeLimit = 15
+        state.alarms[0].mathTimeLimit = 4; XCTAssertThrowsError(try state.validated())
+        state.alarms[0].mathTimeLimit = 13; XCTAssertThrowsError(try state.validated())
+    }
+    func testFailedUnlockPreservesChallengeEvenWhileRecoveryIsScheduled() throws {
+        let start = Date(timeIntervalSince1970: 1000)
+        var alarm = AlarmRecord(target: start, isTimer: true, ringtoneID: "classic-beep", soundFilename: "classic-beep.wav", soundName: "Classic Beep", typing: false, mathCount: 3)
+        let recovery = UUID()
+        alarm.challengeAlarmIDs = [recovery]
+        let result = AlarmReconciliation.reconcile([alarm], systemIDs: [recovery], stoppedIDs: [], now: start.addingTimeInterval(1))
+        XCTAssertEqual(result.first?.status, .needsChallenge)
+        XCTAssertEqual(result.first?.nativeAlarmIDs, [alarm.id, recovery])
+        let dates = AlarmRecovery.dates(after: start)
+        XCTAssertEqual(dates.map { $0.timeIntervalSince(start) }, [20, 40, 60])
+        XCTAssertEqual(Set(dates).count, dates.count)
+        XCTAssertTrue(dates.allSatisfy { $0 > start })
+    }
+
 }

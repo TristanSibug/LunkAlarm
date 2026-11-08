@@ -7,14 +7,14 @@ The website in `web/` remains separately deployable. **Find more ringtones onlin
 ## What is included
 
 - A centered large clock on launch, local date/time zone, and 12/24-hour display. Swipe up to reveal alarm settings; a fast swipe down when the page is at the top returns to the clock. Wheel/control interactions do not dismiss the page. VoiceOver exposes equivalent actions. Reduced Motion disables the transition.
-- Eight app-owned themes that remain independent of the iPhone's light/dark setting.
-- Apple's native heading-free time wheel with unpadded 12-hour hours and AM/PM rollover, duration wheels, and a centered looping 1–8 math count. The presets are 5 min, 10 min, 30 min, and 1 hour; trailing choices hide when space is limited.
+- Fourteen app-owned themes (the original eight, plus Linen, Sea Glass, Forest, Ember, Amethyst, and Deep Ocean) that remain independent of the iPhone's light/dark setting.
+- Apple's native heading-free time wheel with unpadded 12-hour hours and AM/PM rollover, duration wheels, and paired looping test controls: 1–8 math problems / 5–12 seconds per question, and 4–10 code characters / 15–30 seconds. Wake-up tests start expanded and collapse with their header arrow. The presets are 5 min, 10 min, 30 min, and 1 hour; trailing choices hide when space is limited.
 - Ten offline PCM ringtones rendered from the existing app's synthesizer recipes; six-second previews.
 - Import from Files: browser-downloadable audio smaller than 2 MB and shorter than 30 seconds, converted to mono PCM WAV in `Library/Sounds`. Each alarm remembers its selected sound and tests; importing a new sound does not change older alarms.
 - AlarmKit authorization requested when the first alarm is added, absolute deadlines, cancellation, queued in-app wake-up tests, and reconciliation with the system alarm list.
-- Case-sensitive typing tests with paste/multi-character insertion disabled, followed by 1–8 addition problems. Math answers submit automatically at the expected digit count; incorrect answers clear. Typing has 30 seconds, and each math question has 10 seconds. A timeout restarts the whole configured sequence, resets math progress to zero, and enables sound again. No snooze or dismissal message.
-- Tests start quietly when opened, with a sound switch fixed at the top right. The countdown uses an absolute deadline; a system AlarmKit timeout alarm backs it up when the app is suspended. The backup has a one-second grace so the foreground timer can reset the test without a duplicate system banner. Completing the tests cancels all associated timeout alarms.
-- First-use sound check, an Alarm volume slider, optional ten-second gradual fade-in, previews, and a real five-second AlarmKit test. Each new alarm snapshots its selected relative level/fade into its system sound file. In-app playback fades once and stays at the selected level. iOS still controls overall alert/output volume; if it repeats the system sound file, the fade can repeat too.
+- Case-sensitive typing tests with paste/multi-character insertion disabled, followed by 1–8 addition problems. Math answers submit automatically at the expected digit count; incorrect answers clear. Typing defaults to 30 seconds and eight characters; math defaults to 10 seconds per question. New alarms snapshot the chosen lengths/timers; existing alarms keep those defaults. A timeout restarts the whole configured sequence, resets math progress to zero, and enables sound again. No snooze or dismissal message.
+- Tests start quietly when opened, with a sound switch fixed at the top right. The countdown uses an absolute deadline; system AlarmKit timeout/recovery alarms back it up when the app is suspended. The first timeout has a one-second grace so the foreground timer can reset the test without a duplicate system banner. Completing the tests cancels all associated timeout alarms.
+- Optional sound-check sheet (never adds the configured alarm), an Alarm volume slider, optional ten-second gradual fade-in, previews, and a real five-second AlarmKit test. Each new alarm snapshots its selected relative level/fade into its system sound file. In-app playback fades once and stays at the selected level. iOS still controls overall alert/output volume; if it repeats the system sound file, the fade can repeat too.
 - Local atomic JSON persistence with a previous-save backup. Corrupt/unsupported state is left untouched and alarm editing is disabled. No accounts or browser-to-iPhone data sync.
 
 ## Open and run with Xcode
@@ -25,9 +25,9 @@ Requires **Xcode 26 or later** and a Mac that can run it. macOS Monterey cannot 
 2. Open `ios/LunkAlarm.xcodeproj` in Xcode.
 3. Select the **LunkAlarm** target → **Signing & Capabilities** → select your Apple development team. Change `online.reeeserve.LunkAlarm` if that bundle identifier is unavailable for your team.
 4. Select your connected iPhone or an iOS 26+ simulator and press Run. On an iPhone, enable Developer Mode when prompted.
-5. Swipe up, set a short duration, complete the sound check, allow the system's Alarms permission, and test playback with the app visible and the phone locked.
+5. Swipe up, set a short duration, optionally check the sound, allow the system's Alarms permission, and test playback with the app visible and the phone locked.
 
-Use the Files app or Safari downloads to obtain a sound, then select **Use my own file**. Imported audio stays on the iPhone. Permissions, alarms, and sound volume are controlled by iOS; the website's internet-time services are not used to alter system alarm deadlines.
+Use the Files app or Safari downloads to obtain a sound, then open **Ringtone → Use my own file**. Imported audio stays on the iPhone. Permissions, alarms, and sound volume are controlled by iOS; the website's internet-time services are not used to alter system alarm deadlines.
 
 ## If your Mac still runs Monterey
 
@@ -53,7 +53,7 @@ Real, audible wake-up-test playback uses the audio background mode so simply lea
 
 AlarmKit is designed to alert through Silent Mode and Focus after authorization. That does not let the app override the device's overall volume or guarantee audible output on every configuration. Use the built-in sound check with the phone locked and repeat after volume/settings changes.
 
-The app observes iOS alarm state instead of running a second background scheduler. A system-stopped alarm is not automatically resurrected. A future alarm missing from iOS is shown as **Not scheduled**; remove and add it again. If the system has already stopped an alarm with tests, unfinished tests remain available in LunkAlarm. On simultaneous alerts, iOS owns system presentation; the app presents the remaining tests in deadline order.
+The app observes iOS alarm state instead of running a second background scheduler. An ordinary system-stopped alarm is not automatically resurrected. Alarms with wake-up tests pre-schedule recovery alerts 20, 40, and 60 seconds after the main deadline, so dismissing a Lock Screen alert without successfully opening the app can alert again. The answering timeout also receives the same bounded recovery sequence. These alerts are scheduled in advance, not dependent on code running after Face ID/passcode fails. They are cancelled on active entry into the tests and replaced by the current question deadline; completion/deletion cancels every owned ID. Recovery is limited to these three reminders, not an unlimited or unpreventable alarm. Re-add existing alarms to receive the new initial recovery schedule. Scheduling failure rolls back the whole set, retaining visible ownership if cancellation fails. A future alarm missing from iOS is shown as **Not scheduled**; remove and add it again. If the system has already stopped an alarm with tests, unfinished tests remain available in LunkAlarm. On simultaneous alerts, iOS owns system presentation; the app presents the remaining tests in deadline order.
 
 ## Validation
 
@@ -71,9 +71,10 @@ Before distribution, test on a real iPhone:
 - Add a ten-second alarm, return Home, lock the phone, and verify it alerts. Repeat with Silent Mode and Focus enabled, using the device's intended alarm volume.
 - Test all ten sounds and at least one imported WAV/MP3/M4A, including stereo input. Reject files over 2 MB or 30 seconds. Confirm old alarms retain earlier imported sounds.
 - Open from system UI, confirm tests start quietly, toggle sound, complete typing then math, try wrong answers and pasting, dismiss, and confirm removal. Let each type of test expire; confirm typing restarts, math progress returns to zero, and sound enables. Repeat with the app backgrounded/locked while muted, then confirm the system timeout alerts. Finish tests and verify no extra timeout alert remains. Repeat with the app initially terminated and multiple alarms due together.
-- Check relative sound levels and gradual fade-in using both preview and a locked-device test. Confirm the ten-second rise and that old alarms retain their earlier sound/volume snapshots.
+- Trigger a challenged alarm while locked, tap Wake-up tests and deliberately fail Face ID/passcode. Wait for a recovery alert; unlock successfully and complete tests. Verify every recovery alert is cancelled. Repeat by terminating the app before the first alarm.
+- Check relative sound levels and gradual fade-in using both preview and a locked-device test. The five-second test starts after five seconds, then uses the full ten-second fade when enabled. Confirm the ten-second rise and that old alarms retain their earlier sound/volume snapshots.
 - Cancel before due, restart the app, restart the phone, and revoke/re-enable permission; compare the displayed list with actual iOS alerts.
-- Check Sunrise/Light/OLED and the other themes, Dynamic Type, VoiceOver, Reduce Motion, portrait/landscape, small iPhones, and iPad.
+- Check all 14 themes (including the two new light palettes), Dynamic Type, VoiceOver, Reduce Motion, portrait/landscape, small iPhones, and iPad.
 
 ## Maintenance
 

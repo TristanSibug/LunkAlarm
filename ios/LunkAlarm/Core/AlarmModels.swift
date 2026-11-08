@@ -27,6 +27,9 @@ public struct AlarmSettings: Codable, Equatable, Sendable {
     public var soundLevel: Double?
     public var soundCheckCompleted: Bool?
     public var gradualVolume: Bool?
+    public var typingCodeLength: Int?
+    public var typingTimeLimit: Int?
+    public var mathTimeLimit: Int?
     public init() {}
 }
 
@@ -44,6 +47,9 @@ public struct AlarmRecord: Codable, Identifiable, Equatable, Sendable {
     public var playbackSoundFilename: String?
     public var soundLevel: Double?
     public var gradualVolume: Bool?
+    public var typingCodeLength: Int?
+    public var typingTimeLimit: Int?
+    public var mathTimeLimit: Int?
     public var challengeAlarmIDs: [UUID]?
     public var nativeAlarmIDs: [UUID] { [id] + (challengeAlarmIDs ?? []) }
     public var hasTests: Bool { typing || mathCount > 0 }
@@ -69,10 +75,12 @@ public struct SavedState: Codable, Equatable, Sendable {
               Set(importedSounds.map(\.id)).count == importedSounds.count,
               (0...8).contains(settings.mathCount), (0...23).contains(settings.hour),
               (0...59).contains(settings.minute),
+              WakeTestOptions.valid(codeLength: settings.typingCodeLength, typingTime: settings.typingTimeLimit, mathTime: settings.mathTimeLimit),
               settings.soundLevel.map({ (0.1...1).contains($0) }) ?? true,
               (0...AlarmScheduling.maximumDuration).contains(settings.durationSeconds),
               alarms.allSatisfy({ (0...8).contains($0.mathCount) && Self.safeFilename($0.soundFilename) }),
               alarms.allSatisfy({ $0.playbackSoundFilename.map(Self.safeFilename) ?? true }),
+              alarms.allSatisfy({ WakeTestOptions.valid(codeLength: $0.typingCodeLength, typingTime: $0.typingTimeLimit, mathTime: $0.mathTimeLimit) }),
               alarms.allSatisfy({ $0.soundLevel.map({ (0.1...1).contains($0) }) ?? true }),
               Set(alarms.flatMap(\.nativeAlarmIDs)).count == alarms.flatMap(\.nativeAlarmIDs).count,
               importedSounds.allSatisfy({ Self.safeFilename($0.filename) })
@@ -135,4 +143,22 @@ public enum RingtoneCatalog {
         Tone(id: "rise-and-shine", name: "Rise & Shine"), Tone(id: "retro-arcade", name: "Retro Arcade"),
         Tone(id: "wind-bells", name: "Wind Bells"), Tone(id: "siren", name: "Siren")
     ]
+}
+
+public enum WakeTestOptions {
+    public static let codeLengths = 4...10
+    public static let typingTimes = 15...30
+    public static let mathTimes = 5...12
+    public static func valid(codeLength: Int?, typingTime: Int?, mathTime: Int?) -> Bool {
+        (codeLength.map { codeLengths.contains($0) } ?? true) &&
+        (typingTime.map { typingTimes.contains($0) } ?? true) &&
+        (mathTime.map { mathTimes.contains($0) } ?? true)
+    }
+}
+
+// Bounded, pre-scheduled alerts also survive a failed unlock or app termination.
+// They are all owned by one visible alarm and cancelled together on entry/completion.
+public enum AlarmRecovery {
+    public static let offsets: [TimeInterval] = [20, 40, 60]
+    public static func dates(after target: Date) -> [Date] { offsets.map { target.addingTimeInterval($0) } }
 }

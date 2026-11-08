@@ -9,9 +9,9 @@ public struct WakeChallenge: Sendable {
     public private(set) var right: Int
     public var complete: Bool { !typingPending && remaining == 0 }
     public var answerDigitCount: Int { String(left + right).count }
-    public init(typing: Bool, mathCount: Int) {
+    public init(typing: Bool, mathCount: Int, codeLength: Int = 8) {
         let alphabet = Array("ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789")
-        code = String((0..<8).map { _ in alphabet.randomElement()! })
+        code = String((0..<min(10, max(4, codeLength))).map { _ in alphabet.randomElement()! })
         typingPending = typing
         remaining = min(8, max(0, mathCount))
         left = Int.random(in: 1...20); right = Int.random(in: 1...20)

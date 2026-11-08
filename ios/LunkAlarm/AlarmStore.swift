@@ -103,6 +103,11 @@ final class AlarmStore {
             record.playbackSoundFilename = selectedSound.filename
             record.soundLevel = settings.soundLevel ?? 1
             record.gradualVolume = settings.gradualVolume == true
+            record.typingCodeLength = settings.typingCodeLength
+            record.typingTimeLimit = settings.typingTimeLimit
+            record.mathTimeLimit = settings.mathTimeLimit
+            let recoveryDates = record.hasTests ? AlarmRecovery.dates(after: record.target) : []
+            record.challengeAlarmIDs = recoveryDates.map { _ in UUID() }
             // Persist first, then ask iOS to schedule. A crash between the two leaves a
             // visible 'Not scheduled' record, never an invisible OS alarm.
             var next = state; next.alarms.append(record)
@@ -110,11 +115,26 @@ final class AlarmStore {
             do {
                 try await service.schedule(record, tint: theme.accent)
                 systemIDs.insert(record.id)
+                for (id, date) in zip(record.challengeAlarmIDs ?? [], recoveryDates) {
+                    var recovery = record
+                    recovery.id = id; recovery.target = date; recovery.challengeAlarmIDs = nil
+                    try await service.schedule(recovery, tint: theme.accent)
+                    systemIDs.insert(id)
+                }
                 message = "Alarm set for " + record.target.formatted(date: .abbreviated, time: .shortened) + "."
             } catch {
-                var rollback = state; rollback.alarms.removeAll { $0.id == record.id }
-                if !commit(rollback), let index = state.alarms.firstIndex(where: { $0.id == record.id }) {
-                    state.alarms[index].status = .notScheduled
+                // Roll back every owned recovery alert too; retain ownership if
+                // cancellation fails so the user can still remove it from the list.
+                do {
+                    try stopNativeAlarms(record, onlyAlerting: false)
+                    var rollback = state; rollback.alarms.removeAll { $0.id == record.id }
+                    _ = commit(rollback)
+                } catch {
+                    var retained = state
+                    if let index = retained.alarms.firstIndex(where: { $0.id == record.id }) { retained.alarms[index].status = .notScheduled }
+                    _ = commit(retained)
+                    errorMessage = "Some system alerts could not be cancelled. Remove the alarm from Your alarms to retry."
+                    return
                 }
                 throw error
             }
@@ -222,7 +242,9 @@ final class AlarmStore {
         guard !finishing else { return }
         sound.stop()
         ringing = alarm
-        challenge = TimedWakeChallenge(typing: alarm.typing, mathCount: alarm.mathCount)
+        challenge = TimedWakeChallenge(typing: alarm.typing, mathCount: alarm.mathCount,
+            codeLength: alarm.typingCodeLength ?? 8, typingTimeLimit: alarm.typingTimeLimit ?? 30,
+            mathTimeLimit: alarm.mathTimeLimit ?? 10)
         challengeSoundEnabled = !alarm.hasTests
         if alarm.hasTests {
             var next = state
@@ -331,28 +353,36 @@ final class AlarmStore {
             do {
                 // Retain every in-flight ID in its owner's record until the session
                 // ends, so a crash cannot leave an untracked system timeout alarm.
-                let nativeID = UUID()
+                // Add the exact timeout plus bounded recovery alerts in advance.
+                // A failed unlock cannot prevent already scheduled alerts firing.
+                let first = deadline.addingTimeInterval(1)
+                let dates = [first] + AlarmRecovery.dates(after: first)
+                let nativeIDs = dates.map { _ in UUID() }
                 var next = state
                 guard let index = next.alarms.firstIndex(where: { $0.id == alarm.id }) else { return }
                 let previousIDs = next.alarms[index].challengeAlarmIDs ?? []
-                next.alarms[index].challengeAlarmIDs = previousIDs + [nativeID]
+                next.alarms[index].challengeAlarmIDs = previousIDs + nativeIDs
                 guard commit(next) else { return }
                 let previous = Set(previousIDs)
                 for native in try service.manager.alarms where previous.contains(native.id) {
-                    try service.cancel(id: native.id)
+                    if native.state == .alerting { try service.stop(id: native.id) }
+                    else { try service.cancel(id: native.id) }
                     systemIDs.remove(native.id); alertingIDs.remove(native.id)
                 }
-                guard !Task.isCancelled, watchdogRevision == revision else { return }
-                var timeoutAlarm = alarm
-                // Foreground checks enforce the exact deadline. A one-second
-                // backup grace lets them replace this guard before iOS presents
-                // a duplicate system alert over the answering screen.
-                timeoutAlarm.id = nativeID; timeoutAlarm.target = deadline.addingTimeInterval(1)
-                timeoutAlarm.challengeAlarmIDs = nil
-                try await service.schedule(timeoutAlarm, tint: theme.accent)
+                for (id, date) in zip(nativeIDs, dates) {
+                    guard !Task.isCancelled, watchdogRevision == revision, ringing?.id == alarm.id else { break }
+                    var timeoutAlarm = alarm
+                    timeoutAlarm.id = id; timeoutAlarm.target = date
+                    timeoutAlarm.challengeAlarmIDs = nil
+                    try await service.schedule(timeoutAlarm, tint: theme.accent)
+                    systemIDs.insert(id)
+                }
                 if Task.isCancelled || watchdogRevision != revision || ringing?.id != alarm.id {
-                    try? service.cancel(id: nativeID)
-                } else { systemIDs.insert(nativeID) }
+                    for id in nativeIDs {
+                        try? service.cancel(id: id)
+                        systemIDs.remove(id); alertingIDs.remove(id)
+                    }
+                }
             } catch {
                 if !Task.isCancelled && watchdogRevision == revision {
                     errorMessage = "Could not schedule the test timeout with iOS: \(error.localizedDescription)"

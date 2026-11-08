@@ -70,6 +70,13 @@ final class AlarmInteractionTests: XCTestCase {
         wheel.adjust(toPickerWheelValue: "1")
         wheel.swipeDown(velocity: .slow)
         XCTAssertNotEqual(wheel.value as? String, "1")
+        let timer = app.pickers["mathTimerPicker"]
+        XCTAssertTrue(timer.exists)
+        XCTAssertEqual(picker.frame.midY, timer.frame.midY, accuracy: 2)
+        timer.pickerWheels.firstMatch.adjust(toPickerWheelValue: "5")
+        XCTAssertEqual(timer.pickerWheels.firstMatch.value as? String, "5")
+        timer.pickerWheels.firstMatch.adjust(toPickerWheelValue: "12")
+        XCTAssertEqual(timer.pickerWheels.firstMatch.value as? String, "12")
         capture(app, name: "ios-problem-wheel")
     }
     @MainActor func testMathEntryAdvancesWithoutOKAndClearsWrongAnswer() {
@@ -108,4 +115,55 @@ final class AlarmInteractionTests: XCTestCase {
         wait(for: [muted], timeout: 3)
         capture(app, name: "ios-timed-math")
     }
+    @MainActor func testTypingWheelsCollapseAndCompactSoundCheck() {
+        let app = launch()
+        openEditor(app)
+        let typing = app.switches["typingTestToggle"]
+        for _ in 0..<5 where !typing.isHittable { app.swipeUp(velocity: .slow) }
+        typing.tap()
+        let length = app.pickers["typingLengthPicker"]
+        for _ in 0..<4 where !length.isHittable { app.swipeUp(velocity: .slow) }
+        let timer = app.pickers["typingTimerPicker"]
+        XCTAssertTrue(length.waitForExistence(timeout: 5))
+        XCTAssertTrue(timer.exists)
+        XCTAssertEqual(length.frame.midY, timer.frame.midY, accuracy: 2)
+        length.pickerWheels.firstMatch.adjust(toPickerWheelValue: "10")
+        XCTAssertEqual(length.pickerWheels.firstMatch.value as? String, "10")
+        length.pickerWheels.firstMatch.adjust(toPickerWheelValue: "4")
+        timer.pickerWheels.firstMatch.adjust(toPickerWheelValue: "15")
+        XCTAssertEqual(timer.pickerWheels.firstMatch.value as? String, "15")
+        timer.pickerWheels.firstMatch.adjust(toPickerWheelValue: "30")
+        capture(app, name: "ios-typing-wheels")
+        let disclosure = app.buttons["wakeTestsDisclosure"]
+        for _ in 0..<4 where !disclosure.isHittable { app.swipeDown(velocity: .slow) }
+        disclosure.tap()
+        XCTAssertFalse(app.pickers["typingLengthPicker"].exists)
+        XCTAssertFalse(app.switches["typingTestToggle"].exists)
+        XCTAssertEqual(disclosure.value as? String, "Collapsed")
+        XCTAssertTrue(app.buttons["scheduleAlarm"].exists)
+        let check = app.buttons["Check alarm sound"]
+        for _ in 0..<4 where !check.isHittable { app.swipeDown(velocity: .slow) }
+        check.tap()
+        let preview = app.buttons["previewAlarmSound"]
+        let test = app.buttons["testAlarmSound"]
+        XCTAssertTrue(preview.waitForExistence(timeout: 5))
+        XCTAssertTrue(test.exists)
+        XCTAssertEqual(preview.frame.midY, test.frame.midY, accuracy: 2)
+        XCTAssertGreaterThan(test.frame.minX, preview.frame.maxX)
+        XCTAssertFalse(app.buttons["Use this level and add alarm"].exists)
+        capture(app, name: "ios-sound-check")
+    }
+    @MainActor func testRingtoneActionsLiveInsideChooserAndOpenOnlineSheet() {
+        let app = launch()
+        openEditor(app)
+        XCTAssertFalse(app.buttons["Use my own file"].exists)
+        let tone = app.buttons.containing(.staticText, identifier: "Classic Beep").firstMatch
+        for _ in 0..<4 where !tone.isHittable { app.swipeUp(velocity: .slow) }
+        tone.tap()
+        XCTAssertTrue(app.buttons["Use my own file"].waitForExistence(timeout: 5))
+        app.buttons["Find more ringtones online"].tap()
+        XCTAssertTrue(app.navigationBars["Find more ringtones"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.links.containing(.staticText, identifier: "Mixkit").firstMatch.exists)
+    }
+
 }

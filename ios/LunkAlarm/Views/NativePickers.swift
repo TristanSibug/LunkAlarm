@@ -49,16 +49,21 @@ struct NativeTimePicker: UIViewRepresentable {
     }
 }
 
-struct LoopingProblemPicker: UIViewRepresentable {
-    @Binding var count: Int
+struct LoopingNumberPicker: UIViewRepresentable {
+    @Binding var value: Int
+    let range: ClosedRange<Int>
+    let label: String
+    let identifier: String
     let color: UIColor
+    private var size: Int { range.count }
+    private var middle: Int { size * 500 }
     func makeUIView(context: Context) -> UIPickerView {
         let picker = UIPickerView()
         picker.dataSource = context.coordinator
         picker.delegate = context.coordinator
-        picker.accessibilityIdentifier = "mathProblemPicker"
-        picker.accessibilityLabel = "Number of problems"
-        picker.selectRow(Coordinator.middle + count - 1, inComponent: 0, animated: false)
+        picker.accessibilityIdentifier = identifier
+        picker.accessibilityLabel = label
+        picker.selectRow(middle + value - range.lowerBound, inComponent: 0, animated: false)
         return picker
     }
     func updateUIView(_ picker: UIPickerView, context: Context) {
@@ -67,23 +72,25 @@ struct LoopingProblemPicker: UIViewRepresentable {
             context.coordinator.color = color
             picker.reloadAllComponents()
         }
-        if picker.selectedRow(inComponent: 0) % 8 + 1 != count {
-            picker.selectRow(Coordinator.middle + count - 1, inComponent: 0, animated: false)
+        if picker.selectedRow(inComponent: 0) % size + range.lowerBound != value {
+            picker.selectRow(middle + value - range.lowerBound, inComponent: 0, animated: false)
         }
+    }
+    func sizeThatFits(_ proposal: ProposedViewSize, uiView: UIPickerView, context: Context) -> CGSize? {
+        CGSize(width: proposal.width ?? 140, height: proposal.height ?? 112)
     }
     func makeCoordinator() -> Coordinator { Coordinator(self) }
     final class Coordinator: NSObject, UIPickerViewDataSource, UIPickerViewDelegate {
-        static let middle = 8 * 500
-        var parent: LoopingProblemPicker
+        var parent: LoopingNumberPicker
         var color: UIColor
-        init(_ parent: LoopingProblemPicker) { self.parent = parent; color = parent.color }
+        init(_ parent: LoopingNumberPicker) { self.parent = parent; color = parent.color }
         func numberOfComponents(in pickerView: UIPickerView) -> Int { 1 }
-        func pickerView(_ pickerView: UIPickerView, numberOfRowsInComponent component: Int) -> Int { 8 * 1001 }
+        func pickerView(_ pickerView: UIPickerView, numberOfRowsInComponent component: Int) -> Int { parent.size * 1001 }
         func pickerView(_ pickerView: UIPickerView, rowHeightForComponent component: Int) -> CGFloat { 40 }
-        func pickerView(_ pickerView: UIPickerView, titleForRow row: Int, forComponent component: Int) -> String? { String(row % 8 + 1) }
+        func pickerView(_ pickerView: UIPickerView, titleForRow row: Int, forComponent component: Int) -> String? { String(row % parent.size + parent.range.lowerBound) }
         func pickerView(_ pickerView: UIPickerView, viewForRow row: Int, forComponent component: Int, reusing view: UIView?) -> UIView {
             let label = (view as? UILabel) ?? UILabel()
-            label.text = String(row % 8 + 1)
+            label.text = String(row % parent.size + parent.range.lowerBound)
             label.accessibilityLabel = label.text
             label.textAlignment = .center
             label.textColor = color
@@ -92,10 +99,10 @@ struct LoopingProblemPicker: UIViewRepresentable {
             return label
         }
         func pickerView(_ pickerView: UIPickerView, didSelectRow row: Int, inComponent component: Int) {
-            parent.count = row % 8 + 1
+            parent.value = row % parent.size + parent.range.lowerBound
             // Identical rows surround the new position, so recentering is invisible
             // and neither direction can run into an end after repeated use.
-            pickerView.selectRow(Self.middle + row % 8, inComponent: 0, animated: false)
+            pickerView.selectRow(parent.middle + row % parent.size, inComponent: 0, animated: false)
         }
     }
 }

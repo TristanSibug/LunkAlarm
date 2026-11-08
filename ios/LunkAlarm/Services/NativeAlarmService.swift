@@ -20,7 +20,7 @@ struct NativeAlarmService {
         let open = AlarmButton(text: "Open LunkAlarm",
                                textColor: .white, systemImageName: "arrow.up.right")
         let presentation = AlarmPresentation(alert: AlarmPresentation.Alert(
-            title: "LunkAlarm", stopButton: stop, secondaryButton: alarm.hasTests ? nil : open,
+            title: "\(alarm.soundName)", stopButton: stop, secondaryButton: alarm.hasTests ? nil : open,
             secondaryButtonBehavior: alarm.hasTests ? nil : .custom))
         let attributes = AlarmAttributes(presentation: presentation,
                                          metadata: LunkAlarmMetadata(soundName: alarm.soundName, hasTests: alarm.hasTests),

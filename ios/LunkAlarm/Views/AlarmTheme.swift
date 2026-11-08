@@ -24,7 +24,13 @@ struct AlarmTheme: Identifiable, Sendable {
         AlarmTheme(id: "tokyo-night", name: "Tokyo Night", background: Color(hex: 0x1a1b26), card: Color(hex: 0x24283b), text: Color(hex: 0xc0caf5), muted: Color(hex: 0x8c93bf), accent: Color(hex: 0x7aa2f7), accent2: Color(hex: 0xbb9af7)),
         AlarmTheme(id: "vscode-blue", name: "VS Code Blue", background: Color(hex: 0x002451), card: Color(hex: 0x082e59), text: Color(hex: 0xe8f0ff), muted: Color(hex: 0xa2bcdb), accent: Color(hex: 0x5db0ff), accent2: Color(hex: 0x3a86ff)),
         AlarmTheme(id: "dracula", name: "Dracula", background: Color(hex: 0x282a36), card: Color(hex: 0x303241), text: Color(hex: 0xf8f8f2), muted: Color(hex: 0xa7a5bd), accent: Color(hex: 0xbd93f9), accent2: Color(hex: 0xff79c6)),
-        AlarmTheme(id: "nord", name: "Nord", background: Color(hex: 0x2e3440), card: Color(hex: 0x3b4252), text: Color(hex: 0xeceff4), muted: Color(hex: 0xa4b1c4), accent: Color(hex: 0x88c0d0), accent2: Color(hex: 0x81a1c1))
+        AlarmTheme(id: "nord", name: "Nord", background: Color(hex: 0x2e3440), card: Color(hex: 0x3b4252), text: Color(hex: 0xeceff4), muted: Color(hex: 0xa4b1c4), accent: Color(hex: 0x88c0d0), accent2: Color(hex: 0x81a1c1)),
+        AlarmTheme(id: "linen", name: "Linen", background: Color(hex: 0xf5efe5), card: Color(hex: 0xfffcf6), text: Color(hex: 0x302921), muted: Color(hex: 0x766858), accent: Color(hex: 0x986020), accent2: Color(hex: 0xb34938), isLight: true),
+        AlarmTheme(id: "sea-glass", name: "Sea Glass", background: Color(hex: 0xeaf3ef), card: Color(hex: 0xf9fffc), text: Color(hex: 0x173c37), muted: Color(hex: 0x526d67), accent: Color(hex: 0x237268), accent2: Color(hex: 0x346d8e), isLight: true),
+        AlarmTheme(id: "forest", name: "Forest", background: Color(hex: 0x0b1714), card: Color(hex: 0x142720), text: Color(hex: 0xe4f2e9), muted: Color(hex: 0x9bb5a4), accent: Color(hex: 0x9dcc88), accent2: Color(hex: 0x59c7a5)),
+        AlarmTheme(id: "ember", name: "Ember", background: Color(hex: 0x1b1110), card: Color(hex: 0x2b1d1a), text: Color(hex: 0xffeee3), muted: Color(hex: 0xc3a49a), accent: Color(hex: 0xffbb74), accent2: Color(hex: 0xef876d)),
+        AlarmTheme(id: "amethyst", name: "Amethyst", background: Color(hex: 0x171123), card: Color(hex: 0x251d36), text: Color(hex: 0xf1eaff), muted: Color(hex: 0xb3a3cb), accent: Color(hex: 0xc5a2ff), accent2: Color(hex: 0xf0a4ce)),
+        AlarmTheme(id: "deep-ocean", name: "Deep Ocean", background: Color(hex: 0x081a24), card: Color(hex: 0x102b38), text: Color(hex: 0xe1f5fb), muted: Color(hex: 0x99b9c6), accent: Color(hex: 0x79d2de), accent2: Color(hex: 0x82b0f7))
     ]
 }
 

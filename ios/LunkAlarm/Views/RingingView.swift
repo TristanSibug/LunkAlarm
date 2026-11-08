@@ -18,10 +18,10 @@ struct RingingView: View {
                     Text(store.ringing?.soundName ?? "LunkAlarm").font(.caption).foregroundStyle(store.theme.muted)
                     if let challenge = store.challenge {
                         if challenge.typingPending {
-                            Text("Type this code in 30 seconds").font(.headline)
+                            Text("Type this code in \(challenge.typingTimeLimit) seconds").font(.headline)
                             Text(challenge.code).font(.system(size: 32, weight: .medium, design: .monospaced)).textSelection(.disabled)
                                 .minimumScaleFactor(0.6).lineLimit(1)
-                            NativeCodeField(text: $code, color: UIColor(store.theme.text))
+                            NativeCodeField(text: $code, maximumLength: challenge.codeLength, color: UIColor(store.theme.text))
                                 .frame(height: 54).padding(.horizontal, 14)
                                 .background(store.theme.field, in: RoundedRectangle(cornerRadius: 14))
                                 .accessibilityLabel("Wake-up code")
@@ -114,6 +114,7 @@ private final class NoPasteTextField: UITextField {
 
 struct NativeCodeField: UIViewRepresentable {
     @Binding var text: String
+    let maximumLength: Int
     let color: UIColor
     func makeUIView(context: Context) -> UITextField {
         let field = NoPasteTextField()
@@ -138,7 +139,7 @@ struct NativeCodeField: UIViewRepresentable {
         init(_ parent: NativeCodeField) { self.parent = parent }
         @objc func changed(_ field: UITextField) { parent.text = field.text ?? "" }
         func textField(_ field: UITextField, shouldChangeCharactersIn range: NSRange, replacementString string: String) -> Bool {
-            string.count <= 1 && ((field.text ?? "") as NSString).replacingCharacters(in: range, with: string).count <= 8
+            string.count <= 1 && ((field.text ?? "") as NSString).replacingCharacters(in: range, with: string).count <= parent.maximumLength
         }
     }
 }

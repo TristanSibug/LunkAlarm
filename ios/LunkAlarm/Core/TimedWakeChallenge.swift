@@ -3,6 +3,9 @@ import Foundation
 public struct TimedWakeChallenge: Sendable {
     private let typing: Bool
     private let mathCount: Int
+    public let codeLength: Int
+    public let typingTimeLimit: Int
+    public let mathTimeLimit: Int
     private var challenge: WakeChallenge
     public private(set) var deadline: Date?
     public private(set) var resetCount = 0
@@ -14,10 +17,13 @@ public struct TimedWakeChallenge: Sendable {
     public var complete: Bool { challenge.complete }
     public var answered: Int { mathCount - remaining }
 
-    public init(typing: Bool, mathCount: Int, now: Date = Date()) {
+    public init(typing: Bool, mathCount: Int, codeLength: Int = 8, typingTimeLimit: Int = 30, mathTimeLimit: Int = 10, now: Date = Date()) {
+        self.codeLength = min(10, max(4, codeLength))
+        self.typingTimeLimit = min(30, max(15, typingTimeLimit))
+        self.mathTimeLimit = min(12, max(5, mathTimeLimit))
         self.typing = typing
         self.mathCount = min(8, max(0, mathCount))
-        challenge = WakeChallenge(typing: typing, mathCount: mathCount)
+        challenge = WakeChallenge(typing: typing, mathCount: mathCount, codeLength: self.codeLength)
         renewDeadline(now: now)
     }
     public func secondsRemaining(now: Date = Date()) -> Int {
@@ -26,7 +32,7 @@ public struct TimedWakeChallenge: Sendable {
     }
     @discardableResult public mutating func expireIfNeeded(now: Date = Date()) -> Bool {
         guard !complete, let deadline, now >= deadline else { return false }
-        challenge = WakeChallenge(typing: typing, mathCount: mathCount)
+        challenge = WakeChallenge(typing: typing, mathCount: mathCount, codeLength: self.codeLength)
         resetCount += 1
         renewDeadline(now: now)
         return true
@@ -43,7 +49,7 @@ public struct TimedWakeChallenge: Sendable {
         return result
     }
     private mutating func renewDeadline(now: Date) {
-        deadline = complete ? nil : now.addingTimeInterval(typingPending ? 30 : 10)
+        deadline = complete ? nil : now.addingTimeInterval(TimeInterval(typingPending ? typingTimeLimit : mathTimeLimit))
     }
 }
 
