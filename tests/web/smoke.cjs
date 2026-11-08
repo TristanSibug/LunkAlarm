@@ -188,6 +188,8 @@ let browser;
   assert(await page.locator('#customTimePicker').isHidden());
   await page.locator('#tabTimer').click();
   assert(await page.locator('.duration-step').first().isHidden());
+  assert(await page.locator('#mobileDurationPicker').isVisible());
+  await page.locator('#durationEntryToggle').click();
   assert.equal(await page.locator('.timer-row').evaluate(el => getComputedStyle(el).display), 'grid');
   assert(await page.locator('#secondsInput').evaluate(el => {
     const event = new WheelEvent('wheel', { deltaY: -100, bubbles: true, cancelable: true });
@@ -314,6 +316,7 @@ let browser;
   // Keep the approved form layout; the restored three-button toolbar can wrap above the clock.
   for (const width of [520, 462, 375, 320]) {
     await page.setViewportSize({ width, height: 900 });
+    await page.locator('#timeInput').waitFor({ state: 'visible' });
     const layout = await page.evaluate(() => {
       const box = id => document.getElementById(id).getBoundingClientRect();
       const sound = box('enableSoundBtn'), theme = box('themeBtn');
@@ -322,7 +325,8 @@ let browser;
         headerOffset: Math.abs(sound.y + sound.height / 2 - theme.y - theme.height / 2),
         formTop: box('setupCard').top + scrollY,
         pickerHeight: box('ringtonePicker').height,
-        timeAlign: getComputedStyle(document.getElementById('timeInput')).textAlign
+        timeAlign: getComputedStyle(document.getElementById('timeInput')).textAlign,
+        timeFits: box('timeInput').right <= box('setupCard').right - 15 && box('timeInput').left >= box('setupCard').left + 15
       };
     });
     assert.equal(layout.overflow, false);
@@ -330,6 +334,7 @@ let browser;
     assert(layout.formTop < 355, `Form pushed down at ${width}px`);
     assert.equal(layout.pickerHeight, 36);
     assert.equal(layout.timeAlign, 'left');
+    assert(layout.timeFits, `Native time input overflow at ${width}px`);
     await picker.click();
     const popup = await menu.boundingBox();
     assert(popup.x >= 0 && popup.x + popup.width <= width + 1);
@@ -367,6 +372,7 @@ let browser;
   await menu.getByRole('option', { name: 'Classic Beep', exact: true }).click();
   console.log('PASS imported custom sound and selected option survive reload');
   await page.locator('#tabTimer').click();
+  if (await page.locator('#nativeDurationInputs').isHidden()) await page.locator('#durationEntryToggle').click();
   await page.locator('#hoursInput').fill('0'); await page.locator('#minutesInput').fill('0');
   await page.locator('#secondsInput').fill('0'); await page.locator('#setBtn').click();
   assert.equal(await page.locator('.alarm-item').count(), 0);
@@ -416,7 +422,9 @@ let browser;
   console.log('PASS simultaneous alarms queue instead of disappearing');
   // Read-only storage should show a failure, not report a successful saved alarm.
   await page.evaluate(() => { Storage.prototype.setItem = () => { throw new DOMException('full', 'QuotaExceededError'); }; });
-  await page.locator('#tabTimer').click(); await page.locator('#minutesInput').fill('1');
+  await page.locator('#tabTimer').click();
+  if (await page.locator('#nativeDurationInputs').isHidden()) await page.locator('#durationEntryToggle').click();
+  await page.locator('#minutesInput').fill('1');
   await page.locator('#setBtn').click();
   assert.match(await page.locator('#formMsg').innerText(), /Could not save alarms/);
   assert.equal(await page.locator('.alarm-item').count(), 0);
@@ -432,6 +440,68 @@ let browser;
   assert.equal(await fallback.evaluate(() => localStorage.getItem('wake.ringtone')), '\"soft-chime\"');
   await fallback.close();
   console.log('PASS native select fallback on browsers without popover support');
+  const mobile = await browser.newPage({ viewport: { width: 393, height: 852 }, hasTouch: true, isMobile: true, deviceScaleFactor: 2 });
+  mobile.on('pageerror', error => errors.push(error.message));
+  await mobile.route('https://**/*', route => route.abort()); await mobile.goto(url);
+  for (const width of [320, 375, 393, 430]) {
+    await mobile.setViewportSize({ width, height: 852 });
+    await mobile.locator('#timeInput').fill('23:59');
+    assert(await mobile.locator('#timeInput').evaluate(el => {
+      const box = el.getBoundingClientRect(), card = document.querySelector('#setupCard').getBoundingClientRect();
+      return el.type === 'time' && box.right <= card.right - 15 && box.left >= card.left + 15 && document.documentElement.scrollWidth <= innerWidth;
+    }));
+  }
+  await mobile.setViewportSize({ width: 393, height: 852 });
+  await mobile.locator('#tabTimer').tap();
+  await mobile.locator('#mobileDurationPicker').waitFor({ state: 'visible' });
+  assert(await mobile.locator('#nativeDurationInputs').isHidden());
+  await mobile.waitForFunction(() => document.querySelector('#durationWheel-minutes').scrollTop === 30 * 44);
+  // A real Chromium touch gesture must scroll the wheel while the surrounding page stays put.
+  const minuteWheel = mobile.locator('#durationWheel-minutes');
+  await minuteWheel.scrollIntoViewIfNeeded();
+  const wheelBox = await minuteWheel.boundingBox();
+  const pageScroll = await mobile.evaluate(() => scrollY);
+  const cdp = await mobile.context().newCDPSession(mobile);
+  const x = wheelBox.x + wheelBox.width / 2, y = wheelBox.y + 88;
+  await cdp.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ x, y, id: 1 }] });
+  for (let step = 1; step <= 8; step++) {
+    await cdp.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: [{ x, y: y - step * 8, id: 1 }] });
+    await mobile.evaluate(() => new Promise(requestAnimationFrame));
+  }
+  await cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
+  await mobile.waitForFunction(() => document.querySelector('#minutesInput').value !== '30');
+  assert(Math.abs(await mobile.evaluate(() => scrollY) - pageScroll) < 3);
+  await cdp.detach();
+  // Native scroll snapping and tapping both update the canonical duration fields.
+  await mobile.locator('.presets [data-minutes="5"]').tap();
+  await mobile.waitForFunction(() => document.querySelector('#durationWheel-minutes').scrollTop === 5 * 44);
+  assert.equal(await mobile.locator('#durationWheel-minutes').getByRole('option', { selected: true }).getAttribute('data-value'), '5');
+  await mobile.locator('#durationWheel-hours').evaluate(el => { el.scrollTop = 2 * 44; });
+  await mobile.waitForFunction(() => document.querySelector('#hoursInput').value === '2');
+  await mobile.locator('#durationWheel-seconds').evaluate(el => { el.scrollTop = 45 * 44; });
+  await mobile.waitForFunction(() => document.querySelector('#secondsInput').value === '45');
+  await minuteWheel.getByRole('option', { name: '6 minutes', exact: true }).tap();
+  await mobile.waitForFunction(() => document.querySelector('#minutesInput').value === '6');
+  await minuteWheel.focus(); await mobile.keyboard.press('Home');
+  assert.equal(await mobile.locator('#minutesInput').inputValue(), '0');
+  await mobile.keyboard.press('End'); assert.equal(await mobile.locator('#minutesInput').inputValue(), '59');
+  for (const unit of ['hours', 'minutes']) await mobile.locator('#durationWheel-' + unit).evaluate(el => { el.scrollTop = 0; });
+  await mobile.locator('#durationWheel-seconds').evaluate(el => { el.scrollTop = 10 * 44; });
+  await mobile.waitForFunction(() => ['hoursInput', 'minutesInput', 'secondsInput'].map(id => document.getElementById(id).value).join(':') === '0:0:10');
+  await mobile.locator('#setBtn').tap();
+  const mobileDuration = await mobile.evaluate(() => JSON.parse(localStorage.getItem('wake.alarms'))[0].targetMs - Date.now());
+  assert(mobileDuration > 8000 && mobileDuration <= 10100);
+  await mobile.locator('.delete-btn').first().tap();
+  await mobile.locator('#durationEntryToggle').tap();
+  assert(await mobile.locator('#nativeDurationInputs').isVisible());
+  await mobile.locator('#hoursInput').fill('1'); await mobile.locator('#minutesInput').fill('2'); await mobile.locator('#secondsInput').fill('3');
+  await mobile.locator('#durationEntryToggle').tap();
+  await mobile.waitForFunction(() => document.querySelector('#durationWheel-hours').scrollTop === 44 && document.querySelector('#durationWheel-minutes').scrollTop === 88 && document.querySelector('#durationWheel-seconds').scrollTop === 132);
+  await mobile.screenshot({ path: path.join(output, 'mobile-duration-wheels.png'), fullPage: true });
+  await mobile.locator('#tabTime').tap();
+  await mobile.locator('#setupCard').screenshot({ path: path.join(output, 'mobile-native-time-fit.png') });
+  await mobile.close();
+  console.log('PASS mobile native time stays inside card; countdown touch swipes, snapping, tap/keyboard selection, presets, manual entry, and scheduled duration');
   assert.deepEqual(errors, []);
   console.log('PASS no uncaught browser errors; static website checks complete');
 })().catch(error => { console.error(error); process.exitCode = 1; }).finally(async () => {

@@ -738,12 +738,88 @@ function bindPickerWheel(element, input, step) {
     step(delta < 0 ? 1 : -1);
   }, { passive: false });
 }
+// Touch-first countdown wheels use native scrolling and snap to the centered row.
+const mobileDurationUnits = [['hours', 'hours', 99], ['minutes', 'min', 59], ['seconds', 'sec', 59]];
+const durationRowHeight = 44;
+let mobileDurationReady = false;
+let manualMobileDuration = false;
+function setMobileDurationValue(unit, value, scroll = false) {
+  const wheel = $('durationWheel-' + unit);
+  const max = Number(wheel.dataset.max);
+  value = Math.max(0, Math.min(max, value));
+  const previous = Number(wheel.dataset.selected || 0);
+  $('duration-' + unit + '-' + previous)?.setAttribute('aria-selected', 'false');
+  $('duration-' + unit + '-' + value).setAttribute('aria-selected', 'true');
+  wheel.dataset.selected = String(value);
+  wheel.setAttribute('aria-activedescendant', 'duration-' + unit + '-' + value);
+  $(unit + 'Input').value = String(value);
+  if (scroll && wheel.getClientRects().length) wheel.scrollTo({ top: value * durationRowHeight, behavior: 'instant' });
+}
+function syncMobileDurationWheels() {
+  if (!mobileDurationReady || desktopWorkspace.matches) return;
+  for (const [unit, , max] of mobileDurationUnits) setMobileDurationValue(unit, readNumber(unit + 'Input', max), true);
+}
+function commitMobileDuration() {
+  if (!mobileDurationReady || desktopWorkspace.matches || manualMobileDuration || !$('mobileDurationPicker').getClientRects().length) return;
+  for (const [unit] of mobileDurationUnits) {
+    const wheel = $('durationWheel-' + unit);
+    setMobileDurationValue(unit, Math.round(wheel.scrollTop / durationRowHeight), true);
+  }
+}
+function updateMobileDurationLayout() {
+  const desktop = desktopWorkspace.matches;
+  $('nativeDurationInputs').hidden = !desktop && !manualMobileDuration;
+  $('mobileDurationPicker').hidden = desktop || manualMobileDuration;
+  $('durationEntryToggle').hidden = desktop;
+  $('durationEntryToggle').textContent = manualMobileDuration ? 'Use scroll wheels' : 'Type instead';
+  $('durationEntryToggle').setAttribute('aria-pressed', String(manualMobileDuration));
+  renderCountdownFields();
+}
+function setupMobileDuration() {
+  for (const [unit, label, max] of mobileDurationUnits) {
+    const column = document.createElement('div'); column.className = 'duration-wheel-column';
+    const frame = document.createElement('div'); frame.className = 'duration-wheel-frame';
+    const wheel = document.createElement('div'); wheel.id = 'durationWheel-' + unit;
+    wheel.className = 'duration-wheel-scroll'; wheel.setAttribute('role', 'listbox');
+    wheel.setAttribute('aria-label', 'Countdown ' + unit); wheel.tabIndex = 0;
+    wheel.dataset.max = String(max); wheel.dataset.selected = '0';
+    for (let value = 0; value <= max; value++) {
+      const row = document.createElement('div'); row.id = 'duration-' + unit + '-' + value;
+      row.className = 'duration-wheel-option'; row.setAttribute('role', 'option');
+      row.setAttribute('aria-selected', 'false'); row.setAttribute('aria-label', value + ' ' + unit);
+      row.dataset.value = String(value); row.textContent = pad(value); wheel.appendChild(row);
+    }
+    wheel.addEventListener('scroll', () => {
+      if (!desktopWorkspace.matches && !manualMobileDuration && wheel.getClientRects().length) setMobileDurationValue(unit, Math.round(wheel.scrollTop / durationRowHeight));
+    }, { passive: true });
+    wheel.addEventListener('click', event => {
+      const row = event.target.closest('[role="option"]');
+      if (row) setMobileDurationValue(unit, Number(row.dataset.value), true);
+    });
+    wheel.addEventListener('keydown', event => {
+      const value = Number(wheel.dataset.selected);
+      const next = { ArrowDown: value + 1, ArrowUp: value - 1, Home: 0, End: max, PageDown: value + 5, PageUp: value - 5 }[event.key];
+      if (next === undefined) return;
+      event.preventDefault(); setMobileDurationValue(unit, next, true);
+    });
+    const caption = document.createElement('span'); caption.className = 'duration-wheel-unit'; caption.textContent = label;
+    frame.appendChild(wheel); column.append(frame, caption); $('mobileDurationPicker').appendChild(column);
+  }
+  mobileDurationReady = true;
+  $('durationEntryToggle').addEventListener('click', () => {
+    commitMobileDuration(); manualMobileDuration = !manualMobileDuration; updateMobileDurationLayout();
+  });
+  desktopWorkspace.addEventListener('change', updateMobileDurationLayout);
+  updateMobileDurationLayout();
+}
+
 function renderCountdownFields() {
   for (const [unit, max] of [['hours', 99], ['minutes', 59], ['seconds', 59]]) {
     const input = $(unit + 'Input');
     const value = readNumber(input.id, max);
     input.value = desktopWorkspace.matches ? pad(value) : String(value);
   }
+  syncMobileDurationWheels();
 }
 function stepCountdown(unit, direction) {
   const total = readNumber('hoursInput', 99) * 3600 + readNumber('minutesInput', 59) * 60 + readNumber('secondsInput', 59);
@@ -770,6 +846,7 @@ function setupCountdownPicker() {
   document.querySelectorAll('.duration-step').forEach(button => button.addEventListener('click', () => {
     stepCountdown(button.dataset.unit, Number(button.dataset.step));
   }));
+  setupMobileDuration();
 }
 
 // For "At a time": finds the next moment the clock shows that time.
@@ -1146,6 +1223,7 @@ function applyMode(mode) {
   $('panelTimer').classList.toggle('hidden', mode !== 'timer');
   $('tabTime').setAttribute('aria-selected', String(mode === 'time'));
   $('tabTimer').setAttribute('aria-selected', String(mode === 'timer'));
+  if (mode === 'timer') renderCountdownFields();
 }
 
 // Updates the 12h/24h button text to show which mode is on.
@@ -1291,6 +1369,7 @@ $('setBtn').addEventListener('click', () => {
     }
     targetMs = nextOccurrenceOf(value);
   } else {
+    commitMobileDuration();
     const totalSeconds =
       readNumber('hoursInput', 99) * 3600 +
       readNumber('minutesInput', 59) * 60 +

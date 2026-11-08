@@ -74,7 +74,7 @@ Wide screens (at least 1000 CSS pixels) with a primary mouse/trackpad use a fixe
 
 The desktop time picker has editable hour/minute fields, mouse-wheel and arrow-key/stepper controls, and an AM/PM toggle; it follows the 12/24-hour clock setting. Hover a number and scroll up to increase it or down to decrease it. The countdown uses the same styled controls for hours, minutes and seconds, with rollover between units and a duration range of zero through 99:59:59 (zero cannot be added as an alarm). Wheel handling is limited to the number being hovered; scrolling elsewhere and Ctrl-wheel zoom keep their normal behavior. At spacious panel widths, ringtone controls sit beside wake-up tests, with the two ringtone links on separate lines. Narrow panels stack those sections to keep everything accessible.
 
-Touch-first devices and narrower windows retain the stacked phone layout and native time input. Switching screen size or input capabilities updates the layout automatically without resetting alarms or reloading the page. This uses responsive CSS rather than unreliable device-name guessing.
+Touch-first devices and narrower windows retain the stacked phone layout and native time input for At a time. The mobile countdown has separate swipe-and-snap wheels for hours, minutes and seconds, plus Type instead for numeric keyboard entry. Presets and both entry methods stay synchronized; the selected duration is captured when Add alarm is pressed. The native time field is constrained to the card width, including WebKit-specific sizing rules. Switching screen size or input capabilities updates the layout automatically without resetting alarms or reloading the page. This uses responsive CSS rather than unreliable device-name guessing.
 
 ## Browser limitations
 
@@ -96,4 +96,4 @@ npx --prefix tests/web playwright install chromium
 node tests/web/smoke.cjs
 ```
 
-The runner uses system Chromium when available, otherwise Playwright's Chromium. Set `CHROMIUM_PATH` to select another compatible executable. Tests exercise offline startup, sound activation, all eight themes with both system color schemes, phone width, timers, challenge order/wrong answers, queues, reload persistence, and storage failures. Captures are written to `artifacts/web-previews/`.
+The runner uses system Chromium when available, otherwise Playwright's Chromium. Set `CHROMIUM_PATH` to select another compatible executable. Tests exercise offline startup, sound activation, all eight themes with both system color schemes, phone width, timers, challenge order/wrong answers, queues, reload persistence, and storage failures. The mobile checks also exercise an actual Chromium touch-swipe gesture, wheel selection/presets/manual entry, and native time-field bounds at 320–430px widths. Native iOS Safari still requires real-device verification. Captures are written to `artifacts/web-previews/`.

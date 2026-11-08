@@ -1036,3 +1036,43 @@ button:focus-visible, input:focus-visible { outline: 2px solid var(--accent); ou
     .custom-time-picker:not([hidden]) { gap: 12px; padding-inline: 10px; }
   }
 }
+
+/* iOS time inputs can impose a native intrinsic minimum wider than the card. */
+#panelTime, .timer-box { min-width: 0; }
+#timeInput.big-input {
+  display: block; width: 100%; min-width: 0; max-width: 100%;
+  inline-size: 100%; min-inline-size: 0; max-inline-size: 100%;
+  box-sizing: border-box; -webkit-appearance: none; appearance: none;
+}
+#timeInput[hidden] { display: none; }
+#timeInput::-webkit-date-and-time-value { min-width: 0; max-width: 100%; text-align: left; }
+#timeInput::-webkit-datetime-edit { min-width: 0; padding: 0; }
+.timer-row { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+
+.mobile-duration-picker {
+  display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px;
+}
+.mobile-duration-picker[hidden], #nativeDurationInputs[hidden], .duration-entry-toggle[hidden] { display: none; }
+.duration-wheel-column { min-width: 0; text-align: center; }
+.duration-wheel-frame { position: relative; overflow: hidden; border: 1px solid var(--card-border); border-radius: 14px; background: var(--field); }
+.duration-wheel-frame::before {
+  content: ''; position: absolute; top: 44px; left: 6px; right: 6px; height: 44px;
+  background: var(--soft); border-radius: 10px; pointer-events: none;
+}
+.duration-wheel-frame:focus-within { border-color: var(--accent); }
+.duration-wheel-scroll {
+  position: relative; height: 132px; padding-block: 44px; overflow-y: auto; overflow-x: hidden;
+  scroll-snap-type: y mandatory; overscroll-behavior-y: contain; touch-action: pan-y;
+  -webkit-overflow-scrolling: touch; scrollbar-width: none; outline: none;
+  -webkit-mask-image: linear-gradient(transparent, black 30%, black 70%, transparent);
+  mask-image: linear-gradient(transparent, black 30%, black 70%, transparent);
+}
+.duration-wheel-scroll::-webkit-scrollbar { display: none; }
+.duration-wheel-option {
+  height: 44px; display: grid; place-items: center; scroll-snap-align: center; cursor: pointer;
+  color: var(--muted); font-family: "Wake Clock", var(--font); font-size: 24px; font-weight: 300;
+  font-variant-numeric: tabular-nums; user-select: none; -webkit-user-select: none;
+}
+.duration-wheel-option[aria-selected="true"] { color: var(--text); font-size: 30px; }
+.duration-wheel-unit { display: block; margin-top: 8px; font-size: 12px; color: var(--muted); }
+.duration-entry-toggle { display: block; margin: 10px 0 0 auto; font-size: 12px; -webkit-tap-highlight-color: transparent; user-select: none; }
