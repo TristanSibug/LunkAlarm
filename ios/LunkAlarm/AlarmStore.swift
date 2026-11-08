@@ -68,6 +68,8 @@ final class AlarmStore {
             guard let selectedSound, SoundService.url(filename: selectedSound.filename) != nil else {
                 throw NativeAlarmError.soundUnavailable
             }
+            try await service.authorize()
+            authorization = service.manager.authorizationState
             let settings = state.settings
             let target = settings.mode == .time
                 ? try AlarmScheduling.nextTime(hour: settings.hour, minute: settings.minute)
@@ -77,8 +79,6 @@ final class AlarmStore {
                 soundName: selectedSound.name, typing: settings.typing, mathCount: settings.mathCount)
             // Persist first, then ask iOS to schedule. A crash between the two leaves a
             // visible 'Not scheduled' record, never an invisible OS alarm.
-            try await service.authorize()
-            authorization = service.manager.authorizationState
             var next = state; next.alarms.append(record)
             guard commit(next) else { return }
             do {
@@ -87,7 +87,9 @@ final class AlarmStore {
                 message = "Alarm set for " + record.target.formatted(date: .abbreviated, time: .shortened) + "."
             } catch {
                 var rollback = state; rollback.alarms.removeAll { $0.id == record.id }
-                _ = commit(rollback)
+                if !commit(rollback), let index = state.alarms.firstIndex(where: { $0.id == record.id }) {
+                    state.alarms[index].status = .notScheduled
+                }
                 throw error
             }
         } catch {

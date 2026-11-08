@@ -1,5 +1,7 @@
 import ActivityKit
-import AlarmKit
+// The iOS 26 SDK predates complete Sendable annotations on AlarmManager.
+// All app-initiated access remains confined to this MainActor service.
+@preconcurrency import AlarmKit
 import AppIntents
 import SwiftUI
 

@@ -29,7 +29,7 @@ Use the Files app or Safari downloads to obtain a sound, then select **Use my ow
 
 ## If your Mac still runs Monterey
 
-The **Native iOS app** GitHub Actions workflow builds on a newer hosted Mac with Xcode 26. Open this repository's **Actions → Native iOS app** and select a completed successful run. Its **LunkAlarm-iOS** artifact contains Xcode source, an iOS Simulator app ZIP, build logs, and an **unsigned device IPA**.
+The **Native iOS app** GitHub Actions workflow builds on a newer hosted Mac with Xcode 26. Open this repository's **Actions → Native iOS app** and select a completed successful run. Its **LunkAlarm-iOS** artifact contains Xcode source, an iOS Simulator app ZIP, a simulator launch screenshot, build logs, and an **unsigned device IPA**.
 
 The simulator app cannot run on an iPhone. The unsigned IPA cannot be installed directly: it still needs signing/provisioning for your device or distribution through TestFlight. Publishing a GitHub release does not replace Apple's signing requirements.
 
