@@ -72,7 +72,9 @@ This version uses browser localStorage. It has no accounts or cross-device sync 
 
 Wide screens (at least 1000 CSS pixels) with a primary mouse/trackpad use a fixed-height workspace: clock on the left, expanded alarm setup in the middle, and a collapsible alarms sidebar on the right. The sidebar starts collapsed, shows the alarm count, and remembers your open/closed preference. Opening it reveals the list; closing it gives the space back to the form. Escape from inside the sidebar collapses it and returns focus to its toggle. The page itself does not scroll. Long lists and expanded settings in smaller windows can scroll inside their panels, and Add alarm stays visible.
 
-Touch-first devices and narrower windows retain the stacked phone layout. Switching screen size or input capabilities updates the layout automatically without resetting alarms or reloading the page. This uses responsive CSS rather than unreliable device-name guessing.
+The desktop time picker has editable hour/minute fields, arrow-key/stepper controls and an AM/PM toggle; it follows the 12/24-hour clock setting. At spacious panel widths, ringtone controls sit beside wake-up tests, with the two ringtone links on separate lines. Narrow panels stack those sections to keep everything accessible.
+
+Touch-first devices and narrower windows retain the stacked phone layout and native time input. Switching screen size or input capabilities updates the layout automatically without resetting alarms or reloading the page. This uses responsive CSS rather than unreliable device-name guessing.
 
 ## Browser limitations
 

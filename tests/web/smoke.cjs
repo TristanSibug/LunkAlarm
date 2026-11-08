@@ -88,6 +88,47 @@ let browser;
   console.log('PASS eight themes with both system color schemes');
   const sidebarToggle = page.locator('#alarmsToggle');
   assert.equal(await sidebarToggle.getAttribute('aria-expanded'), 'false');
+  await page.setViewportSize({ width: 1440, height: 900 });
+  const hourField = page.locator('#alarmHour'), minuteField = page.locator('#alarmMinute');
+  assert(await page.locator('#customTimePicker').isVisible());
+  assert(await page.locator('#timeInput').isHidden());
+  for (const [hour, period, expected] of [['04', 'AM', 4], ['04', 'PM', 16], ['12', 'AM', 0], ['12', 'PM', 12]]) {
+    await hourField.fill(hour); await minuteField.fill('00');
+    await page.locator('#time' + period).click(); await page.locator('#setBtn').click();
+    assert.equal(await page.evaluate(() => new Date(JSON.parse(localStorage.getItem('wake.alarms'))[0].targetMs).getHours()), expected);
+    await sidebarToggle.click(); await page.locator('.delete-btn').first().click(); await sidebarToggle.click();
+  }
+  await hourField.fill('13'); await page.locator('#setBtn').click();
+  assert.equal(await page.locator('.alarm-item').count(), 0);
+  assert.match(await page.locator('#formMsg').innerText(), /01–12/);
+  await hourField.fill('11'); await minuteField.fill('59'); await page.locator('#timeAM').click();
+  await page.getByRole('button', { name: 'Increase minute', exact: true }).click();
+  assert.equal(await page.locator('#timeInput').inputValue(), '12:00');
+  assert.equal(await page.locator('#timePM').getAttribute('aria-pressed'), 'true');
+  await hourField.fill('12'); await minuteField.fill('00'); await page.locator('#timeAM').click();
+  await page.getByRole('button', { name: 'Decrease minute', exact: true }).click();
+  assert.equal(await page.locator('#timeInput').inputValue(), '23:59');
+  await page.locator('#formatBtn').click();
+  assert.equal(await hourField.inputValue(), '23'); assert(await page.locator('#timePeriod').isHidden());
+  await hourField.focus(); await page.keyboard.press('ArrowUp');
+  assert.equal(await page.locator('#timeInput').inputValue(), '00:59');
+  await hourField.fill('24'); await minuteField.fill('60'); await page.locator('#setBtn').click();
+  assert.equal(await page.locator('.alarm-item').count(), 0);
+  assert.match(await page.locator('#formMsg').innerText(), /00–23/);
+  await hourField.fill('23'); await minuteField.fill('59');
+  await page.getByRole('button', { name: 'Increase minute', exact: true }).click();
+  assert.equal(await page.locator('#timeInput').inputValue(), '00:00');
+  await page.locator('#formatBtn').click();
+  assert.equal(await hourField.inputValue(), '12');
+  assert.equal(await page.locator('#timeAM').getAttribute('aria-pressed'), 'true');
+  await page.setViewportSize({ width: 375, height: 812 });
+  assert(await page.locator('#timeInput').isVisible()); assert(await page.locator('#customTimePicker').isHidden());
+  await page.locator('#timeInput').fill('21:45');
+  await page.setViewportSize({ width: 1440, height: 900 });
+  assert.equal(await hourField.inputValue(), '09'); assert.equal(await minuteField.inputValue(), '45');
+  assert.equal(await page.locator('#timePM').getAttribute('aria-pressed'), 'true');
+  await hourField.fill('07'); await minuteField.fill('00'); await page.locator('#timeAM').click();
+  console.log('PASS typed desktop time, AM/PM, noon/midnight scheduling, steppers, rollover, 24-hour mode, validation and phone sync');
   // Desktop layouts must fit even with a five-character clock and expanded timer/tests.
   await page.locator('#formatBtn').click();
   for (const viewport of [{ width: 1440, height: 900 }, { width: 1366, height: 768 }, { width: 1280, height: 720 }, { width: 1024, height: 600 }]) {
@@ -115,6 +156,7 @@ let browser;
           cardsFit: setup.top >= 0 && setup.bottom <= innerHeight && alarms.bottom <= innerHeight,
           addVisible: add.top >= setup.top && add.bottom <= setup.bottom,
           clockFont: parseFloat(getComputedStyle(document.querySelector('#clockHM')).fontSize),
+          split: getComputedStyle(document.querySelector('.sound-tests')).display === 'grid',
           settingsHeight: document.querySelector('.setup-fields').clientHeight,
           settingsContent: document.querySelector('.setup-fields').scrollHeight
         };
@@ -123,7 +165,7 @@ let browser;
       assert(desktop.pageFits && desktop.ordered && desktop.cardsFit && desktop.addVisible && desktop.clockFits, JSON.stringify({ viewport, mode, desktop }));
       if (viewport.width >= 1366) {
         assert(desktop.clockFont > 112);
-        assert(desktop.settingsContent <= desktop.settingsHeight + 2, JSON.stringify({ viewport, mode, desktop }));
+        if (desktop.split) assert(desktop.settingsContent <= desktop.settingsHeight + 2, JSON.stringify({ viewport, mode, desktop }));
       }
     }
     await picker.click();
@@ -132,6 +174,19 @@ let browser;
     await page.keyboard.press('Escape');
     if (viewport.width === 1366) await page.screenshot({ path: path.join(output, 'laptop-workspace.png') });
   }
+  await page.setViewportSize({ width: 1880, height: 900 });
+  if (await sidebarToggle.getAttribute('aria-expanded') === 'true') await sidebarToggle.click();
+  await page.locator('#tabTime').click(); await page.locator('#formatBtn').click();
+  await hourField.fill('04'); await minuteField.fill('00'); await page.locator('#timeAM').click();
+  assert.equal(await page.locator('.sound-tests').evaluate(el => getComputedStyle(el).display), 'grid');
+  const linkRows = await page.locator('.ringtone-links').evaluate(el => {
+    const upload = el.querySelector('#uploadBtn').getBoundingClientRect(), online = el.querySelector('#onlineBtn').getBoundingClientRect();
+    return online.top > upload.bottom;
+  });
+  assert(linkRows);
+  await page.locator('#setupCard').screenshot({ path: path.join(output, 'approved-design-implemented.png') });
+  await page.screenshot({ path: path.join(output, 'approved-desktop.png') });
+  await page.locator('#formatBtn').click(); await sidebarToggle.click();
   await page.locator('#typingToggle').uncheck(); await page.locator('#mathToggle').uncheck();
   await page.locator('#tabTime').click();
   await page.setViewportSize({ width: 1440, height: 900 });

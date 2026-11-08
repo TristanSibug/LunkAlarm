@@ -637,6 +637,86 @@ function fillRingtoneSelect() {
    6. THE ALARMS
    --------------------------------------------------------- */
 
+// The native HH:mm input stays the canonical alarm value and the phone control.
+let selectedTimePeriod = 'AM';
+let timePickerErrorShown = false;
+function renderTimePicker() {
+  const match = /^(\d{2}):(\d{2})$/.exec($('timeInput').value);
+  const hour = match ? Number(match[1]) : null;
+  const minute = match ? Number(match[2]) : null;
+  selectedTimePeriod = hour !== null && hour >= 12 ? 'PM' : 'AM';
+  $('alarmHour').value = hour === null ? '' : pad(state.use24h ? hour : hour % 12 || 12);
+  $('alarmMinute').value = minute === null ? '' : pad(minute);
+  $('alarmHour').setAttribute('aria-valuemin', state.use24h ? '0' : '1');
+  $('alarmHour').setAttribute('aria-valuemax', state.use24h ? '23' : '12');
+  $('timePeriod').hidden = state.use24h;
+  for (const period of ['AM', 'PM']) $('time' + period).setAttribute('aria-pressed', String(period === selectedTimePeriod));
+  for (const part of ['Hour', 'Minute']) {
+    const input = $('alarm' + part);
+    if (input.value) input.setAttribute('aria-valuenow', String(Number(input.value)));
+    else input.removeAttribute('aria-valuenow');
+    input.removeAttribute('aria-invalid');
+  }
+}
+function commitTimePicker(format = false) {
+  const hourText = $('alarmHour').value.trim(), minuteText = $('alarmMinute').value.trim();
+  const hour = Number(hourText), minute = Number(minuteText);
+  const validHour = /^\d{1,2}$/.test(hourText) && hour >= (state.use24h ? 0 : 1) && hour <= (state.use24h ? 23 : 12);
+  const validMinute = /^\d{1,2}$/.test(minuteText) && minute >= 0 && minute <= 59;
+  for (const [part, valid] of [['Hour', validHour], ['Minute', validMinute]]) {
+    const input = $('alarm' + part);
+    input.setAttribute('aria-invalid', String(!valid));
+    if (valid) input.setAttribute('aria-valuenow', String(Number(input.value)));
+    else input.removeAttribute('aria-valuenow');
+  }
+  if (!validHour || !validMinute) { $('timeInput').value = ''; return false; }
+  const canonicalHour = state.use24h ? hour : hour % 12 + (selectedTimePeriod === 'PM' ? 12 : 0);
+  $('timeInput').value = pad(canonicalHour) + ':' + pad(minute);
+  if (timePickerErrorShown) showMessage('', false);
+  if (format) { $('alarmHour').value = pad(hour); $('alarmMinute').value = pad(minute); }
+  return true;
+}
+function stepAlarmTime(part, direction) {
+  commitTimePicker();
+  const match = /^(\d{2}):(\d{2})$/.exec($('timeInput').value);
+  const total = match ? Number(match[1]) * 60 + Number(match[2]) : 7 * 60;
+  const next = (total + (part === 'hour' ? 60 : 1) * direction + 1440) % 1440;
+  $('timeInput').value = pad(Math.floor(next / 60)) + ':' + pad(next % 60);
+  renderTimePicker();
+}
+function updateTimePickerLayout() {
+  $('timeInput').hidden = desktopWorkspace.matches;
+  $('customTimePicker').hidden = !desktopWorkspace.matches;
+  $('ringAtLabel').htmlFor = desktopWorkspace.matches ? 'alarmHour' : 'timeInput';
+  renderTimePicker();
+}
+function setupTimePicker() {
+  updateTimePickerLayout();
+  desktopWorkspace.addEventListener('change', updateTimePickerLayout);
+  $('timeInput').addEventListener('input', renderTimePicker);
+  $('timeInput').addEventListener('change', renderTimePicker);
+  document.querySelectorAll('.time-step').forEach(button => button.addEventListener('click', () => {
+    stepAlarmTime(button.dataset.part, Number(button.dataset.step));
+  }));
+  for (const part of ['Hour', 'Minute']) {
+    const input = $('alarm' + part);
+    input.addEventListener('input', () => commitTimePicker());
+    input.addEventListener('blur', () => commitTimePicker(true));
+    input.addEventListener('keydown', event => {
+      if (event.key === 'ArrowUp' || event.key === 'ArrowDown') {
+        event.preventDefault(); stepAlarmTime(part.toLowerCase(), event.key === 'ArrowUp' ? 1 : -1);
+      } else if (event.key === 'Enter') {
+        event.preventDefault(); if (commitTimePicker(true)) $('setBtn').focus();
+      }
+    });
+  }
+  for (const period of ['AM', 'PM']) $('time' + period).addEventListener('click', () => {
+    selectedTimePeriod = period;
+    for (const item of ['AM', 'PM']) $('time' + item).setAttribute('aria-pressed', String(item === period));
+    commitTimePicker(true);
+  });
+}
+
 // For "At a time": finds the next moment the clock shows that time.
 // If 7:00 already passed today, it means 7:00 tomorrow.
 function nextOccurrenceOf(hhmm) {
@@ -995,6 +1075,7 @@ function submitAnswer() {
 // A small message under the Set button. isError = true makes it red.
 let msgTimer = null;
 function showMessage(text, isError) {
+  timePickerErrorShown = false;
   const el = $('formMsg');
   el.textContent = text;
   el.classList.toggle('error', Boolean(isError));
@@ -1015,6 +1096,7 @@ function applyMode(mode) {
 // Updates the 12h/24h button text to show which mode is on.
 function applyFormatButton() {
   $('formatBtn').textContent = state.use24h ? '24h' : '12h';
+  renderTimePicker();
 }
 
 // Shows the saved test settings: switch positions, the 1-8 row, etc.
@@ -1141,6 +1223,11 @@ $('setBtn').addEventListener('click', () => {
   let targetMs;
 
   if (state.mode === 'time') {
+    if (desktopWorkspace.matches && !commitTimePicker(true)) {
+      showMessage(state.use24h ? 'Enter an hour from 00–23 and minutes from 00–59.' : 'Enter an hour from 01–12 and minutes from 00–59, then choose AM or PM.', true);
+      timePickerErrorShown = true;
+      return;
+    }
     const value = $('timeInput').value;
     if (!value) {
       showMessage('Please pick a time first.', true);
@@ -1330,6 +1417,7 @@ function init() {
 
   fillRingtoneSelect();
   setupRingtonePicker();
+  setupTimePicker();
   applyMode(state.mode);
   applyFormatButton();
   applyTestSettings();

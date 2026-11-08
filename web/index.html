@@ -75,8 +75,31 @@
 
       <!-- Way 1: specific time -->
       <div id="panelTime" class="panel">
-        <label class="field-label" for="timeInput">Ring at</label>
+        <label id="ringAtLabel" class="field-label" for="timeInput">Ring at</label>
         <input id="timeInput" class="big-input" type="time" value="07:00" />
+        <div id="customTimePicker" class="custom-time-picker" role="group" aria-labelledby="ringAtLabel" hidden>
+          <div class="time-part">
+            <label class="time-part-label" for="alarmHour">Hour</label>
+            <div class="time-stepper">
+              <button class="time-step" type="button" data-part="hour" data-step="1" aria-label="Increase hour"><svg viewBox="0 0 16 16" width="16" height="16" fill="none" aria-hidden="true"><path d="m4 10 4-4 4 4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+              <input id="alarmHour" class="time-number" type="text" inputmode="numeric" maxlength="2" autocomplete="off" role="spinbutton" aria-label="Hour" aria-valuemin="1" aria-valuemax="12" aria-valuenow="7" value="07" />
+              <button class="time-step" type="button" data-part="hour" data-step="-1" aria-label="Decrease hour"><svg viewBox="0 0 16 16" width="16" height="16" fill="none" aria-hidden="true"><path d="m4 6 4 4 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+            </div>
+          </div>
+          <span class="time-colon" aria-hidden="true">:</span>
+          <div class="time-part">
+            <label class="time-part-label" for="alarmMinute">Minute</label>
+            <div class="time-stepper">
+              <button class="time-step" type="button" data-part="minute" data-step="1" aria-label="Increase minute"><svg viewBox="0 0 16 16" width="16" height="16" fill="none" aria-hidden="true"><path d="m4 10 4-4 4 4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+              <input id="alarmMinute" class="time-number" type="text" inputmode="numeric" maxlength="2" autocomplete="off" role="spinbutton" aria-label="Minute" aria-valuemin="0" aria-valuemax="59" aria-valuenow="0" value="00" />
+              <button class="time-step" type="button" data-part="minute" data-step="-1" aria-label="Decrease minute"><svg viewBox="0 0 16 16" width="16" height="16" fill="none" aria-hidden="true"><path d="m4 6 4 4 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+            </div>
+          </div>
+          <div id="timePeriod" class="time-period" role="group" aria-label="AM or PM">
+            <button id="timeAM" class="period-button" type="button" aria-pressed="true">AM</button>
+            <button id="timePM" class="period-button" type="button" aria-pressed="false">PM</button>
+          </div>
+        </div>
       </div>
 
       <!-- Way 2: countdown from now -->
@@ -97,6 +120,8 @@
         </div>
       </div>
 
+      <div class="sound-tests">
+      <section class="sound-settings" aria-labelledby="ringtoneLabel">
       <!-- Ringtone picker -->
       <label id="ringtoneLabel" class="field-label" for="ringtoneSelect">Ringtone</label>
       <div class="ringtone-row">
@@ -119,8 +144,10 @@
         <input id="fileInput" type="file" accept="audio/*" hidden />
       </div>
 
+      </section>
+      <section class="wake-settings" aria-labelledby="wakeTestsLabel">
       <!-- Wake-up tests: both are OFF until you switch them on -->
-      <span class="field-label">Wake-up tests</span>
+      <span id="wakeTestsLabel" class="field-label">Wake-up tests</span>
       <div class="tests">
         <label class="option">
           <span class="option-text">
@@ -154,6 +181,8 @@
         </div>
       </div>
       <p class="hint"><span class="full-hint">Each alarm remembers the tests you chose when you added it. An alarm keeps ringing until you finish them, or until you tap Stop if none are on.</span><span class="compact-hint">Each alarm keeps its own tests. No snooze.</span></p>
+      </section>
+      </div>
 
       </div>
       <div class="setup-actions">
