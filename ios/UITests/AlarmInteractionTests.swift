@@ -163,7 +163,7 @@ final class AlarmInteractionTests: XCTestCase {
         XCTAssertTrue(app.buttons["Use my own file"].waitForExistence(timeout: 5))
         app.buttons["Find more ringtones online"].tap()
         XCTAssertTrue(app.navigationBars["Find more ringtones"].waitForExistence(timeout: 5))
-        XCTAssertTrue(app.links.containing(.staticText, identifier: "Mixkit").firstMatch.exists)
+        XCTAssertTrue(app.descendants(matching: .any)["ringtoneProviderMixkit"].exists)
     }
 
 }

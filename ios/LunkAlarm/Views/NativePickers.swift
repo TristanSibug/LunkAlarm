@@ -49,6 +49,8 @@ struct NativeTimePicker: UIViewRepresentable {
     }
 }
 
+// Recenter after every selection. A small repeated window keeps both the
+// paired wheels and their VoiceOver/accessibility snapshots responsive.
 struct LoopingNumberPicker: UIViewRepresentable {
     @Binding var value: Int
     let range: ClosedRange<Int>
@@ -56,7 +58,7 @@ struct LoopingNumberPicker: UIViewRepresentable {
     let identifier: String
     let color: UIColor
     private var size: Int { range.count }
-    private var middle: Int { size * 500 }
+    private var middle: Int { size * 10 }
     func makeUIView(context: Context) -> UIPickerView {
         let picker = UIPickerView()
         picker.dataSource = context.coordinator
@@ -85,7 +87,7 @@ struct LoopingNumberPicker: UIViewRepresentable {
         var color: UIColor
         init(_ parent: LoopingNumberPicker) { self.parent = parent; color = parent.color }
         func numberOfComponents(in pickerView: UIPickerView) -> Int { 1 }
-        func pickerView(_ pickerView: UIPickerView, numberOfRowsInComponent component: Int) -> Int { parent.size * 1001 }
+        func pickerView(_ pickerView: UIPickerView, numberOfRowsInComponent component: Int) -> Int { parent.size * 21 }
         func pickerView(_ pickerView: UIPickerView, rowHeightForComponent component: Int) -> CGFloat { 40 }
         func pickerView(_ pickerView: UIPickerView, titleForRow row: Int, forComponent component: Int) -> String? { String(row % parent.size + parent.range.lowerBound) }
         func pickerView(_ pickerView: UIPickerView, viewForRow row: Int, forComponent component: Int, reusing view: UIView?) -> UIView {

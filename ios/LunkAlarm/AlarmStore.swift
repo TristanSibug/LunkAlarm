@@ -250,7 +250,9 @@ final class AlarmStore {
             var next = state
             if let index = next.alarms.firstIndex(where: { $0.id == alarm.id }) { next.alarms[index].status = .needsChallenge }
             guard commit(next) else { challengeSoundEnabled = true; return }
-            do { try stopNativeAlarms(alarm, onlyAlerting: false) }
+            // Quiet the current alert, but retain future recovery alerts until
+            // iOS confirms their replacement question guards are scheduled.
+            do { try stopNativeAlarms(alarm, onlyAlerting: true) }
             catch { errorMessage = "Could not pause the system sound: \(error.localizedDescription)" }
             startChallengeTimer()
             armChallengeDeadline()
@@ -363,24 +365,26 @@ final class AlarmStore {
                 let previousIDs = next.alarms[index].challengeAlarmIDs ?? []
                 next.alarms[index].challengeAlarmIDs = previousIDs + nativeIDs
                 guard commit(next) else { return }
-                let previous = Set(previousIDs)
-                for native in try service.manager.alarms where previous.contains(native.id) {
-                    if native.state == .alerting { try service.stop(id: native.id) }
-                    else { try service.cancel(id: native.id) }
-                    systemIDs.remove(native.id); alertingIDs.remove(native.id)
-                }
-                for (id, date) in zip(nativeIDs, dates) {
-                    guard !Task.isCancelled, watchdogRevision == revision, ringing?.id == alarm.id else { break }
+                for (offset, pair) in zip(nativeIDs, dates).enumerated() {
+                    guard !Task.isCancelled, watchdogRevision == revision, ringing?.id == alarm.id else { return }
                     var timeoutAlarm = alarm
-                    timeoutAlarm.id = id; timeoutAlarm.target = date
+                    timeoutAlarm.id = pair.0; timeoutAlarm.target = pair.1
                     timeoutAlarm.challengeAlarmIDs = nil
                     try await service.schedule(timeoutAlarm, tint: theme.accent)
-                    systemIDs.insert(id)
-                }
-                if Task.isCancelled || watchdogRevision != revision || ringing?.id != alarm.id {
-                    for id in nativeIDs {
-                        try? service.cancel(id: id)
-                        systemIDs.remove(id); alertingIDs.remove(id)
+                    systemIDs.insert(pair.0)
+                    // A newer generation owns cleanup of older IDs. Leave these
+                    // persisted guards armed until its own first guard is confirmed.
+                    guard !Task.isCancelled, watchdogRevision == revision, ringing?.id == alarm.id else { return }
+                    if offset == 0 {
+                        // Replace the deadline first, then release predecessors.
+                        // This avoids both a silence gap and doubling every backup
+                        // slot while several user alarms are already scheduled.
+                        let previous = Set(previousIDs)
+                        for native in try service.manager.alarms where previous.contains(native.id) {
+                            if native.state == .alerting { try service.stop(id: native.id) }
+                            else { try service.cancel(id: native.id) }
+                            systemIDs.remove(native.id); alertingIDs.remove(native.id)
+                        }
                     }
                 }
             } catch {

@@ -265,7 +265,7 @@ struct AlarmEditorView: View {
                 Image(systemName: "arrow.up.right").font(.caption).foregroundStyle(store.theme.muted)
             }.padding(16).background(store.theme.card, in: RoundedRectangle(cornerRadius: 16))
                 .overlay(RoundedRectangle(cornerRadius: 16).stroke(store.theme.border))
-        }
+        }.accessibilityIdentifier("ringtoneProvider\(title)")
     }
 }
 
