@@ -1,12 +1,12 @@
 {
-  "commit": "d6b7685294c2d855325c156c2cef6e5ed84dbbd3",
-  "run": "https://github.com/TristanSibug/LunkAlarm/actions/runs/42484250427",
+  "commit": "c090539d0793635fe5c8c230b3f5ffe1d5728702",
+  "run": "https://github.com/TristanSibug/LunkAlarm/actions/runs/42484846107",
   "status": "cancelled",
   "simulator": "success",
   "device": "success",
-  "launch": "success",
-  "uiTests": "cancelled",
+  "launch": "cancelled",
+  "uiTests": "skipped",
   "errors": [],
-  "screenshot": "ios-clock.png",
+  "screenshot": null,
   "uiPreviews": []
 }
