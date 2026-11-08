@@ -103,4 +103,57 @@ final class AlarmCoreTests: XCTestCase {
         state.settings.soundLevel = 0
         XCTAssertThrowsError(try state.validated())
     }
+    func testTimedTypingThenMathAndTimeoutResetsEntireSequence() {
+        let start = Date(timeIntervalSince1970: 1000)
+        var test = TimedWakeChallenge(typing: true, mathCount: 3, now: start)
+        XCTAssertEqual(test.secondsRemaining(now: start), 30)
+        XCTAssertTrue(test.submit(code: test.code, now: start.addingTimeInterval(29)))
+        XCTAssertEqual(test.deadline, start.addingTimeInterval(39))
+        XCTAssertEqual(test.submit(digits: String(test.left + test.right), now: start.addingTimeInterval(32)), .correct)
+        XCTAssertEqual(test.answered, 1)
+        XCTAssertEqual(test.deadline, start.addingTimeInterval(42))
+        XCTAssertFalse(test.expireIfNeeded(now: start.addingTimeInterval(41.9)))
+        XCTAssertTrue(test.expireIfNeeded(now: start.addingTimeInterval(42)))
+        XCTAssertTrue(test.typingPending)
+        XCTAssertEqual(test.answered, 0)
+        XCTAssertEqual(test.remaining, 3)
+        XCTAssertEqual(test.resetCount, 1)
+        XCTAssertEqual(test.deadline, start.addingTimeInterval(72))
+    }
+    func testLateMathAnswerCannotPassAndWrongAnswersDoNotExtendDeadline() {
+        let start = Date(timeIntervalSince1970: 1000)
+        var test = TimedWakeChallenge(typing: false, mathCount: 2, now: start)
+        XCTAssertEqual(test.deadline, start.addingTimeInterval(10))
+        XCTAssertEqual(test.submit(digits: "99", now: start.addingTimeInterval(9)), .incorrect)
+        XCTAssertEqual(test.deadline, start.addingTimeInterval(10))
+        XCTAssertEqual(test.submit(digits: String(test.left + test.right), now: start.addingTimeInterval(10)), .timedOut)
+        XCTAssertEqual(test.answered, 0)
+        XCTAssertEqual(test.resetCount, 1)
+        XCTAssertEqual(test.deadline, start.addingTimeInterval(20))
+        XCTAssertEqual(test.submit(digits: String(test.left + test.right), now: start.addingTimeInterval(11)), .correct)
+        XCTAssertEqual(test.submit(digits: String(test.left + test.right), now: start.addingTimeInterval(12)), .correct)
+        XCTAssertTrue(test.complete)
+        XCTAssertNil(test.deadline)
+        XCTAssertFalse(test.expireIfNeeded(now: start.addingTimeInterval(100)))
+    }
+    func testGradualVolumeStartsAtZeroAndNeverExceedsSelectedLevel() {
+        XCTAssertEqual(AlarmSoundLevel.gain(level: 0.6, elapsed: 0, gradual: true), 0)
+        XCTAssertEqual(AlarmSoundLevel.gain(level: 0.6, elapsed: 5, gradual: true), 0.3, accuracy: 0.0001)
+        XCTAssertEqual(AlarmSoundLevel.gain(level: 0.6, elapsed: 10, gradual: true), 0.6)
+        XCTAssertEqual(AlarmSoundLevel.gain(level: 0.6, elapsed: 100, gradual: true), 0.6)
+        XCTAssertEqual(AlarmSoundLevel.gain(level: 0.6, elapsed: 0, gradual: false), 0.6)
+    }
+    func testTimeoutAlarmIDsAndSoundSnapshotSurvivePersistence() throws {
+        var state = SavedState()
+        var alarm = AlarmRecord(target: Date(), isTimer: true, ringtoneID: "classic-beep", soundFilename: "fade10-60-classic-beep.wav", soundName: "Classic Beep", typing: true, mathCount: 3, status: .needsChallenge)
+        let nativeTimeout = UUID()
+        alarm.challengeAlarmIDs = [nativeTimeout]
+        alarm.playbackSoundFilename = "classic-beep.wav"; alarm.soundLevel = 0.6; alarm.gradualVolume = true
+        state.alarms = [alarm]
+        let restored = try JSONDecoder().decode(SavedState.self, from: JSONEncoder().encode(state)).validated()
+        XCTAssertEqual(restored.alarms[0], alarm)
+        XCTAssertTrue(restored.alarms[0].nativeAlarmIDs.contains(nativeTimeout))
+        state.alarms[0].challengeAlarmIDs = [alarm.id]
+        XCTAssertThrowsError(try state.validated())
+    }
 }

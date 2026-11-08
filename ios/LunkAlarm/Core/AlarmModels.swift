@@ -26,6 +26,7 @@ public struct AlarmSettings: Codable, Equatable, Sendable {
     // Optional fields preserve compatibility with state saved before sound checks existed.
     public var soundLevel: Double?
     public var soundCheckCompleted: Bool?
+    public var gradualVolume: Bool?
     public init() {}
 }
 
@@ -40,6 +41,11 @@ public struct AlarmRecord: Codable, Identifiable, Equatable, Sendable {
     public var typing: Bool
     public var mathCount: Int
     public var status: Status
+    public var playbackSoundFilename: String?
+    public var soundLevel: Double?
+    public var gradualVolume: Bool?
+    public var challengeAlarmIDs: [UUID]?
+    public var nativeAlarmIDs: [UUID] { [id] + (challengeAlarmIDs ?? []) }
     public var hasTests: Bool { typing || mathCount > 0 }
     public init(id: UUID = UUID(), target: Date, isTimer: Bool, ringtoneID: String,
                 soundFilename: String, soundName: String, typing: Bool, mathCount: Int,
@@ -66,6 +72,9 @@ public struct SavedState: Codable, Equatable, Sendable {
               settings.soundLevel.map({ (0.1...1).contains($0) }) ?? true,
               (0...AlarmScheduling.maximumDuration).contains(settings.durationSeconds),
               alarms.allSatisfy({ (0...8).contains($0.mathCount) && Self.safeFilename($0.soundFilename) }),
+              alarms.allSatisfy({ $0.playbackSoundFilename.map(Self.safeFilename) ?? true }),
+              alarms.allSatisfy({ $0.soundLevel.map({ (0.1...1).contains($0) }) ?? true }),
+              Set(alarms.flatMap(\.nativeAlarmIDs)).count == alarms.flatMap(\.nativeAlarmIDs).count,
               importedSounds.allSatisfy({ Self.safeFilename($0.filename) })
         else { throw AlarmDataError.invalidData }
         return self

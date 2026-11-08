@@ -7,10 +7,11 @@ public enum AlarmReconciliation {
         records.compactMap { original in
             var record = original
             if stoppedIDs.contains(record.id), record.hasTests { record.status = .needsChallenge }
-            if record.status == .scheduled && !systemIDs.contains(record.id) {
+            let existsInSystem = record.nativeAlarmIDs.contains { systemIDs.contains($0) }
+            if record.status == .scheduled && !existsInSystem {
                 record.status = record.target > now ? .notScheduled : (record.hasTests ? .needsChallenge : .notScheduled)
             }
-            if !record.hasTests && record.target <= now && !systemIDs.contains(record.id) { return nil }
+            if !record.hasTests && record.target <= now && !existsInSystem { return nil }
             return record
         }
     }

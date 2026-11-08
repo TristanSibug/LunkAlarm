@@ -51,7 +51,7 @@ struct AlarmEditorView: View {
                             .frame(width: 110, height: 140).clipped()
                     }.frame(maxWidth: .infinity)
                 }
-                Text("Each alarm remembers its tests. Wake-up tests run in LunkAlarm; iOS can still stop alarms from the Lock Screen.")
+                Text("Typing: 30 seconds. Math: 10 seconds per question. A timeout resets all tests and turns sound back on. iOS keeps its own system alarm controls.")
                     .font(.system(size: 12)).foregroundStyle(store.theme.muted).fixedSize(horizontal: false, vertical: true)
             }
             if let message = store.message { Text(message).font(.caption).foregroundStyle(store.theme.accent) }
@@ -87,13 +87,19 @@ struct AlarmEditorView: View {
     private func soundLevelControls(showCheckButton: Bool = true) -> some View {
         VStack(alignment: .leading, spacing: 10) {
             HStack {
-                sectionLabel("Alarm sound level")
+                sectionLabel("Alarm volume")
                 Spacer()
                 Text("\(Int(((store.state.settings.soundLevel ?? 1) * 100).rounded()))%")
                     .font(.caption.monospacedDigit()).foregroundStyle(store.theme.muted)
             }
             Slider(value: Binding(get: { store.state.settings.soundLevel ?? 1 }, set: { store.state.settings.soundLevel = $0 }), in: 0.1...1, step: 0.05)
-                .tint(store.theme.accent).accessibilityLabel("Alarm sound level")
+                .tint(store.theme.accent).accessibilityLabel("Alarm volume")
+            Toggle("Gradually increase volume", isOn: Binding(get: { store.state.settings.gradualVolume == true }, set: { store.state.settings.gradualVolume = $0 }))
+                .font(.system(size: 13)).tint(store.theme.accent2)
+            if store.state.settings.gradualVolume == true {
+                Text("Starts at silence and rises to your chosen level over 10 seconds. System sound repeats may repeat the fade.")
+                    .font(.caption).foregroundStyle(store.theme.muted)
+            }
             Text("Your iPhone’s volume still affects loudness. Use Preview and your volume buttons to check in-app playback.")
                 .font(.caption).foregroundStyle(store.theme.muted)
             if showCheckButton {

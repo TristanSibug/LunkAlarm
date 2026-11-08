@@ -1,7 +1,7 @@
 import Foundation
 
 public struct WakeChallenge: Sendable {
-    public enum DigitResult: Equatable, Sendable { case incomplete, incorrect, correct }
+    public enum DigitResult: Equatable, Sendable { case incomplete, incorrect, correct, timedOut }
     public let code: String
     public private(set) var typingPending: Bool
     public private(set) var remaining: Int

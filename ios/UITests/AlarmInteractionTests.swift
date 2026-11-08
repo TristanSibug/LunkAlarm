@@ -1,23 +1,23 @@
 import XCTest
 
-@MainActor
 final class AlarmInteractionTests: XCTestCase {
+    @MainActor
     private func launch(mathAlarm: Bool = false) -> XCUIApplication {
         let app = XCUIApplication()
         app.launchArguments = ["--ui-testing"] + (mathAlarm ? ["--ui-math-alarm"] : [])
         app.launch()
         return app
     }
-    private func openEditor(_ app: XCUIApplication) {
+    @MainActor private func openEditor(_ app: XCUIApplication) {
         XCTAssertTrue(app.descendants(matching: .any)["alarmSwipeHint"].waitForExistence(timeout: 10))
         app.swipeUp(velocity: .fast)
         XCTAssertTrue(app.staticTexts["New alarm"].waitForExistence(timeout: 5))
     }
-    private func capture(_ app: XCUIApplication, name: String) {
+    @MainActor private func capture(_ app: XCUIApplication, name: String) {
         let attachment = XCTAttachment(screenshot: app.screenshot())
         attachment.name = name; attachment.lifetime = .keepAlways; add(attachment)
     }
-    func testSwipeNavigationAndNativeTimeWheel() {
+    @MainActor func testSwipeNavigationAndNativeTimeWheel() {
         let app = launch()
         XCTAssertFalse(app.buttons["alarmPickerToggle"].exists)
         openEditor(app)
@@ -47,7 +47,7 @@ final class AlarmInteractionTests: XCTestCase {
         wait(for: [closed], timeout: 5)
         XCTAssertTrue(app.descendants(matching: .any)["alarmSwipeHint"].exists)
     }
-    func testLoopingProblemCountAndFourPresets() {
+    @MainActor func testLoopingProblemCountAndFourPresets() {
         let app = launch()
         openEditor(app)
         app.buttons["In how long"].tap()
@@ -70,22 +70,37 @@ final class AlarmInteractionTests: XCTestCase {
         XCTAssertNotEqual(wheel.value as? String, "1")
         capture(app, name: "ios-problem-wheel")
     }
-    func testMathEntryAdvancesWithoutOKAndClearsWrongAnswer() {
+    @MainActor func testMathEntryAdvancesWithoutOKAndClearsWrongAnswer() {
         let app = launch(mathAlarm: true)
         let problem = app.staticTexts["mathProblem"]
         XCTAssertTrue(problem.waitForExistence(timeout: 10))
         XCTAssertFalse(app.buttons["OK"].exists)
+        XCTAssertEqual(app.switches["challengeSoundToggle"].value as? String, "0")
         let numbers = problem.label.split(separator: "+").compactMap { Int($0.trimmingCharacters(in: .whitespaces)) }
         XCTAssertEqual(numbers.count, 2)
         let answer = String(numbers.reduce(0, +))
         for character in answer.count == 1 ? "0" : "99" { app.buttons[String(character)].tap() }
         XCTAssertEqual(app.staticTexts["mathAnswer"].label, "Your answer")
         for remaining in stride(from: 3, through: 1, by: -1) {
-            XCTAssertTrue(app.staticTexts["mathProgress"].label.hasPrefix("\(remaining) "))
+            XCTAssertTrue(app.staticTexts["mathProgress"].label.hasPrefix("\(3 - remaining) /"))
             let values = problem.label.split(separator: "+").compactMap { Int($0.trimmingCharacters(in: .whitespaces)) }
             for digit in String(values.reduce(0, +)) { app.buttons[String(digit)].tap() }
         }
         XCTAssertTrue(app.descendants(matching: .any)["alarmSwipeHint"].waitForExistence(timeout: 5))
         XCTAssertFalse(app.staticTexts["Alarm dismissed. Have a good day."].exists)
+    }
+    @MainActor func testMathTimeoutResetsProgressAndEnablesSound() {
+        let app = launch(mathAlarm: true)
+        let problem = app.staticTexts["mathProblem"]
+        XCTAssertTrue(problem.waitForExistence(timeout: 10))
+        let values = problem.label.split(separator: "+").compactMap { Int($0.trimmingCharacters(in: .whitespaces)) }
+        for digit in String(values.reduce(0, +)) { app.buttons[String(digit)].tap() }
+        XCTAssertTrue(app.staticTexts["mathProgress"].label.hasPrefix("1 /"))
+        let progressReset = XCTNSPredicateExpectation(predicate: NSPredicate(format: "label BEGINSWITH '0 /'"), object: app.staticTexts["mathProgress"])
+        wait(for: [progressReset], timeout: 14)
+        XCTAssertEqual(app.switches["challengeSoundToggle"].value as? String, "1")
+        app.switches["challengeSoundToggle"].tap()
+        XCTAssertEqual(app.switches["challengeSoundToggle"].value as? String, "0")
+        capture(app, name: "ios-timed-math")
     }
 }

@@ -12,13 +12,21 @@ final class AlarmStore {
     private(set) var saving = false
     private(set) var authorization = AlarmManager.shared.authorizationState
     private(set) var ringing: AlarmRecord?
-    var challenge: WakeChallenge?
+    private(set) var challenge: TimedWakeChallenge?
+    private(set) var challengeSoundEnabled = false
+    private(set) var finishing = false
     let sound = SoundService()
     private let repository: StateRepository
     private let service = NativeAlarmService()
     private var systemIDs = Set<UUID>()
     private var alertingIDs = Set<UUID>()
     private var isActive = true
+    private var isUITesting = false
+    private var muteOnReturn = false
+    private var challengeTimer: Task<Void, Never>?
+    private var watchdogTask: Task<Void, Never>?
+    private var watchdogTasks: [Task<Void, Never>] = []
+    private var watchdogRevision = 0
 
     init() {
         var dataFolder = "LunkAlarm"
@@ -35,6 +43,7 @@ final class AlarmStore {
             errorMessage = "\(error.localizedDescription) Existing iOS alarms are not changed."
         }
         #if DEBUG
+        isUITesting = uiTesting
         if uiTesting { state = SavedState(); readOnly = false; errorMessage = nil }
         if uiTesting && ProcessInfo.processInfo.arguments.contains("--ui-math-alarm") {
             state.alarms = [AlarmRecord(target: Date().addingTimeInterval(-1), isTimer: true,
@@ -87,10 +96,13 @@ final class AlarmStore {
             let target = soundCheck ? Date().addingTimeInterval(5) : settings.mode == .time
                 ? try AlarmScheduling.nextTime(hour: settings.hour, minute: settings.minute)
                 : try AlarmScheduling.countdown(seconds: settings.durationSeconds)
-            let filename = try SoundService.alarmFilename(original: selectedSound.filename, level: settings.soundLevel ?? 1)
-            let record = AlarmRecord(target: target, isTimer: soundCheck || settings.mode == .timer,
+            let filename = try SoundService.alarmFilename(original: selectedSound.filename, level: settings.soundLevel ?? 1, gradual: settings.gradualVolume == true)
+            var record = AlarmRecord(target: target, isTimer: soundCheck || settings.mode == .timer,
                 ringtoneID: settings.ringtoneID, soundFilename: filename,
                 soundName: selectedSound.name, typing: soundCheck ? false : settings.typing, mathCount: soundCheck ? 0 : settings.mathCount)
+            record.playbackSoundFilename = selectedSound.filename
+            record.soundLevel = settings.soundLevel ?? 1
+            record.gradualVolume = settings.gradualVolume == true
             // Persist first, then ask iOS to schedule. A crash between the two leaves a
             // visible 'Not scheduled' record, never an invisible OS alarm.
             var next = state; next.alarms.append(record)
@@ -113,22 +125,22 @@ final class AlarmStore {
     }
     func remove(_ alarm: AlarmRecord) {
         guard !readOnly, !saving else { return }
+        guard ringing?.id != alarm.id else { return }
         do {
-            if systemIDs.contains(alarm.id) { try service.cancel(id: alarm.id) }
-            systemIDs.remove(alarm.id); alertingIDs.remove(alarm.id)
+            try stopNativeAlarms(alarm, onlyAlerting: false)
             var next = state; next.alarms.removeAll { $0.id == alarm.id }
             guard commit(next) else {
                 if let index = state.alarms.firstIndex(where: { $0.id == alarm.id }) { state.alarms[index].status = .notScheduled }
                 return
             }
-            if ringing?.id == alarm.id { sound.stop(); ringing = nil; challenge = nil }
+            if ringing?.id == alarm.id { endChallengeSession() }
         } catch { errorMessage = "Could not cancel the iOS alarm: \(error.localizedDescription)" }
     }
     func preview() {
         if sound.previewing { sound.stop(); return }
         do {
             guard let selectedSound else { throw NativeAlarmError.soundUnavailable }
-            try sound.play(filename: selectedSound.filename, preview: true, volume: Float(state.settings.soundLevel ?? 1))
+            try sound.play(filename: selectedSound.filename, preview: true, volume: Float(state.settings.soundLevel ?? 1), gradual: state.settings.gradualVolume == true)
         } catch { errorMessage = error.localizedDescription }
     }
     func importSound(_ url: URL) {
@@ -155,9 +167,14 @@ final class AlarmStore {
             authorization = newState
         }
     }
-    func setActive(_ active: Bool) {
+    func setActive(_ active: Bool, backgrounded: Bool = false) {
         isActive = active
-        if active { refresh() }
+        if backgrounded { muteOnReturn = true }
+        if active {
+            refresh()
+            if muteOnReturn, ringing?.hasTests == true { setChallengeSound(false) }
+            muteOnReturn = false
+        }
         else if sound.previewing { sound.stop() }
         // Real, audible wake-up-test playback can continue in the background.
         // Scheduled alerts remain owned by AlarmKit; there is no idle keepalive.
@@ -178,55 +195,170 @@ final class AlarmStore {
         for event in events {
             let pieces = event.split(separator: ":", maxSplits: 1)
             guard pieces.count == 2, let id = UUID(uuidString: String(pieces[1])),
-                  next.alarms.contains(where: { $0.id == id }) else { continue }
-            if pieces[0] == "stop" { stoppedIDs.insert(id) }
+                  let alarm = next.alarms.first(where: { $0.nativeAlarmIDs.contains(id) }) else { continue }
+            if pieces[0] == "stop" { stoppedIDs.insert(alarm.id) }
         }
         next.alarms = AlarmReconciliation.reconcile(next.alarms, systemIDs: systemIDs, stoppedIDs: stoppedIDs, now: Date())
         if next != state, !commit(next) { return }
         UserDefaults.standard.removeObject(forKey: AlarmIntentInbox.key)
-        guard isActive else { return }
+        if !isActive {
+            if let current = currentRecord, nativeAlertIsSounding(current) { sound.stop() }
+            return
+        }
         if let current = ringing {
             if !state.alarms.contains(where: { $0.id == current.id }) {
-                sound.stop(); ringing = nil; challenge = nil
-            } else if !alertingIDs.contains(current.id), !sound.previewing {
-                playChallengeSound(current)
+                endChallengeSession()
+            } else {
+                checkChallengeDeadline()
+                if challengeSoundEnabled, let record = currentRecord, !nativeAlertIsSounding(record) { playChallengeSound(record) }
             }
         }
         if ringing == nil,
-           let nextAlarm = orderedAlarms.first(where: { alertingIDs.contains($0.id) || $0.status == .needsChallenge }) {
+           let nextAlarm = orderedAlarms.first(where: { nativeAlertIsSounding($0) || $0.status == .needsChallenge }) {
             begin(nextAlarm)
         }
     }
     func begin(_ alarm: AlarmRecord) {
+        guard !finishing else { return }
         sound.stop()
         ringing = alarm
-        challenge = WakeChallenge(typing: alarm.typing, mathCount: alarm.mathCount)
-        if !alertingIDs.contains(alarm.id) { playChallengeSound(alarm) }
+        challenge = TimedWakeChallenge(typing: alarm.typing, mathCount: alarm.mathCount)
+        challengeSoundEnabled = !alarm.hasTests
+        if alarm.hasTests {
+            var next = state
+            if let index = next.alarms.firstIndex(where: { $0.id == alarm.id }) { next.alarms[index].status = .needsChallenge }
+            guard commit(next) else { challengeSoundEnabled = true; return }
+            do { try stopNativeAlarms(alarm, onlyAlerting: false) }
+            catch { errorMessage = "Could not pause the system sound: \(error.localizedDescription)" }
+            startChallengeTimer()
+            armChallengeDeadline()
+        } else if !nativeAlertIsSounding(alarm) { playChallengeSound(alarm) }
     }
     private func playChallengeSound(_ alarm: AlarmRecord) {
-        do { try sound.play(filename: alarm.soundFilename, preview: false) }
+        guard !sound.isPlaying || sound.previewing else { return }
+        do { try sound.play(filename: alarm.playbackSoundFilename ?? alarm.soundFilename, preview: false,
+                            volume: Float(alarm.soundLevel ?? 1), gradual: alarm.gradualVolume == true) }
         catch { errorMessage = "Alarm audio could not play: \(error.localizedDescription)" }
     }
     func submitCode(_ value: String) -> Bool {
-        guard challenge?.submit(code: value) == true else { return false }
-        if challenge?.complete == true { finishCurrent() }
-        return true
+        let resetCount = challenge?.resetCount
+        let correct = challenge?.submit(code: value) == true
+        if resetCount != challenge?.resetCount { handleChallengeTimeout() }
+        else if challenge?.complete == true { finishCurrent() }
+        else if correct { armChallengeDeadline() }
+        return correct
     }
     func submitMathDigits(_ value: String) -> WakeChallenge.DigitResult {
         let result = challenge?.submit(digits: value) ?? .incomplete
-        if challenge?.complete == true { finishCurrent() }
+        if result == .timedOut { handleChallengeTimeout() }
+        else if challenge?.complete == true { finishCurrent() }
+        else if result == .correct { armChallengeDeadline() }
         return result
     }
     func finishCurrent() {
-        guard let alarm = ringing, challenge?.complete == true else { return }
-        do {
-            if systemIDs.contains(alarm.id) { try service.stop(id: alarm.id) }
-            systemIDs.remove(alarm.id); alertingIDs.remove(alarm.id)
-            var next = state; next.alarms.removeAll { $0.id == alarm.id }
-            guard commit(next) else { return }
-            sound.stop(); ringing = nil; challenge = nil
-            message = nil
-            refresh()
-        } catch { errorMessage = "Could not stop the iOS alarm: \(error.localizedDescription)" }
+        guard let alarm = currentRecord, challenge?.complete == true, !finishing else { return }
+        finishing = true
+        challengeTimer?.cancel()
+        watchdogRevision += 1
+        let pending = watchdogTasks
+        pending.forEach { $0.cancel() }
+        Task {
+            defer { finishing = false }
+            // Let an in-flight system schedule finish/cancel before deleting its owner.
+            for task in pending { await task.value }
+            do {
+                try stopNativeAlarms(currentRecord ?? alarm, onlyAlerting: false)
+                var next = state; next.alarms.removeAll { $0.id == alarm.id }
+                guard commit(next) else { return }
+                endChallengeSession(); message = nil; refresh()
+            } catch { errorMessage = "Could not stop the iOS alarm: \(error.localizedDescription)" }
+        }
+    }
+
+    private var currentRecord: AlarmRecord? { state.alarms.first { $0.id == ringing?.id } }
+    private func nativeAlertIsSounding(_ alarm: AlarmRecord) -> Bool { alarm.nativeAlarmIDs.contains { alertingIDs.contains($0) } }
+    private func stopNativeAlarms(_ alarm: AlarmRecord, onlyAlerting: Bool) throws {
+        guard !isUITesting else { return }
+        let ids = Set(alarm.nativeAlarmIDs)
+        for native in try service.manager.alarms where ids.contains(native.id) {
+            if onlyAlerting && native.state != .alerting { continue }
+            if native.state == .alerting { try service.stop(id: native.id) }
+            else { try service.cancel(id: native.id) }
+            systemIDs.remove(native.id); alertingIDs.remove(native.id)
+        }
+    }
+    func setChallengeSound(_ enabled: Bool) {
+        guard let alarm = currentRecord else { return }
+        challengeSoundEnabled = enabled
+        if enabled {
+            if !nativeAlertIsSounding(alarm) { playChallengeSound(alarm) }
+        } else {
+            sound.stop()
+            do { try stopNativeAlarms(alarm, onlyAlerting: true) }
+            catch { errorMessage = "Could not pause alarm sound: \(error.localizedDescription)" }
+        }
+    }
+    private func startChallengeTimer() {
+        challengeTimer?.cancel()
+        challengeTimer = Task { [weak self] in
+            while !Task.isCancelled {
+                do { try await Task.sleep(for: .milliseconds(250)) } catch { return }
+                self?.checkChallengeDeadline()
+            }
+        }
+    }
+    private func checkChallengeDeadline() {
+        guard isActive, !finishing, challenge?.expireIfNeeded() == true else { return }
+        handleChallengeTimeout()
+    }
+    private func handleChallengeTimeout() {
+        guard let alarm = currentRecord else { return }
+        do { try stopNativeAlarms(alarm, onlyAlerting: true) }
+        catch { errorMessage = error.localizedDescription }
+        challengeSoundEnabled = true
+        playChallengeSound(alarm)
+        armChallengeDeadline()
+    }
+    private func armChallengeDeadline() {
+        watchdogRevision += 1
+        let revision = watchdogRevision
+        watchdogTask?.cancel()
+        guard !isUITesting, let deadline = challenge?.deadline, let alarm = currentRecord else { return }
+        watchdogTask = Task {
+            do {
+                // Retain every in-flight ID in its owner's record until the session
+                // ends, so a crash cannot leave an untracked system timeout alarm.
+                let nativeID = UUID()
+                var next = state
+                guard let index = next.alarms.firstIndex(where: { $0.id == alarm.id }) else { return }
+                let previousIDs = next.alarms[index].challengeAlarmIDs ?? []
+                next.alarms[index].challengeAlarmIDs = previousIDs + [nativeID]
+                guard commit(next) else { return }
+                let previous = Set(previousIDs)
+                for native in try service.manager.alarms where previous.contains(native.id) {
+                    try service.cancel(id: native.id)
+                    systemIDs.remove(native.id); alertingIDs.remove(native.id)
+                }
+                guard !Task.isCancelled, watchdogRevision == revision else { return }
+                var timeoutAlarm = alarm
+                timeoutAlarm.id = nativeID; timeoutAlarm.target = deadline
+                timeoutAlarm.challengeAlarmIDs = nil
+                try await service.schedule(timeoutAlarm, tint: theme.accent)
+                if Task.isCancelled || watchdogRevision != revision || ringing?.id != alarm.id {
+                    try? service.cancel(id: nativeID)
+                } else { systemIDs.insert(nativeID) }
+            } catch {
+                if !Task.isCancelled && watchdogRevision == revision {
+                    errorMessage = "Could not schedule the test timeout with iOS: \(error.localizedDescription)"
+                }
+            }
+        }
+        if let watchdogTask { watchdogTasks.append(watchdogTask) }
+    }
+    private func endChallengeSession() {
+        challengeTimer?.cancel(); challengeTimer = nil
+        watchdogRevision += 1; watchdogTask?.cancel(); watchdogTask = nil
+        watchdogTasks.forEach { $0.cancel() }; watchdogTasks.removeAll()
+        sound.stop(); ringing = nil; challenge = nil; challengeSoundEnabled = false
     }
 }

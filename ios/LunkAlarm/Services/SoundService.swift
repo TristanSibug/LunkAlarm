@@ -7,6 +7,7 @@ final class SoundService {
     private var player: AVAudioPlayer?
     private var previewTask: Task<Void, Never>?
     private(set) var previewing = false
+    var isPlaying: Bool { player?.isPlaying == true }
     static var soundsDirectory: URL {
         FileManager.default.urls(for: .libraryDirectory, in: .userDomainMask)[0].appendingPathComponent("Sounds")
     }
@@ -15,7 +16,7 @@ final class SoundService {
         if FileManager.default.fileExists(atPath: imported.path) { return imported }
         return Bundle.main.url(forResource: filename, withExtension: nil)
     }
-    func play(filename: String, preview: Bool, volume: Float = 1) throws {
+    func play(filename: String, preview: Bool, volume: Float = 1, gradual: Bool = false) throws {
         stop()
         guard let url = Self.url(filename: filename) else { throw NativeAlarmError.soundUnavailable }
         let session = AVAudioSession.sharedInstance()
@@ -23,14 +24,15 @@ final class SoundService {
         try session.setActive(true)
         do {
             let audio = try AVAudioPlayer(contentsOf: url)
-            audio.volume = volume
+            audio.volume = gradual ? 0 : volume
             audio.numberOfLoops = -1
             guard audio.prepareToPlay(), audio.play() else { throw NativeAlarmError.soundUnavailable }
             player = audio
+            if gradual { audio.setVolume(volume, fadeDuration: AlarmSoundLevel.fadeDuration) }
             previewing = preview
             if preview {
                 previewTask = Task { [weak self] in
-                    try? await Task.sleep(for: .seconds(6))
+                    try? await Task.sleep(for: .seconds(gradual ? 12 : 6))
                     guard !Task.isCancelled else { return }
                     self?.stop()
                 }
@@ -58,10 +60,10 @@ final class SoundService {
     // AlarmKit has no per-alarm volume property. Snapshot the requested relative
     // sound level into the PCM file so system alerts and in-app playback agree.
     // The device's own output/alert volume still controls overall loudness.
-    static func alarmFilename(original: String, level: Double) throws -> String {
+    static func alarmFilename(original: String, level: Double, gradual: Bool = false) throws -> String {
         let percent = min(100, max(10, Int((level * 100).rounded())))
-        if percent == 100 { return original }
-        let filename = "level-\(percent)-" + original
+        if percent == 100 && !gradual { return original }
+        let filename = (gradual ? "fade10-" : "level-") + "\(percent)-" + original
         let destination = soundsDirectory.appendingPathComponent(filename)
         if FileManager.default.fileExists(atPath: destination.path) { return filename }
         guard let source = url(filename: original) else { throw NativeAlarmError.soundUnavailable }
@@ -69,8 +71,16 @@ final class SoundService {
         guard let buffer = AVAudioPCMBuffer(pcmFormat: input.processingFormat, frameCapacity: AVAudioFrameCount(input.length)) else { throw SoundImportError.unsupported }
         try input.read(into: buffer)
         guard let channels = buffer.floatChannelData else { throw SoundImportError.unsupported }
+        let frameCount = gradual ? AVAudioFrameCount(input.processingFormat.sampleRate * 29) : buffer.frameLength
+        guard buffer.frameLength > 0,
+              let rendered = AVAudioPCMBuffer(pcmFormat: input.processingFormat, frameCapacity: frameCount),
+              let outputChannels = rendered.floatChannelData else { throw SoundImportError.unsupported }
+        rendered.frameLength = frameCount
         for channel in 0..<Int(buffer.format.channelCount) {
-            for frame in 0..<Int(buffer.frameLength) { channels[channel][frame] *= Float(percent) / 100 }
+            for frame in 0..<Int(frameCount) {
+                let gain = AlarmSoundLevel.gain(level: Double(percent) / 100, elapsed: Double(frame) / buffer.format.sampleRate, gradual: gradual)
+                outputChannels[channel][frame] = channels[channel][frame % Int(buffer.frameLength)] * Float(gain)
+            }
         }
         try FileManager.default.createDirectory(at: soundsDirectory, withIntermediateDirectories: true)
         let temporary = soundsDirectory.appendingPathComponent(UUID().uuidString + ".wav")
@@ -78,7 +88,7 @@ final class SoundService {
             do {
                 let output = try AVAudioFile(forWriting: temporary, settings: input.fileFormat.settings,
                                              commonFormat: input.processingFormat.commonFormat, interleaved: input.processingFormat.isInterleaved)
-                try output.write(from: buffer)
+                try output.write(from: rendered)
             }
             try FileManager.default.setAttributes([.protectionKey: FileProtectionType.completeUntilFirstUserAuthentication], ofItemAtPath: temporary.path)
             try FileManager.default.moveItem(at: temporary, to: destination)

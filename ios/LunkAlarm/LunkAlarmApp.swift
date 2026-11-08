@@ -12,7 +12,7 @@ struct LunkAlarmApp: App {
                 .tint(store.theme.accent)
                 .task { await store.observeAlarms() }
                 .task { await store.observeAuthorization() }
-                .onChange(of: scenePhase) { _, phase in store.setActive(phase == .active) }
+                .onChange(of: scenePhase) { _, phase in store.setActive(phase == .active, backgrounded: phase == .background) }
                 .onChange(of: store.state.settings) { _, _ in store.saveSettings() }
                 .onReceive(NotificationCenter.default.publisher(for: .lunkAlarmIntent)) { _ in store.refresh() }
                 .onReceive(NotificationCenter.default.publisher(for: AVAudioSession.interruptionNotification)) { note in
@@ -20,7 +20,7 @@ struct LunkAlarmApp: App {
                           type == AVAudioSession.InterruptionType.ended.rawValue,
                           let options = note.userInfo?[AVAudioSessionInterruptionOptionKey] as? UInt,
                           AVAudioSession.InterruptionOptions(rawValue: options).contains(.shouldResume),
-                          store.ringing != nil else { return }
+                          store.ringing != nil, store.challengeSoundEnabled else { return }
                     store.sound.resumeAfterInterruption()
                 }
         }

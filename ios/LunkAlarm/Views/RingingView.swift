@@ -9,6 +9,8 @@ struct RingingView: View {
     var body: some View {
         ZStack {
             AlarmBackground(theme: store.theme)
+            VStack(spacing: 0) {
+            if store.ringing?.hasTests == true { challengeControls }
             ScrollView {
                 VStack(spacing: 24) {
                     Image(systemName: "alarm.waves.left.and.right.fill").font(.system(size: 36)).foregroundStyle(store.theme.gradient)
@@ -16,7 +18,7 @@ struct RingingView: View {
                     Text(store.ringing?.soundName ?? "LunkAlarm").font(.caption).foregroundStyle(store.theme.muted)
                     if let challenge = store.challenge {
                         if challenge.typingPending {
-                            Text("Type this code to wake up").font(.headline)
+                            Text("Type this code in 30 seconds").font(.headline)
                             Text(challenge.code).font(.system(size: 32, weight: .medium, design: .monospaced)).textSelection(.disabled)
                                 .minimumScaleFactor(0.6).lineLimit(1)
                             NativeCodeField(text: $code, color: UIColor(store.theme.text))
@@ -28,7 +30,7 @@ struct RingingView: View {
                                 else { hint = "Match the code exactly, including capital letters." }
                             }.buttonStyle(AccentButtonStyle(theme: store.theme))
                         } else if challenge.remaining > 0 {
-                            Text("\(challenge.remaining) \(challenge.remaining == 1 ? "problem" : "problems") to go").font(.headline).accessibilityIdentifier("mathProgress")
+                            Text("\(challenge.answered) / \(challenge.answered + challenge.remaining) answered").font(.headline).accessibilityIdentifier("mathProgress")
                             Text("\(challenge.left) + \(challenge.right)").font(.system(size: 48, weight: .light)).monospacedDigit().accessibilityIdentifier("mathProblem")
                             Text(answer.isEmpty ? "Your answer" : answer).font(.system(size: 28, weight: .light)).monospacedDigit()
                                 .foregroundStyle(answer.isEmpty ? store.theme.muted : store.theme.text)
@@ -45,7 +47,7 @@ struct RingingView: View {
                                 }
                             }
                         } else {
-                            Button("Stop alarm") { store.finishCurrent() }.buttonStyle(AccentButtonStyle(theme: store.theme))
+                            Button(store.finishing ? "Stopping…" : "Stop alarm") { store.finishCurrent() }.buttonStyle(AccentButtonStyle(theme: store.theme)).disabled(store.finishing)
                         }
                     }
                     if !hint.isEmpty { Text(hint).font(.caption).foregroundStyle(store.theme.accent) }
@@ -53,11 +55,35 @@ struct RingingView: View {
                         .font(.caption2).multilineTextAlignment(.center).foregroundStyle(store.theme.muted)
                 }.padding(28).padding(.top, 30).frame(maxWidth: 480).frame(maxWidth: .infinity)
             }
+            }
         }.foregroundStyle(store.theme.text)
             .onChange(of: store.ringing?.id) { _, _ in code = ""; answer = ""; hint = "" }
+            .onChange(of: store.challenge?.resetCount) { _, count in
+                guard let count, count > 0 else { return }
+                code = ""; answer = ""; hint = "Time’s up. Tests restarted and sound is back on."
+                UINotificationFeedbackGenerator().notificationOccurred(.warning)
+            }
             .alert("LunkAlarm", isPresented: Binding(get: { store.errorMessage != nil }, set: { if !$0 { store.errorMessage = nil } })) {
                 Button("OK", role: .cancel) { store.errorMessage = nil }
             } message: { Text(store.errorMessage ?? "") }
+    }
+    private var challengeControls: some View {
+        HStack(spacing: 12) {
+            TimelineView(.periodic(from: .now, by: 1)) { context in
+                if let challenge = store.challenge, !challenge.complete {
+                    let seconds = challenge.secondsRemaining(now: context.date)
+                    Label("\(seconds)s", systemImage: "timer")
+                        .font(.system(size: 16, weight: .semibold)).monospacedDigit()
+                        .foregroundStyle(seconds <= 3 ? store.theme.accent2 : store.theme.muted)
+                        .accessibilityIdentifier("challengeTimeRemaining")
+                }
+            }
+            Spacer()
+            Toggle("Sound", isOn: Binding(get: { store.challengeSoundEnabled }, set: { store.setChallengeSound($0) }))
+                .font(.system(size: 13, weight: .medium)).fixedSize().tint(store.theme.accent2)
+                .accessibilityLabel("Alarm sound while answering").accessibilityIdentifier("challengeSoundToggle")
+                .disabled(store.finishing)
+        }.padding(.horizontal, 24).padding(.vertical, 12)
     }
     private func press(_ key: String) {
         switch key {
@@ -70,6 +96,8 @@ struct RingingView: View {
             case .incorrect:
                 answer = ""; hint = "Try that one again."
                 UINotificationFeedbackGenerator().notificationOccurred(.error)
+            case .timedOut:
+                answer = ""; hint = "Time’s up. Tests restarted and sound is back on."
             }
         }
     }
