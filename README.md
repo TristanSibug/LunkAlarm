@@ -1,8 +1,8 @@
 # LunkAlarm native iOS build
 
-Commit: `a6b4768ae13cd73808754316def56d85f298c3b5`  
-Status: **success**  
-[Build and downloads](https://github.com/TristanSibug/LunkAlarm/actions/runs/42488869769)
+Commit: `6228454ceb030290f8af61cc866d712aa7e305fd`  
+Status: **failure**  
+[Build and downloads](https://github.com/TristanSibug/LunkAlarm/actions/runs/42494018999)
 
 ![Native simulator launch](ios-clock.png)
 
