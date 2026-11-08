@@ -100,16 +100,42 @@
             <button id="timePM" class="period-button" type="button" aria-pressed="false">PM</button>
           </div>
         </div>
+        <p class="picker-wheel-hint">Scroll over a number to adjust it</p>
       </div>
 
       <!-- Way 2: countdown from now -->
       <div id="panelTimer" class="panel hidden">
         <span class="field-label">Ring in</span>
-        <div class="timer-row">
-          <label class="timer-box"><input id="hoursInput" type="number" min="0" max="99" value="0" inputmode="numeric" /><span>hours</span></label>
-          <label class="timer-box"><input id="minutesInput" type="number" min="0" max="59" value="30" inputmode="numeric" /><span>min</span></label>
-          <label class="timer-box"><input id="secondsInput" type="number" min="0" max="59" value="0" inputmode="numeric" /><span>sec</span></label>
+        <div class="timer-row" role="group" aria-label="Countdown duration">
+          <div class="timer-box">
+            <label class="duration-label time-part-label" for="hoursInput">Hours</label>
+            <div class="time-stepper duration-stepper">
+              <button class="time-step duration-step" type="button" data-unit="hours" data-step="1" aria-label="Increase countdown hours"><svg viewBox="0 0 16 16" width="16" height="16" fill="none" aria-hidden="true"><path d="m4 10 4-4 4 4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+              <input id="hoursInput" class="time-number" type="number" min="0" max="99" value="0" inputmode="numeric" aria-label="Countdown hours" />
+              <button class="time-step duration-step" type="button" data-unit="hours" data-step="-1" aria-label="Decrease countdown hours"><svg viewBox="0 0 16 16" width="16" height="16" fill="none" aria-hidden="true"><path d="m4 6 4 4 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+            </div>
+            <span class="duration-mobile-unit" aria-hidden="true">hours</span>
+          </div>
+          <div class="timer-box">
+            <label class="duration-label time-part-label" for="minutesInput">Minutes</label>
+            <div class="time-stepper duration-stepper">
+              <button class="time-step duration-step" type="button" data-unit="minutes" data-step="1" aria-label="Increase countdown minutes"><svg viewBox="0 0 16 16" width="16" height="16" fill="none" aria-hidden="true"><path d="m4 10 4-4 4 4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+              <input id="minutesInput" class="time-number" type="number" min="0" max="59" value="30" inputmode="numeric" aria-label="Countdown minutes" />
+              <button class="time-step duration-step" type="button" data-unit="minutes" data-step="-1" aria-label="Decrease countdown minutes"><svg viewBox="0 0 16 16" width="16" height="16" fill="none" aria-hidden="true"><path d="m4 6 4 4 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+            </div>
+            <span class="duration-mobile-unit" aria-hidden="true">min</span>
+          </div>
+          <div class="timer-box">
+            <label class="duration-label time-part-label" for="secondsInput">Seconds</label>
+            <div class="time-stepper duration-stepper">
+              <button class="time-step duration-step" type="button" data-unit="seconds" data-step="1" aria-label="Increase countdown seconds"><svg viewBox="0 0 16 16" width="16" height="16" fill="none" aria-hidden="true"><path d="m4 10 4-4 4 4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+              <input id="secondsInput" class="time-number" type="number" min="0" max="59" value="0" inputmode="numeric" aria-label="Countdown seconds" />
+              <button class="time-step duration-step" type="button" data-unit="seconds" data-step="-1" aria-label="Decrease countdown seconds"><svg viewBox="0 0 16 16" width="16" height="16" fill="none" aria-hidden="true"><path d="m4 6 4 4 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+            </div>
+            <span class="duration-mobile-unit" aria-hidden="true">sec</span>
+          </div>
         </div>
+        <p class="picker-wheel-hint">Scroll over a number to adjust it</p>
         <!-- Quick buttons. Each one fills the boxes above (see app.js) -->
         <div class="presets">
           <button class="chip" type="button" data-minutes="5">5 min</button>

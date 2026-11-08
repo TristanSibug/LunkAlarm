@@ -695,11 +695,12 @@ function setupTimePicker() {
   desktopWorkspace.addEventListener('change', updateTimePickerLayout);
   $('timeInput').addEventListener('input', renderTimePicker);
   $('timeInput').addEventListener('change', renderTimePicker);
-  document.querySelectorAll('.time-step').forEach(button => button.addEventListener('click', () => {
+  document.querySelectorAll('#customTimePicker .time-step').forEach(button => button.addEventListener('click', () => {
     stepAlarmTime(button.dataset.part, Number(button.dataset.step));
   }));
   for (const part of ['Hour', 'Minute']) {
     const input = $('alarm' + part);
+    bindPickerWheel(input.closest('.time-part'), input, direction => stepAlarmTime(part.toLowerCase(), direction));
     input.addEventListener('input', () => commitTimePicker());
     input.addEventListener('blur', () => commitTimePicker(true));
     input.addEventListener('keydown', event => {
@@ -715,6 +716,60 @@ function setupTimePicker() {
     for (const item of ['AM', 'PM']) $('time' + item).setAttribute('aria-pressed', String(item === period));
     commitTimePicker(true);
   });
+}
+
+// Wheel capture is limited to the hovered number. Ctrl-wheel still zooms, and
+// wheel movement elsewhere continues to scroll the settings panel normally.
+function bindPickerWheel(element, input, step) {
+  let accumulated = 0, lastWheel = 0;
+  element.title = 'Scroll up to increase; scroll down to decrease';
+  element.addEventListener('wheel', event => {
+    if (!desktopWorkspace.matches || event.ctrlKey || event.metaKey || !event.deltaY || Math.abs(event.deltaX) >= Math.abs(event.deltaY)) return;
+    event.preventDefault();
+    event.stopPropagation();
+    const delta = event.deltaY * (event.deltaMode === 1 ? 16 : event.deltaMode === 2 ? 100 : 1);
+    const now = performance.now();
+    if (now - lastWheel > 180 || (accumulated && Math.sign(accumulated) !== Math.sign(delta))) accumulated = 0;
+    lastWheel = now;
+    accumulated += delta;
+    if (Math.abs(accumulated) < 40) return;
+    accumulated = 0; // At most one step per mouse notch; tiny trackpad events accumulate.
+    input.focus({ preventScroll: true });
+    step(delta < 0 ? 1 : -1);
+  }, { passive: false });
+}
+function renderCountdownFields() {
+  for (const [unit, max] of [['hours', 99], ['minutes', 59], ['seconds', 59]]) {
+    const input = $(unit + 'Input');
+    const value = readNumber(input.id, max);
+    input.value = desktopWorkspace.matches ? pad(value) : String(value);
+  }
+}
+function stepCountdown(unit, direction) {
+  const total = readNumber('hoursInput', 99) * 3600 + readNumber('minutesInput', 59) * 60 + readNumber('secondsInput', 59);
+  const next = Math.min(99 * 3600 + 59 * 60 + 59, Math.max(0, total + { hours: 3600, minutes: 60, seconds: 1 }[unit] * direction));
+  $('hoursInput').value = Math.floor(next / 3600);
+  $('minutesInput').value = Math.floor(next % 3600 / 60);
+  $('secondsInput').value = next % 60;
+  renderCountdownFields();
+}
+function setupCountdownPicker() {
+  renderCountdownFields();
+  desktopWorkspace.addEventListener('change', renderCountdownFields);
+  for (const unit of ['hours', 'minutes', 'seconds']) {
+    const input = $(unit + 'Input');
+    bindPickerWheel(input.closest('.timer-box'), input, direction => stepCountdown(unit, direction));
+    input.addEventListener('blur', () => { if (desktopWorkspace.matches) renderCountdownFields(); });
+    input.addEventListener('keydown', event => {
+      if (!desktopWorkspace.matches) return;
+      if (event.key === 'ArrowUp' || event.key === 'ArrowDown') {
+        event.preventDefault(); stepCountdown(unit, event.key === 'ArrowUp' ? 1 : -1);
+      }
+    });
+  }
+  document.querySelectorAll('.duration-step').forEach(button => button.addEventListener('click', () => {
+    stepCountdown(button.dataset.unit, Number(button.dataset.step));
+  }));
 }
 
 // For "At a time": finds the next moment the clock shows that time.
@@ -1139,6 +1194,7 @@ document.querySelectorAll('.presets .chip').forEach((button) => {
     $('hoursInput').value = Math.floor(totalMinutes / 60);
     $('minutesInput').value = totalMinutes % 60;
     $('secondsInput').value = 0;
+    renderCountdownFields();
   });
 });
 
@@ -1418,6 +1474,7 @@ function init() {
   fillRingtoneSelect();
   setupRingtonePicker();
   setupTimePicker();
+  setupCountdownPicker();
   applyMode(state.mode);
   applyFormatButton();
   applyTestSettings();

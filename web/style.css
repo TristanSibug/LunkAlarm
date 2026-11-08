@@ -1002,3 +1002,36 @@ button:focus-visible, input:focus-visible { outline: 2px solid var(--accent); ou
     .app #setupCard .wake-settings .count-btn { border-radius: 10px; font-size: 14px; padding-block: 11px; }
   }
 }
+
+/* Countdown fields share the time picker on desktop, retaining native phone inputs. */
+.duration-stepper { display: contents; }
+.duration-label, .duration-step, .picker-wheel-hint { display: none; }
+@media (min-width: 1000px) and (hover: hover) and (pointer: fine) {
+  #panelTimer .timer-row {
+    display: flex; align-items: center; justify-content: center; gap: 20px;
+    min-height: 124px; padding: 10px 18px; background: var(--field);
+    border: 1px solid var(--card-border); border-radius: 16px;
+  }
+  #panelTimer .timer-box { flex: none; gap: 6px; }
+  .duration-label { display: block; }
+  .duration-mobile-unit { display: none; }
+  .duration-stepper { display: grid; }
+  .duration-step { display: grid; }
+  .app #setupCard .timer-box .time-number {
+    padding: 0; border: 0; border-radius: 0; background: transparent; color: var(--text);
+    font-family: "Wake Clock", var(--font); font-size: 38px; font-weight: 300; line-height: 1;
+    appearance: textfield; -moz-appearance: textfield;
+  }
+  .duration-stepper .time-number::-webkit-inner-spin-button,
+  .duration-stepper .time-number::-webkit-outer-spin-button { appearance: none; margin: 0; }
+  .time-part:hover .time-stepper, .timer-box:hover .time-stepper { border-color: var(--accent); }
+  .picker-wheel-hint { display: block; margin: 8px 0 0; color: var(--muted); font-size: 11px; text-align: center; }
+  @container alarm-setup (min-width: 560px) {
+    #panelTimer .timer-row { min-height: 136px; }
+  }
+  @container alarm-setup (max-width: 350px) {
+    #panelTimer .timer-row { gap: 12px; padding-inline: 10px; }
+    .time-stepper { width: 76px; }
+    .custom-time-picker:not([hidden]) { gap: 12px; padding-inline: 10px; }
+  }
+}

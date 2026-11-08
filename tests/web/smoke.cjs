@@ -121,8 +121,72 @@ let browser;
   await page.locator('#formatBtn').click();
   assert.equal(await hourField.inputValue(), '12');
   assert.equal(await page.locator('#timeAM').getAttribute('aria-pressed'), 'true');
+  // Actual mouse-wheel events adjust only the hovered field, one step per notch.
+  async function wheelTo(id, delta, expected) {
+    await page.locator('#' + id).hover(); await page.mouse.wheel(0, delta);
+    await page.waitForFunction(({ id, expected }) => document.getElementById(id).value === expected, { id, expected });
+  }
+  await hourField.fill('07'); await minuteField.fill('00'); await page.locator('#timeAM').click();
+  const scrollBefore = await page.locator('.setup-fields').evaluate(el => el.scrollTop);
+  await wheelTo('alarmHour', -100, '08'); await wheelTo('alarmHour', 100, '07');
+  assert.equal(await page.locator('.setup-fields').evaluate(el => el.scrollTop), scrollBefore);
+  await minuteField.fill('59'); await wheelTo('alarmMinute', -100, '00');
+  assert.equal(await page.locator('#timeInput').inputValue(), '08:00');
+  await hourField.fill('11'); await minuteField.fill('59'); await page.locator('#timePM').click();
+  await wheelTo('alarmMinute', -100, '00');
+  assert.equal(await page.locator('#timeInput').inputValue(), '00:00');
+  assert.equal(await page.locator('#timeAM').getAttribute('aria-pressed'), 'true');
+  const ignoredWheel = await hourField.evaluate(el => {
+    const zoom = new WheelEvent('wheel', { deltaY: -100, ctrlKey: true, bubbles: true, cancelable: true });
+    const sideways = new WheelEvent('wheel', { deltaX: 100, deltaY: 1, bubbles: true, cancelable: true });
+    el.dispatchEvent(zoom); el.dispatchEvent(sideways);
+    return !zoom.defaultPrevented && !sideways.defaultPrevented;
+  });
+  assert(ignoredWheel); assert.equal(await page.locator('#timeInput').inputValue(), '00:00');
+  await hourField.fill('07');
+  await hourField.evaluate(el => {
+    for (let i = 0; i < 3; i++) el.dispatchEvent(new WheelEvent('wheel', { deltaY: -15, bubbles: true, cancelable: true }));
+  });
+  assert.equal(await hourField.inputValue(), '08');
+  await page.locator('#tabTimer').click();
+  await page.locator('.presets [data-minutes="5"]').click();
+  assert.equal(await page.locator('#minutesInput').inputValue(), '05');
+  await page.locator('#minutesInput').fill('00'); await page.locator('#secondsInput').fill('59');
+  await wheelTo('secondsInput', -100, '00');
+  assert.equal(await page.locator('#minutesInput').inputValue(), '01');
+  await wheelTo('minutesInput', -100, '02'); await wheelTo('hoursInput', -100, '01');
+  for (const id of ['hoursInput', 'minutesInput', 'secondsInput']) await page.locator('#' + id).fill('0');
+  await page.locator('#secondsInput').hover(); await page.mouse.wheel(0, 100);
+  assert.equal(await page.locator('#secondsInput').inputValue(), '00');
+  await page.locator('#hoursInput').fill('99'); await page.locator('#minutesInput').fill('59'); await page.locator('#secondsInput').fill('59');
+  await page.locator('#secondsInput').hover(); await page.mouse.wheel(0, -100);
+  assert.equal(await page.locator('#hoursInput').inputValue(), '99');
+  assert.equal(await page.locator('#secondsInput').inputValue(), '59');
+  await wheelTo('hoursInput', 100, '98');
+  await page.locator('#minutesInput').focus(); await page.keyboard.press('ArrowUp');
+  assert.equal(await page.locator('#hoursInput').inputValue(), '99');
+  assert.equal(await page.locator('#minutesInput').inputValue(), '00');
+  await page.getByRole('button', { name: 'Decrease countdown seconds', exact: true }).click();
+  assert.equal(await page.locator('#secondsInput').inputValue(), '58');
+  await page.locator('#hoursInput').fill('0'); await page.locator('#minutesInput').fill('0'); await page.locator('#secondsInput').fill('5');
+  await wheelTo('secondsInput', -100, '06'); await wheelTo('secondsInput', -100, '07');
+  await page.locator('#setBtn').click();
+  const durationLeft = await page.evaluate(() => JSON.parse(localStorage.getItem('wake.alarms'))[0].targetMs - Date.now());
+  assert(durationLeft > 5000 && durationLeft <= 7100);
+  await sidebarToggle.click(); await page.locator('.delete-btn').first().click(); await sidebarToggle.click();
+  await page.locator('#tabTime').click();
+  console.log('PASS real wheel input, fine trackpad deltas, zoom/horizontal pass-through, countdown carry/limits, and scheduled wheel-selected duration');
   await page.setViewportSize({ width: 375, height: 812 });
-  assert(await page.locator('#timeInput').isVisible()); assert(await page.locator('#customTimePicker').isHidden());
+  await page.locator('#timeInput').waitFor({ state: 'visible' });
+  assert(await page.locator('#customTimePicker').isHidden());
+  await page.locator('#tabTimer').click();
+  assert(await page.locator('.duration-step').first().isHidden());
+  assert.equal(await page.locator('.timer-row').evaluate(el => getComputedStyle(el).display), 'grid');
+  assert(await page.locator('#secondsInput').evaluate(el => {
+    const event = new WheelEvent('wheel', { deltaY: -100, bubbles: true, cancelable: true });
+    el.dispatchEvent(event); return !event.defaultPrevented;
+  }));
+  await page.locator('#tabTime').click();
   await page.locator('#timeInput').fill('21:45');
   await page.setViewportSize({ width: 1440, height: 900 });
   assert.equal(await hourField.inputValue(), '09'); assert.equal(await minuteField.inputValue(), '45');
@@ -172,6 +236,13 @@ let browser;
     const popup = await menu.boundingBox();
     assert(popup.y >= 0 && popup.y + popup.height <= viewport.height + 1);
     await page.keyboard.press('Escape');
+    if (viewport.width === 1024) {
+      const savedHours = await page.locator('#hoursInput').inputValue();
+      await page.locator('.setup-fields').evaluate(el => { el.scrollTop = 0; });
+      await page.locator('.tabs').hover(); await page.mouse.wheel(0, 160);
+      await page.waitForFunction(() => document.querySelector('.setup-fields').scrollTop > 0);
+      assert.equal(await page.locator('#hoursInput').inputValue(), savedHours);
+    }
     if (viewport.width === 1366) await page.screenshot({ path: path.join(output, 'laptop-workspace.png') });
   }
   await page.setViewportSize({ width: 1880, height: 900 });
@@ -186,6 +257,9 @@ let browser;
   assert(linkRows);
   await page.locator('#setupCard').screenshot({ path: path.join(output, 'approved-design-implemented.png') });
   await page.screenshot({ path: path.join(output, 'approved-desktop.png') });
+  await page.locator('#tabTimer').click();
+  await page.locator('#setupCard').screenshot({ path: path.join(output, 'countdown-wheel-picker.png') });
+  await page.locator('#tabTime').click();
   await page.locator('#formatBtn').click(); await sidebarToggle.click();
   await page.locator('#typingToggle').uncheck(); await page.locator('#mathToggle').uncheck();
   await page.locator('#tabTime').click();
