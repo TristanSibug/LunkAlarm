@@ -1,12 +1,15 @@
 {
-  "commit": "d03f61515dfa63ec239cbed4c70ebbf455851066",
-  "run": "https://github.com/TristanSibug/LunkAlarm/actions/runs/42487756386",
-  "status": "cancelled",
-  "simulator": "skipped",
-  "device": "skipped",
-  "launch": "skipped",
+  "commit": "782a8c438b0027560eb356c2d55394b786981931",
+  "run": "https://github.com/TristanSibug/LunkAlarm/actions/runs/42487814460",
+  "status": "failure",
+  "simulator": "success",
+  "device": "success",
+  "launch": "failure",
   "uiTests": "skipped",
   "errors": [],
   "screenshot": null,
+  "ios-launch.log": [
+    "Simulator 25C22EBC-57CC-4272-8C91-050D3D572B32 (Shutdown)"
+  ],
   "uiPreviews": []
 }
