@@ -35,6 +35,10 @@ The simulator app cannot run on an iPhone. The unsigned IPA cannot be installed 
 
 The most convenient route without a newer Mac is an **Apple Developer Program membership + a signed cloud build + TestFlight**. This repository does not include signing certificates, provisioning profiles, App Store Connect credentials, or an automated upload. Those need to be configured for your Apple account separately. Do not put signing keys or account passwords in the app, Git, or chat. The workflow performs unsigned builds only and does not publish to the App Store/TestFlight.
 
+A free personal Apple ID can also sign apps for personal use through compatible Xcode or a third-party sideloading tool. [AltStore's official repository](https://github.com/altstoreio/AltStore) documents personal Apple ID signing through AltServer and a macOS minimum older than Monterey. Check the current AltServer release's requirements and support for your exact iOS version before relying on that route. Free provisioning requires regular renewal; this app has not been verified with AltStore or on a physical iPhone. Enter account details only in the signing tool you choose, never in LunkAlarm or chat.
+
+The workflow also updates an [`ios-build-reports` branch](https://github.com/TristanSibug/LunkAlarm/tree/ios-build-reports) with a small `build.json` and the latest simulator launch screenshot. This makes the build status and preview readable without downloading workflow logs. It contains generated reports only; source remains on `main`.
+
 ## iOS alarm behavior
 
 AlarmKit schedules alerts with iOS; the app does not need to remain on screen for a scheduled alarm. It requests AlarmKit permission rather than ordinary notification permission. Both At a time and In how long resolve to one fixed system deadline, matching the website's one-shot behavior. Duration alarms use fixed schedules rather than a pausable countdown Live Activity, so no widget extension is required.
