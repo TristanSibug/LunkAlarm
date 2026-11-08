@@ -24,6 +24,7 @@
     } catch (err) { /* no saved theme yet: the default look is used */ }
   </script>
 
+  <link rel="preload" href="fonts/inter-latin-wght-normal.woff2" as="font" type="font/woff2" crossorigin />
   <link rel="stylesheet" href="style.css" />
 </head>
 
@@ -39,7 +40,6 @@
           <span class="dot"></span><span id="syncText">Checking time...</span>
         </span>
         <div class="clock-buttons">
-          <button id="enableSoundBtn" class="chip" type="button">Enable sound</button>
           <!-- Opens the theme picker -->
           <button id="themeBtn" class="chip" type="button">Theme</button>
           <!-- Switches between 12-hour and 24-hour display -->
@@ -58,8 +58,6 @@
       <div id="dateText" class="date"></div>
       <div id="zoneText" class="zone"></div>
     </section>
-
-    <p class="browser-notice" role="note">Keep this page open, sound enabled, and your device awake. Background tabs may be delayed; a website cannot wake a sleeping device.</p>
 
     <!-- ============ 2. ADD AN ALARM ============ -->
     <section id="setupCard" class="card">
@@ -156,6 +154,11 @@
       <ul id="alarmList" class="alarm-list"></ul>
       <p id="emptyText" class="empty">No alarms yet. Add one above.</p>
     </section>
+
+    <aside class="browser-tools" aria-label="Browser alarm controls">
+      <button id="enableSoundBtn" class="chip" type="button">Enable sound</button>
+      <p class="browser-notice" role="note">Keep this page open, sound enabled, and your device awake. Background tabs may be delayed; a website cannot wake a sleeping device.</p>
+    </aside>
 
     <p id="footnote" class="footnote">Alarms and themes are saved in this browser on this device.</p>
   </main>
