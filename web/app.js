@@ -963,7 +963,7 @@ function startRinging(alarm) {
   // "inert" switches off the whole page behind the ringing screen, so
   // nobody can Tab over to a Delete button and sneak around the tests.
   $('mainApp').inert = true;
-  document.title = '⏰ Alarm - Wake';
+  document.title = '⏰ LunkAlarm';
 
   startSound(alarm.ringtoneId);
   showStep();
@@ -979,7 +979,7 @@ function dismissAlarm() {
 
   $('ringOverlay').classList.add('hidden');
   $('mainApp').inert = false;
-  document.title = 'Wake - Alarm Clock';
+  document.title = 'LunkAlarm';
   renderAlarmList();
   // If another alarm is already due, tick() will start it a moment later.
 }
