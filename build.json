@@ -1,14 +1,12 @@
 {
-  "commit": "51d9f7a3085d446da6de7545b122932a484417b4",
-  "run": "https://github.com/TristanSibug/LunkAlarm/actions/runs/42483925522",
-  "status": "failure",
-  "simulator": "failure",
-  "device": "skipped",
-  "launch": "skipped",
-  "uiTests": "skipped",
-  "errors": [
-    "/Users/runner/work/LunkAlarm/LunkAlarm/ios/LunkAlarm/LunkAlarmApp.swift:8:26: error: the compiler is unable to type-check this expression in reasonable time; try breaking up the expression into distinct sub-expressions"
-  ],
-  "screenshot": null,
+  "commit": "d6b7685294c2d855325c156c2cef6e5ed84dbbd3",
+  "run": "https://github.com/TristanSibug/LunkAlarm/actions/runs/42484250427",
+  "status": "cancelled",
+  "simulator": "success",
+  "device": "success",
+  "launch": "success",
+  "uiTests": "cancelled",
+  "errors": [],
+  "screenshot": "ios-clock.png",
   "uiPreviews": []
 }
