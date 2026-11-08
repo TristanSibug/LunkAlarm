@@ -34,7 +34,9 @@ let browser;
   assert.equal(await page.locator('#ringtoneSelect option').count(), 10);
   await page.evaluate(() => document.fonts.ready);
   assert(await page.evaluate(() => [...document.fonts].some(font => font.family === 'Wake Clock' && font.status === 'loaded')));
-  console.log('PASS offline startup, self-hosted variable clock font, and ten tones');
+  assert.equal(await page.locator('.clock-buttons #enableSoundBtn').count(), 1);
+  assert(await page.locator('#clockHM').evaluate(el => !getComputedStyle(el).fontFamily.includes('Wake Clock')));
+  console.log('PASS offline startup, original clock font, numeric field font, and top sound button');
   await page.locator('#enableSoundBtn').click();
   await page.waitForFunction(() => document.querySelector('#enableSoundBtn').textContent === 'Sound ready');
   console.log('PASS audio context enabled by user gesture');
@@ -55,27 +57,27 @@ let browser;
     await page.locator('#closeThemeBtn').click();
   }
   console.log('PASS eight themes with both system color schemes');
-  // Keep the reference's single-row header and compact form across desktop/phone widths.
+  // Keep the approved form layout; the restored three-button toolbar can wrap above the clock.
   for (const width of [520, 462, 375, 320]) {
     await page.setViewportSize({ width, height: 900 });
     const layout = await page.evaluate(() => {
       const box = id => document.getElementById(id).getBoundingClientRect();
-      const badge = box('syncBadge'), theme = box('themeBtn');
+      const sound = box('enableSoundBtn'), theme = box('themeBtn');
       return {
         overflow: document.documentElement.scrollWidth > innerWidth,
-        headerOffset: Math.abs(badge.y + badge.height / 2 - theme.y - theme.height / 2),
+        headerOffset: Math.abs(sound.y + sound.height / 2 - theme.y - theme.height / 2),
         formTop: box('setupCard').top + scrollY,
         pickerHeight: box('ringtoneSelect').height,
         timeAlign: getComputedStyle(document.getElementById('timeInput')).textAlign
       };
     });
     assert.equal(layout.overflow, false);
-    assert(layout.headerOffset < 2, `Header wrapped at ${width}px`);
-    assert(layout.formTop < 310, `Form pushed down at ${width}px`);
+    assert(layout.headerOffset < 2, `Toolbar buttons misaligned at ${width}px`);
+    assert(layout.formTop < 355, `Form pushed down at ${width}px`);
     assert.equal(layout.pickerHeight, 36);
     assert.equal(layout.timeAlign, 'left');
   }
-  console.log('PASS reference proportions and single-row header at 320–520px');
+  console.log('PASS approved form proportions and restored toolbar at 320–520px');
   await page.setViewportSize({ width: 520, height: 900 });
   await page.locator('#typingToggle').check(); await page.locator('#mathToggle').check();
   await page.screenshot({ path: path.join(output, 'mac-layout.png'), fullPage: true });

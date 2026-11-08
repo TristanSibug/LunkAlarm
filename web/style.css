@@ -317,11 +317,12 @@ body {
   display: flex;
   justify-content: space-between;
   align-items: center;
+  flex-wrap: wrap;
   gap: 8px;
   margin-bottom: 18px;
   min-width: 0;
 }
-.clock-buttons { display: flex; flex: none; gap: 8px; }
+.clock-buttons { display: flex; flex: none; gap: 8px; margin-left: auto; }
 
 .badge {
   display: inline-flex;
@@ -349,10 +350,9 @@ body {
   line-height: 1;
 }
 .clock-hm {
-  font-family: "Wake Clock", var(--font);
   font-size: clamp(72px, 22vw, 112px);
   font-weight: 200;                    /* thin digits look elegant */
-  letter-spacing: -0.055em;
+  letter-spacing: -0.03em;
   font-variant-numeric: tabular-nums;  /* every digit same width, so nothing jiggles */
   text-shadow: var(--clock-glow);
 }
