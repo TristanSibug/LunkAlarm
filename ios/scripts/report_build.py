@@ -8,7 +8,7 @@ from pathlib import Path
 
 output = Path(sys.argv[1])
 errors = []
-for filename in ("ios-build.log", "ios-device-build.log"):
+for filename in ("ios-build.log", "ios-device-build.log", "ios-ui-test.log"):
     path = Path(filename)
     if path.exists():
         errors.extend(line for line in path.read_text().splitlines() if "error:" in line)
@@ -25,9 +25,16 @@ report = {
     "simulator": os.environ.get("SIMULATOR_STATUS"),
     "device": os.environ.get("DEVICE_STATUS"),
     "launch": os.environ.get("LAUNCH_STATUS"),
+    "uiTests": os.environ.get("UI_TEST_STATUS"),
     "errors": errors[:40],
     "screenshot": "ios-clock.png" if screenshot.exists() else None,
 }
+previews = []
+for index, path in enumerate(sorted(Path("artifacts/ios-ui-previews").glob("*.png"))[:8]):
+    name = f"ios-ui-preview-{index + 1}.png"
+    shutil.copyfile(path, output / name)
+    previews.append(name)
+report["uiPreviews"] = previews
 (output / "build.json").write_text(json.dumps(report, indent=2) + "\n")
 (output / "README.md").write_text(
     "# LunkAlarm native iOS build\n\n"

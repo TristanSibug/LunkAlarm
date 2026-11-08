@@ -21,14 +21,27 @@ final class AlarmStore {
     private var isActive = true
 
     init() {
+        var dataFolder = "LunkAlarm"
+        #if DEBUG
+        let uiTesting = ProcessInfo.processInfo.arguments.contains("--ui-testing")
+        if uiTesting { dataFolder = "LunkAlarm-UI-Tests" }
+        #endif
         let folder = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
-            .appendingPathComponent("LunkAlarm")
+            .appendingPathComponent(dataFolder)
         repository = StateRepository(url: folder.appendingPathComponent("state.json"))
         do { state = try repository.load() }
         catch {
             state = SavedState(); readOnly = true
             errorMessage = "\(error.localizedDescription) Existing iOS alarms are not changed."
         }
+        #if DEBUG
+        if uiTesting { state = SavedState(); readOnly = false; errorMessage = nil }
+        if uiTesting && ProcessInfo.processInfo.arguments.contains("--ui-math-alarm") {
+            state.alarms = [AlarmRecord(target: Date().addingTimeInterval(-1), isTimer: true,
+                ringtoneID: "classic-beep", soundFilename: "classic-beep.wav", soundName: "Classic Beep",
+                typing: false, mathCount: 3, status: .needsChallenge)]
+        }
+        #endif
     }
     var theme: AlarmTheme { AlarmTheme.find(state.settings.themeID) }
     var orderedAlarms: [AlarmRecord] { state.alarms.sorted { $0.target < $1.target } }
@@ -60,7 +73,7 @@ final class AlarmStore {
         do { try repository.save(state) }
         catch { errorMessage = "Could not save preferences: \(error.localizedDescription)" }
     }
-    func addAlarm() async {
+    func addAlarm(soundCheck: Bool = false) async {
         guard !readOnly, !saving else { return }
         saving = true
         defer { saving = false }
@@ -71,12 +84,13 @@ final class AlarmStore {
             try await service.authorize()
             authorization = service.manager.authorizationState
             let settings = state.settings
-            let target = settings.mode == .time
+            let target = soundCheck ? Date().addingTimeInterval(5) : settings.mode == .time
                 ? try AlarmScheduling.nextTime(hour: settings.hour, minute: settings.minute)
                 : try AlarmScheduling.countdown(seconds: settings.durationSeconds)
-            let record = AlarmRecord(target: target, isTimer: settings.mode == .timer,
-                ringtoneID: settings.ringtoneID, soundFilename: selectedSound.filename,
-                soundName: selectedSound.name, typing: settings.typing, mathCount: settings.mathCount)
+            let filename = try SoundService.alarmFilename(original: selectedSound.filename, level: settings.soundLevel ?? 1)
+            let record = AlarmRecord(target: target, isTimer: soundCheck || settings.mode == .timer,
+                ringtoneID: settings.ringtoneID, soundFilename: filename,
+                soundName: selectedSound.name, typing: soundCheck ? false : settings.typing, mathCount: soundCheck ? 0 : settings.mathCount)
             // Persist first, then ask iOS to schedule. A crash between the two leaves a
             // visible 'Not scheduled' record, never an invisible OS alarm.
             var next = state; next.alarms.append(record)
@@ -114,7 +128,7 @@ final class AlarmStore {
         if sound.previewing { sound.stop(); return }
         do {
             guard let selectedSound else { throw NativeAlarmError.soundUnavailable }
-            try sound.play(filename: selectedSound.filename, preview: true)
+            try sound.play(filename: selectedSound.filename, preview: true, volume: Float(state.settings.soundLevel ?? 1))
         } catch { errorMessage = error.localizedDescription }
     }
     func importSound(_ url: URL) {
@@ -144,7 +158,9 @@ final class AlarmStore {
     func setActive(_ active: Bool) {
         isActive = active
         if active { refresh() }
-        else { sound.stop() } // AlarmKit, not a background audio loop, owns background alerts.
+        else if sound.previewing { sound.stop() }
+        // Real, audible wake-up-test playback can continue in the background.
+        // Scheduled alerts remain owned by AlarmKit; there is no idle keepalive.
     }
     func refresh() {
         authorization = service.manager.authorizationState
@@ -196,10 +212,10 @@ final class AlarmStore {
         if challenge?.complete == true { finishCurrent() }
         return true
     }
-    func submitAnswer(_ value: String) -> Bool {
-        guard let answer = Int(value), challenge?.submit(answer: answer) == true else { return false }
+    func submitMathDigits(_ value: String) -> WakeChallenge.DigitResult {
+        let result = challenge?.submit(digits: value) ?? .incomplete
         if challenge?.complete == true { finishCurrent() }
-        return true
+        return result
     }
     func finishCurrent() {
         guard let alarm = ringing, challenge?.complete == true else { return }
@@ -209,7 +225,7 @@ final class AlarmStore {
             var next = state; next.alarms.removeAll { $0.id == alarm.id }
             guard commit(next) else { return }
             sound.stop(); ringing = nil; challenge = nil
-            message = "Alarm dismissed. Have a good day."
+            message = nil
             refresh()
         } catch { errorMessage = "Could not stop the iOS alarm: \(error.localizedDescription)" }
     }

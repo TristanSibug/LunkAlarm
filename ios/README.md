@@ -2,17 +2,18 @@
 
 A native SwiftUI implementation of the website's clock, themes, alarms, countdowns, sound picker, imports, and wake-up tests. It uses Apple's **AlarmKit on iOS 26 or later** to schedule one-shot system alarms. There is no WebView, JavaScript runtime, server, Supabase dependency, or sound-enable button.
 
-The website in `web/` is unchanged. **Find more ringtones online** still opens the same Mixkit, Pixabay, and Zedge pages in the browser; this app does not scrape or embed their catalogues.
+The website in `web/` remains separately deployable. **Find more ringtones online** still opens the same Mixkit, Pixabay, and Zedge pages in the browser; this app does not scrape or embed their catalogues.
 
 ## What is included
 
-- A centered large clock on launch, local date/time zone, 12/24-hour display, and animated Add alarm / Hide alarm picker transitions. Reduced Motion disables the transition.
+- A centered large clock on launch, local date/time zone, and 12/24-hour display. Swipe up to reveal alarm settings; a fast swipe down when the page is at the top returns to the clock. Wheel/control interactions do not dismiss the page. VoiceOver exposes equivalent actions. Reduced Motion disables the transition.
 - Eight app-owned themes that remain independent of the iPhone's light/dark setting.
-- Native wheel pickers for clock time and duration, plus a single row of duration presets that hides trailing choices when space is limited.
+- Apple's native heading-free time wheel with unpadded 12-hour hours and AM/PM rollover, duration wheels, and a centered looping 1–8 math count. The presets are 5 min, 10 min, 30 min, and 1 hour; trailing choices hide when space is limited.
 - Ten offline PCM ringtones rendered from the existing app's synthesizer recipes; six-second previews.
 - Import from Files: browser-downloadable audio smaller than 2 MB and shorter than 30 seconds, converted to mono PCM WAV in `Library/Sounds`. Each alarm remembers its selected sound and tests; importing a new sound does not change older alarms.
 - AlarmKit authorization requested when the first alarm is added, absolute deadlines, cancellation, queued in-app wake-up tests, and reconciliation with the system alarm list.
-- Case-sensitive typing tests with paste/multi-character insertion disabled, followed by 1–8 addition problems. No snooze.
+- Case-sensitive typing tests with paste/multi-character insertion disabled, followed by 1–8 addition problems. Math answers submit automatically at the expected digit count; incorrect answers clear. No snooze or dismissal message.
+- First-use sound check, a relative sound-level slider, previews, and a real five-second AlarmKit test. Each new alarm snapshots its selected relative level into its PCM sound file. iOS still controls overall alert/output volume.
 - Local atomic JSON persistence with a previous-save backup. Corrupt/unsupported state is left untouched and alarm editing is disabled. No accounts or browser-to-iPhone data sync.
 
 ## Open and run with Xcode
@@ -23,7 +24,7 @@ Requires **Xcode 26 or later** and a Mac that can run it. macOS Monterey cannot 
 2. Open `ios/LunkAlarm.xcodeproj` in Xcode.
 3. Select the **LunkAlarm** target → **Signing & Capabilities** → select your Apple development team. Change `online.reeeserve.LunkAlarm` if that bundle identifier is unavailable for your team.
 4. Select your connected iPhone or an iOS 26+ simulator and press Run. On an iPhone, enable Developer Mode when prompted.
-5. Open Add alarm, set a short duration, allow the system's Alarms permission, and test playback with the app visible and the phone locked.
+5. Swipe up, set a short duration, complete the sound check, allow the system's Alarms permission, and test playback with the app visible and the phone locked.
 
 Use the Files app or Safari downloads to obtain a sound, then select **Use my own file**. Imported audio stays on the iPhone. Permissions, alarms, and sound volume are controlled by iOS; the website's internet-time services are not used to alter system alarm deadlines.
 
@@ -45,7 +46,11 @@ AlarmKit schedules alerts with iOS; the app does not need to remain on screen fo
 
 Time-of-day selection uses the next matching local time. A nonexistent daylight-saving time moves to the next valid time; a repeated time uses the first future occurrence. Alarms are not daily repeats. Changing time zones after scheduling does not move a deadline to a new local hour.
 
-**iOS always retains control of stopping an alarm from its Lock Screen/system UI. Wake-up tests cannot prevent that.** For alarms with tests, the system Stop action opens LunkAlarm to finish them, and Open LunkAlarm is also offered as a secondary action. Tests and continued in-app playback operate while the app is active. Locking/leaving the app can suspend that in-app playback after the system alarm has already been stopped. No background-audio entitlement, critical-alert entitlement, silent keepalive, or promise of an unskippable alarm is included.
+**iOS retains control of system alarm presentation and stopping.** LunkAlarm cannot suppress the system banner, automatically force itself over another app or the Lock Screen, or prevent force-quit. The wake-up-tests action opens LunkAlarm without explicitly stopping AlarmKit first; finishing tests stops the system alarm. If iOS independently stops it, unfinished tests can use the in-app audio player instead. That fallback uses media volume, which may differ from iOS alert volume. No public API locks these two system volume controls together.
+
+Real, audible wake-up-test playback uses the audio background mode so simply leaving/locking the app does not intentionally stop the player. Previews stop on backgrounding. No silent keepalive or continuous idle audio is used; AlarmKit owns alarms that have not yet fired. Interruptions resume playback only when iOS permits it. Force-quitting or iOS stopping the app can still end its in-app playback. Device testing is required for the exact Lock Screen, volume, and app-handoff behavior on each iOS version.
+
+AlarmKit is designed to alert through Silent Mode and Focus after authorization. That does not let the app override the device's overall volume or guarantee audible output on every configuration. Use the built-in sound check with the phone locked and repeat after volume/settings changes.
 
 The app observes iOS alarm state instead of running a second background scheduler. A system-stopped alarm is not automatically resurrected. A future alarm missing from iOS is shown as **Not scheduled**; remove and add it again. If the system has already stopped an alarm with tests, unfinished tests remain available in LunkAlarm. On simultaneous alerts, iOS owns system presentation; the app presents the remaining tests in deadline order.
 
@@ -57,7 +62,7 @@ Core scheduling, daylight-saving handling, duration bounds, challenge ordering, 
 swift test --package-path ios
 ```
 
-The GitHub workflow also compiles simulator and device targets with signing disabled. Linux can test the shared core and parse Swift syntax; it cannot compile SwiftUI/AlarmKit or run the iOS app. Simulator playback does not establish locked-device reliability.
+The GitHub workflow also compiles simulator and device targets with signing disabled and runs native UI tests for swipe navigation, time/AM-PM wheels, looping counts, and automatic math entry. UI screenshots and the result bundle are included in the build artifact. Linux can test the shared core and parse Swift syntax; it cannot compile SwiftUI/AlarmKit or run the iOS app. Simulator playback does not establish locked-device reliability.
 
 Before distribution, test on a real iPhone:
 

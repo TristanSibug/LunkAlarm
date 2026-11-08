@@ -6,6 +6,8 @@ struct AlarmEditorView: View {
     @State private var ringtoneOpen = false
     @State private var onlineOpen = false
     @State private var importing = false
+    @State private var soundCheckOpen = false
+    @State private var scheduleAfterSoundCheck = false
     var body: some View {
         AlarmCard(theme: store.theme) {
             Text("New alarm").font(.system(size: 14, weight: .medium)).foregroundStyle(store.theme.muted)
@@ -35,6 +37,7 @@ struct AlarmEditorView: View {
                 Button("Use my own file") { importing = true }
                 Button("Find more ringtones online") { onlineOpen = true }
             }.font(.system(size: 13)).foregroundStyle(store.theme.accent)
+            soundLevelControls()
             VStack(alignment: .leading, spacing: 16) {
                 sectionLabel("Wake-up tests")
                 testToggle("Typing test", detail: "Type a random 8-character code to stop the alarm", isOn: $store.state.settings.typing)
@@ -42,26 +45,19 @@ struct AlarmEditorView: View {
                     get: { store.state.settings.mathCount > 0 },
                     set: { store.state.settings.mathCount = $0 ? 3 : 0 }))
                 if store.state.settings.mathCount > 0 {
-                    Text("How many problems?").font(.caption).foregroundStyle(store.theme.muted)
-                    LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 6), count: 4), spacing: 6) {
-                        ForEach(1...8, id: \.self) { count in
-                            Button { store.state.settings.mathCount = count } label: {
-                                Text("\(count)").font(.system(size: 14, weight: .semibold)).frame(maxWidth: .infinity).padding(.vertical, 12)
-                                    .foregroundStyle(store.state.settings.mathCount == count ? store.theme.onAccent : store.theme.text)
-                                    .background {
-                                        if store.state.settings.mathCount == count { RoundedRectangle(cornerRadius: 12).fill(store.theme.gradient) }
-                                        else { RoundedRectangle(cornerRadius: 12).fill(store.theme.field) }
-                                    }
-                            }.buttonStyle(.plain).accessibilityAddTraits(store.state.settings.mathCount == count ? .isSelected : [])
-                        }
-                    }
+                    VStack(spacing: 4) {
+                        Text("How many problems?").font(.caption).foregroundStyle(store.theme.muted)
+                        LoopingProblemPicker(count: $store.state.settings.mathCount, color: UIColor(store.theme.text))
+                            .frame(width: 110, height: 140).clipped()
+                    }.frame(maxWidth: .infinity)
                 }
                 Text("Each alarm remembers its tests. Wake-up tests run in LunkAlarm; iOS can still stop alarms from the Lock Screen.")
                     .font(.system(size: 12)).foregroundStyle(store.theme.muted).fixedSize(horizontal: false, vertical: true)
             }
             if let message = store.message { Text(message).font(.caption).foregroundStyle(store.theme.accent) }
             Button {
-                Task { await store.addAlarm() }
+                if store.state.settings.soundCheckCompleted == true { Task { await store.addAlarm() } }
+                else { soundCheckOpen = true }
             } label: {
                 HStack { if store.saving { ProgressView() }; Text(store.saving ? "Scheduling…" : "Add alarm") }
             }.buttonStyle(AccentButtonStyle(theme: store.theme)).disabled(store.saving || store.readOnly)
@@ -69,6 +65,12 @@ struct AlarmEditorView: View {
         }
         .sheet(isPresented: $ringtoneOpen) { ringtoneSheet }
         .sheet(isPresented: $onlineOpen) { onlineSheet }
+        .sheet(isPresented: $soundCheckOpen, onDismiss: {
+            if scheduleAfterSoundCheck {
+                scheduleAfterSoundCheck = false
+                Task { await store.addAlarm() }
+            }
+        }) { soundCheckSheet }
         .fileImporter(isPresented: $importing, allowedContentTypes: [.audio]) { result in
             switch result {
             case .success(let url): store.importSound(url)
@@ -76,10 +78,49 @@ struct AlarmEditorView: View {
             }
         }
         .onChange(of: store.state.settings.ringtoneID) { _, _ in if store.sound.previewing { store.sound.stop() } }
+        .onChange(of: store.state.settings.soundLevel) { _, level in store.sound.updatePreviewVolume(level ?? 1) }
     }
 
     private func sectionLabel(_ text: String) -> some View {
         Text(text.uppercased()).font(.system(size: 11, weight: .medium)).tracking(0.7).foregroundStyle(store.theme.muted)
+    }
+    private func soundLevelControls(showCheckButton: Bool = true) -> some View {
+        VStack(alignment: .leading, spacing: 10) {
+            HStack {
+                sectionLabel("Alarm sound level")
+                Spacer()
+                Text("\(Int(((store.state.settings.soundLevel ?? 1) * 100).rounded()))%")
+                    .font(.caption.monospacedDigit()).foregroundStyle(store.theme.muted)
+            }
+            Slider(value: Binding(get: { store.state.settings.soundLevel ?? 1 }, set: { store.state.settings.soundLevel = $0 }), in: 0.1...1, step: 0.05)
+                .tint(store.theme.accent).accessibilityLabel("Alarm sound level")
+            Text("Your iPhone’s volume still affects loudness. Use Preview and your volume buttons to check in-app playback.")
+                .font(.caption).foregroundStyle(store.theme.muted)
+            if showCheckButton {
+                Button("Check alarm sound") { soundCheckOpen = true }
+                    .font(.system(size: 13)).foregroundStyle(store.theme.accent)
+            }
+        }
+    }
+    private var soundCheckSheet: some View {
+        SheetShell(title: "Check your alarm sound", theme: store.theme) {
+            VStack(alignment: .leading, spacing: 24) {
+                Text("Choose a sound level before setting your alarm.").font(.headline)
+                soundLevelControls(showCheckButton: false)
+                Button(store.sound.previewing ? "Stop preview" : "Preview sound") { store.preview() }
+                    .buttonStyle(ChipStyle(theme: store.theme))
+                Button("Test a 5-second alarm") {
+                    Task { await store.addAlarm(soundCheck: true); soundCheckOpen = false }
+                }.buttonStyle(ChipStyle(theme: store.theme)).disabled(store.saving)
+                Text("After starting the test, lock your iPhone to check its system alarm sound. Alarms require permission. iOS controls the Lock Screen alert and overall alert volume.")
+                    .font(.caption).foregroundStyle(store.theme.muted)
+                Button("Use this level and add alarm") {
+                    store.state.settings.soundCheckCompleted = true
+                    scheduleAfterSoundCheck = true
+                    soundCheckOpen = false
+                }.buttonStyle(AccentButtonStyle(theme: store.theme)).disabled(store.saving || store.readOnly)
+            }
+        }
     }
     private func modeButton(_ title: String, mode: AlarmMode) -> some View {
         Button { store.state.settings.mode = mode } label: {
@@ -89,23 +130,10 @@ struct AlarmEditorView: View {
         }.buttonStyle(.plain).accessibilityAddTraits(store.state.settings.mode == mode ? .isSelected : [])
     }
     private var timeWheels: some View {
-        HStack(spacing: 0) {
-            if store.state.settings.use24Hour {
-                numberWheel("Hours", values: 0..<24, selection: $store.state.settings.hour)
-            } else {
-                numberWheel("Hours", values: 1..<13, selection: Binding(
-                    get: { let value = store.state.settings.hour % 12; return value == 0 ? 12 : value },
-                    set: { store.state.settings.hour = $0 % 12 + (store.state.settings.hour >= 12 ? 12 : 0) }))
-            }
-            numberWheel("Minutes", values: 0..<60, selection: $store.state.settings.minute)
-            if !store.state.settings.use24Hour {
-                Picker("AM or PM", selection: Binding(
-                    get: { store.state.settings.hour >= 12 ? 1 : 0 },
-                    set: { store.state.settings.hour = store.state.settings.hour % 12 + $0 * 12 })) {
-                    Text("AM").tag(0); Text("PM").tag(1)
-                }.pickerStyle(.wheel).frame(maxWidth: .infinity).frame(height: 140).clipped()
-            }
-        }.background(store.theme.field, in: RoundedRectangle(cornerRadius: 16))
+        NativeTimePicker(hour: $store.state.settings.hour, minute: $store.state.settings.minute,
+                         use24Hour: store.state.settings.use24Hour, isLight: store.theme.isLight)
+            .frame(maxWidth: .infinity).frame(height: 170).clipped()
+            .background(store.theme.field, in: RoundedRectangle(cornerRadius: 16))
             .overlay(RoundedRectangle(cornerRadius: 16).stroke(store.theme.border))
     }
     private var durationWheels: some View {
@@ -129,7 +157,7 @@ struct AlarmEditorView: View {
         VStack(spacing: 0) {
             Text(label.uppercased()).font(.system(size: 9, weight: .medium)).tracking(0.7).foregroundStyle(store.theme.muted).padding(.top, 12)
             Picker(label, selection: selection) {
-                ForEach(values, id: \.self) { value in Text(String(format: "%02d", value)).font(.system(size: 28, weight: .light)).tag(value) }
+                ForEach(values, id: \.self) { value in Text(label == "Hours" ? String(value) : String(format: "%02d", value)).font(.system(size: 28, weight: .light)).tag(value) }
             }.pickerStyle(.wheel).frame(maxWidth: .infinity).frame(height: 120).clipped()
         }.frame(maxWidth: .infinity).clipped()
     }
@@ -141,7 +169,7 @@ struct AlarmEditorView: View {
                     Text(title).font(.system(size: 14, weight: .semibold)).foregroundStyle(store.theme.text)
                     Text(detail).font(.system(size: 12)).foregroundStyle(store.theme.muted)
                 }
-            }.tint(store.theme.accent2)
+            }.tint(store.theme.accent2).accessibilityIdentifier(title == "Math test" ? "mathTestToggle" : "typingTestToggle")
         }
     }
     private var ringtoneSheet: some View {
@@ -192,7 +220,7 @@ struct DurationPresets: View {
     let theme: AlarmTheme
     var select: (Int) -> Void
     @State private var width: CGFloat = 0
-    private let choices: [(String, Int)] = [("5 min", 5), ("10 min", 10), ("30 min", 30), ("1 hour", 60), ("8 hours", 480)]
+    private let choices: [(String, Int)] = [("5 min", 5), ("10 min", 10), ("30 min", 30), ("1 hour", 60)]
     private var count: Int {
         var total: CGFloat = 0
         for (index, choice) in choices.enumerated() {

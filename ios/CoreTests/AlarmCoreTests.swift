@@ -79,4 +79,28 @@ final class AlarmCoreTests: XCTestCase {
         XCTAssertEqual(result.first(where: { $0.id == challenge.id })?.status, .needsChallenge)
         XCTAssertEqual(result.first(where: { $0.id == lost.id })?.status, .notScheduled)
     }
+    func testMathAutomaticallySubmitsOnlyAtExpectedDigitCount() {
+        var challenge = WakeChallenge(typing: false, mathCount: 3)
+        for remaining in stride(from: 3, through: 1, by: -1) {
+            let correct = String(challenge.left + challenge.right)
+            XCTAssertEqual(challenge.answerDigitCount, correct.count)
+            XCTAssertEqual(challenge.submit(digits: String(correct.dropLast())), .incomplete)
+            XCTAssertEqual(challenge.remaining, remaining)
+            XCTAssertEqual(challenge.submit(digits: correct.count == 1 ? "0" : "99"), .incorrect)
+            XCTAssertEqual(challenge.remaining, remaining)
+            XCTAssertEqual(challenge.submit(digits: correct), .correct)
+        }
+        XCTAssertTrue(challenge.complete)
+        var typing = WakeChallenge(typing: true, mathCount: 1)
+        XCTAssertEqual(typing.submit(digits: String(typing.left + typing.right)), .incomplete)
+    }
+    func testSoundPreferencesRemainCompatibleWithEarlierSavedSettings() throws {
+        let old = try JSONDecoder().decode(AlarmSettings.self, from: JSONEncoder().encode(AlarmSettings()))
+        XCTAssertNil(old.soundLevel)
+        XCTAssertNil(old.soundCheckCompleted)
+        var state = SavedState(); state.settings.soundLevel = 0.5; state.settings.soundCheckCompleted = true
+        XCTAssertEqual(try JSONDecoder().decode(SavedState.self, from: JSONEncoder().encode(state)).validated(), state)
+        state.settings.soundLevel = 0
+        XCTAssertThrowsError(try state.validated())
+    }
 }

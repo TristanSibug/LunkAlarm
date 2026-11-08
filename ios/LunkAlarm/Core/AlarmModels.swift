@@ -23,6 +23,9 @@ public struct AlarmSettings: Codable, Equatable, Sendable {
     public var durationSeconds = 1800
     public var hour = 7
     public var minute = 0
+    // Optional fields preserve compatibility with state saved before sound checks existed.
+    public var soundLevel: Double?
+    public var soundCheckCompleted: Bool?
     public init() {}
 }
 
@@ -60,6 +63,7 @@ public struct SavedState: Codable, Equatable, Sendable {
               Set(importedSounds.map(\.id)).count == importedSounds.count,
               (0...8).contains(settings.mathCount), (0...23).contains(settings.hour),
               (0...59).contains(settings.minute),
+              settings.soundLevel.map({ (0.1...1).contains($0) }) ?? true,
               (0...AlarmScheduling.maximumDuration).contains(settings.durationSeconds),
               alarms.allSatisfy({ (0...8).contains($0.mathCount) && Self.safeFilename($0.soundFilename) }),
               importedSounds.allSatisfy({ Self.safeFilename($0.filename) })

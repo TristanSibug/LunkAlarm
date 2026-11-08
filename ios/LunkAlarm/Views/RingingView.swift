@@ -28,17 +28,20 @@ struct RingingView: View {
                                 else { hint = "Match the code exactly, including capital letters." }
                             }.buttonStyle(AccentButtonStyle(theme: store.theme))
                         } else if challenge.remaining > 0 {
-                            Text("\(challenge.remaining) \(challenge.remaining == 1 ? "problem" : "problems") to go").font(.headline)
-                            Text("\(challenge.left) + \(challenge.right)").font(.system(size: 48, weight: .light)).monospacedDigit()
+                            Text("\(challenge.remaining) \(challenge.remaining == 1 ? "problem" : "problems") to go").font(.headline).accessibilityIdentifier("mathProgress")
+                            Text("\(challenge.left) + \(challenge.right)").font(.system(size: 48, weight: .light)).monospacedDigit().accessibilityIdentifier("mathProblem")
                             Text(answer.isEmpty ? "Your answer" : answer).font(.system(size: 28, weight: .light)).monospacedDigit()
                                 .foregroundStyle(answer.isEmpty ? store.theme.muted : store.theme.text)
                                 .frame(maxWidth: .infinity).padding(16).background(store.theme.field, in: RoundedRectangle(cornerRadius: 14))
+                                .accessibilityIdentifier("mathAnswer")
                             LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 10), count: 3), spacing: 10) {
-                                ForEach(["1", "2", "3", "4", "5", "6", "7", "8", "9", "⌫", "0", "OK"], id: \.self) { key in
-                                    Button { press(key) } label: {
+                                ForEach(["1", "2", "3", "4", "5", "6", "7", "8", "9", "", "0", "⌫"], id: \.self) { key in
+                                    if key.isEmpty { Color.clear.frame(height: 60).accessibilityHidden(true) }
+                                    else { Button { press(key) } label: {
                                         Text(key).font(.system(size: 24, weight: .medium)).frame(maxWidth: .infinity).padding(.vertical, 16)
                                             .background(store.theme.card, in: RoundedRectangle(cornerRadius: 14))
                                     }.buttonStyle(.plain).accessibilityLabel(key == "⌫" ? "Delete digit" : key)
+                                    }
                                 }
                             }
                         } else {
@@ -46,7 +49,7 @@ struct RingingView: View {
                         }
                     }
                     if !hint.isEmpty { Text(hint).font(.caption).foregroundStyle(store.theme.accent) }
-                    Text("Wake-up tests run while LunkAlarm is open. iOS controls the Lock Screen alarm.")
+                    Text("Complete the tests to stop LunkAlarm. iOS also provides its own alarm controls.")
                         .font(.caption2).multilineTextAlignment(.center).foregroundStyle(store.theme.muted)
                 }.padding(28).padding(.top, 30).frame(maxWidth: 480).frame(maxWidth: .infinity)
             }
@@ -59,10 +62,15 @@ struct RingingView: View {
     private func press(_ key: String) {
         switch key {
         case "⌫": if !answer.isEmpty { answer.removeLast() }
-        case "OK":
-            if store.submitAnswer(answer) { hint = "" } else { hint = "Try that one again." }
-            answer = ""
-        default: if answer.count < 3 { answer += key }
+        default:
+            answer += key
+            switch store.submitMathDigits(answer) {
+            case .incomplete: break
+            case .correct: answer = ""; hint = ""
+            case .incorrect:
+                answer = ""; hint = "Try that one again."
+                UINotificationFeedbackGenerator().notificationOccurred(.error)
+            }
         }
     }
 }

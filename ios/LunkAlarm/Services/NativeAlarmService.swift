@@ -15,11 +15,13 @@ struct NativeAlarmService {
     }
     func schedule(_ alarm: AlarmRecord, tint: Color) async throws {
         try await authorize()
-        let stop = AlarmButton(text: "Stop", textColor: .white, systemImageName: "stop.fill")
-        let open = AlarmButton(text: alarm.hasTests ? "Wake-up tests" : "Open LunkAlarm",
+        let stop = AlarmButton(text: alarm.hasTests ? "Wake-up tests" : "Stop", textColor: .white,
+                               systemImageName: alarm.hasTests ? "arrow.up.right" : "stop.fill")
+        let open = AlarmButton(text: "Open LunkAlarm",
                                textColor: .white, systemImageName: "arrow.up.right")
         let presentation = AlarmPresentation(alert: AlarmPresentation.Alert(
-            title: "LunkAlarm", stopButton: stop, secondaryButton: open, secondaryButtonBehavior: .custom))
+            title: "LunkAlarm", stopButton: stop, secondaryButton: alarm.hasTests ? nil : open,
+            secondaryButtonBehavior: alarm.hasTests ? nil : .custom))
         let attributes = AlarmAttributes(presentation: presentation,
                                          metadata: LunkAlarmMetadata(soundName: alarm.soundName, hasTests: alarm.hasTests),
                                          tintColor: tint)
@@ -28,7 +30,7 @@ struct NativeAlarmService {
         // No snooze/countdown controls: these are one-shot alarms, including relative durations.
         let configuration = AlarmManager.AlarmConfiguration(
             schedule: .fixed(alarm.target), attributes: attributes,
-            stopIntent: stopIntent, secondaryIntent: OpenLunkAlarmIntent(id: alarm.id),
+            stopIntent: stopIntent, secondaryIntent: alarm.hasTests ? nil : OpenLunkAlarmIntent(id: alarm.id),
             sound: .named(alarm.soundFilename))
         _ = try await manager.schedule(id: alarm.id, configuration: configuration)
     }

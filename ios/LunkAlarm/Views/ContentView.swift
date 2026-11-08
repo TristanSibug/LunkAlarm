@@ -25,6 +25,8 @@ struct ContentView: View {
                                     .font(.caption2).foregroundStyle(store.theme.muted).padding(.bottom, 16)
                             }.padding(.horizontal, 16).frame(maxWidth: 680).frame(maxWidth: .infinity)
                         }.scrollDismissesKeyboard(.interactively)
+                            .gesture(AlarmNavigationSwipe(direction: .down) { pickerOpen = false })
+                            .accessibilityAction(named: "Return to clock") { pickerOpen = false }
                             .transition(.opacity.combined(with: .move(edge: .bottom)))
                     } else {
                         VStack {
@@ -37,6 +39,9 @@ struct ContentView: View {
                                     .padding(.horizontal, 24).padding(.bottom, 16)
                             }
                         }.frame(maxWidth: .infinity, maxHeight: .infinity)
+                            .contentShape(Rectangle())
+                            .gesture(AlarmNavigationSwipe(direction: .up) { pickerOpen = true })
+                            .accessibilityAction(named: "Add alarm") { pickerOpen = true }
                     }
                 }
             }.foregroundStyle(store.theme.text)
@@ -77,17 +82,15 @@ struct ContentView: View {
                           digitSize: min(pickerOpen ? 146 : 260, max(64, min((width - 55) * 0.36, height * 0.46))))
                 .matchedGeometryEffect(id: "clock", in: clockSpace)
             HStack(spacing: 10) {
-                Button {
-                    pickerOpen.toggle()
-                } label: {
-                    Label(pickerOpen ? "Hide alarm picker" : "Add alarm", systemImage: pickerOpen ? "minus" : "plus")
-                        .font(.system(size: 13, weight: .semibold)).padding(.horizontal, 18).padding(.vertical, 12)
-                        .foregroundStyle(pickerOpen ? store.theme.text : store.theme.onAccent)
-                        .background {
-                            if pickerOpen { Capsule().fill(store.theme.card) }
-                            else { Capsule().fill(store.theme.gradient) }
-                        }.overlay(Capsule().stroke(store.theme.border))
-                }.buttonStyle(.plain).accessibilityIdentifier("alarmPickerToggle")
+                VStack(spacing: 7) {
+                    Image(systemName: pickerOpen ? "chevron.down" : "chevron.up").font(.system(size: 14, weight: .medium))
+                    Text(pickerOpen ? "Swipe down to return to clock" : "Swipe up to add alarm").font(.system(size: 12))
+                }.foregroundStyle(store.theme.muted).padding(.vertical, 8)
+                    .accessibilityElement(children: .ignore)
+                    .accessibilityLabel(pickerOpen ? "Return to clock" : "Add alarm")
+                    .accessibilityHint(pickerOpen ? "Swipe down on the page when it is at the top." : "Swipe up to open the alarm picker.")
+                    .accessibilityAction { pickerOpen.toggle() }
+                    .accessibilityIdentifier("alarmSwipeHint")
                 if !pickerOpen && !store.state.alarms.isEmpty {
                     Button("Your alarms (\(store.state.alarms.count))") { alarmsOpen = true }.buttonStyle(ChipStyle(theme: store.theme))
                 }

@@ -483,7 +483,7 @@ let browser;
         trailingOnly: buttons.every((button, index) => button.hidden === (index >= visible.length))
       };
     });
-    assert.deepEqual(presets.values, [5, 10, 30, 60, 480].slice(0, presets.values.length));
+    assert.deepEqual(presets.values, [5, 10, 30, 60].slice(0, presets.values.length));
     assert(presets.trailingOnly && presets.inside);
     assert(Math.max(...presets.widths) - Math.min(...presets.widths) < 1.5);
     assert(Math.max(...presets.tops) - Math.min(...presets.tops) < 1);

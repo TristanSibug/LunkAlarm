@@ -15,7 +15,7 @@ final class SoundService {
         if FileManager.default.fileExists(atPath: imported.path) { return imported }
         return Bundle.main.url(forResource: filename, withExtension: nil)
     }
-    func play(filename: String, preview: Bool) throws {
+    func play(filename: String, preview: Bool, volume: Float = 1) throws {
         stop()
         guard let url = Self.url(filename: filename) else { throw NativeAlarmError.soundUnavailable }
         let session = AVAudioSession.sharedInstance()
@@ -23,6 +23,7 @@ final class SoundService {
         try session.setActive(true)
         do {
             let audio = try AVAudioPlayer(contentsOf: url)
+            audio.volume = volume
             audio.numberOfLoops = -1
             guard audio.prepareToPlay(), audio.play() else { throw NativeAlarmError.soundUnavailable }
             player = audio
@@ -43,6 +44,46 @@ final class SoundService {
         previewTask?.cancel(); previewTask = nil
         player?.stop(); player = nil; previewing = false
         try? AVAudioSession.sharedInstance().setActive(false, options: .notifyOthersOnDeactivation)
+    }
+
+    func resumeAfterInterruption() {
+        guard !previewing, let player, !player.isPlaying else { return }
+        do { try AVAudioSession.sharedInstance().setActive(true); player.play() }
+        catch { /* A later foreground refresh retries playback and reports failure. */ }
+    }
+    func updatePreviewVolume(_ level: Double) {
+        if previewing { player?.volume = Float(level) }
+    }
+
+    // AlarmKit has no per-alarm volume property. Snapshot the requested relative
+    // sound level into the PCM file so system alerts and in-app playback agree.
+    // The device's own output/alert volume still controls overall loudness.
+    static func alarmFilename(original: String, level: Double) throws -> String {
+        let percent = min(100, max(10, Int((level * 100).rounded())))
+        if percent == 100 { return original }
+        let filename = "level-\(percent)-" + original
+        let destination = soundsDirectory.appendingPathComponent(filename)
+        if FileManager.default.fileExists(atPath: destination.path) { return filename }
+        guard let source = url(filename: original) else { throw NativeAlarmError.soundUnavailable }
+        let input = try AVAudioFile(forReading: source)
+        guard let buffer = AVAudioPCMBuffer(pcmFormat: input.processingFormat, frameCapacity: AVAudioFrameCount(input.length)) else { throw SoundImportError.unsupported }
+        try input.read(into: buffer)
+        guard let channels = buffer.floatChannelData else { throw SoundImportError.unsupported }
+        for channel in 0..<Int(buffer.format.channelCount) {
+            for frame in 0..<Int(buffer.frameLength) { channels[channel][frame] *= Float(percent) / 100 }
+        }
+        try FileManager.default.createDirectory(at: soundsDirectory, withIntermediateDirectories: true)
+        let temporary = soundsDirectory.appendingPathComponent(UUID().uuidString + ".wav")
+        do {
+            do {
+                let output = try AVAudioFile(forWriting: temporary, settings: input.fileFormat.settings,
+                                             commonFormat: input.processingFormat.commonFormat, interleaved: input.processingFormat.isInterleaved)
+                try output.write(from: buffer)
+            }
+            try FileManager.default.setAttributes([.protectionKey: FileProtectionType.completeUntilFirstUserAuthentication], ofItemAtPath: temporary.path)
+            try FileManager.default.moveItem(at: temporary, to: destination)
+            return filename
+        } catch { try? FileManager.default.removeItem(at: temporary); throw error }
     }
 
     // AlarmKit accepts named PCM files in Library/Sounds. Imported files are converted
