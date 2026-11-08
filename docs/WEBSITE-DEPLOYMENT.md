@@ -68,6 +68,12 @@ Test on the final domain: click **Enable sound**, preview a ringtone, add a shor
 
 This version uses browser localStorage. It has no accounts or cross-device sync and makes no Supabase requests. Your existing Supabase project does not need changes. Supabase can be added later for login and synchronized alarm preferences; it does not make browser alarms ring while the page/device is asleep. Do not put a Supabase service-role key into this static website.
 
+## Automatic layouts
+
+Wide screens (at least 1000 CSS pixels) with a primary mouse/trackpad use a fixed-height three-column workspace: clock on the left, alarm setup in the middle, saved alarms on the right. The page itself does not scroll. Long alarm lists and expanded settings in smaller windows can scroll inside their panels, and Add alarm stays visible.
+
+Touch-first devices and narrower windows retain the stacked phone layout. Switching screen size or input capabilities updates the layout automatically without resetting alarms or reloading the page. This uses responsive CSS rather than unreliable device-name guessing.
+
 ## Browser limitations
 
 - Keep the page open, sound enabled, and your device awake. Muted tabs/site settings can prevent sound.

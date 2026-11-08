@@ -48,6 +48,7 @@
         </div>
       </div>
 
+      <div class="clock-face">
       <div class="clock" aria-live="off">
         <span id="clockHM" class="clock-hm">--:--</span>
         <span class="clock-side">
@@ -58,12 +59,14 @@
 
       <div id="dateText" class="date"></div>
       <div id="zoneText" class="zone"></div>
+      </div>
     </section>
 
     <!-- ============ 2. ADD AN ALARM ============ -->
     <section id="setupCard" class="card">
       <h2 class="card-title">New alarm</h2>
 
+      <div class="setup-fields">
       <!-- Two ways to set the alarm: pick a clock time, or pick how long to wait -->
       <div class="tabs" role="tablist">
         <button id="tabTime" class="tab" type="button" role="tab" data-mode="time">At a time</button>
@@ -150,15 +153,18 @@
           </div>
         </div>
       </div>
-      <p class="hint">Each alarm remembers the tests you chose when you added it. An alarm keeps ringing until you finish them, or until you tap Stop if none are on.</p>
+      <p class="hint"><span class="full-hint">Each alarm remembers the tests you chose when you added it. An alarm keeps ringing until you finish them, or until you tap Stop if none are on.</span><span class="compact-hint">Each alarm keeps its own tests. No snooze.</span></p>
 
+      </div>
+      <div class="setup-actions">
       <button id="setBtn" class="primary" type="button">Add alarm</button>
       <!-- Friendly messages show up here (aria-live = screen readers read it out) -->
       <p id="formMsg" class="form-msg" aria-live="polite"></p>
+      </div>
     </section>
 
     <!-- ============ 3. LIST OF ALARMS ============ -->
-    <section class="card">
+    <section id="alarmsCard" class="card">
       <h2 class="card-title">Your alarms</h2>
       <ul id="alarmList" class="alarm-list"></ul>
       <p id="emptyText" class="empty">No alarms yet. Add one above.</p>

@@ -826,3 +826,87 @@ button:focus-visible, input:focus-visible { outline: 2px solid var(--accent); ou
   .clock-buttons .chip { padding-inline: 12px; }
 }
 @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation: none !important; transition: none !important; } }
+
+
+/* These grouping elements do not alter the approved phone layout. */
+.clock-face, .setup-fields, .setup-actions { display: contents; }
+.compact-hint { display: none; }
+
+/* Wide mouse/trackpad screens get a workspace; touch-first screens keep the phone UI.
+   Resizing or changing the primary input switches layouts without a reload or UA sniffing. */
+@media (min-width: 1000px) and (hover: hover) and (pointer: fine) {
+  html, body { height: 100%; overflow: hidden; }
+  .app {
+    width: 100%; max-width: 1800px; height: 100vh; height: 100dvh;
+    padding: clamp(18px, 2.2vw, 36px); gap: 16px clamp(14px, 1.6vw, 28px);
+    display: grid;
+    grid-template-columns: minmax(0, 1.2fr) minmax(330px, 410px) minmax(230px, .85fr);
+    grid-template-rows: minmax(0, 1fr) auto auto;
+    grid-template-areas: "clock setup alarms" "tips setup alarms" "footnote setup alarms";
+    overflow: hidden;
+  }
+  .app > * { min-width: 0; min-height: 0; }
+  .clock-card {
+    grid-area: clock; container-type: inline-size; padding: 8px 0 0;
+    display: flex; flex-direction: column; overflow: auto; scrollbar-width: thin;
+  }
+  .clock-top { flex: none; margin-bottom: 12px; gap: 10px; }
+  .clock-buttons { flex-wrap: wrap; }
+  .clock-face {
+    display: flex; flex: 1; min-height: 0; flex-direction: column;
+    align-items: center; justify-content: center; padding: 24px 0;
+  }
+  .clock { gap: clamp(8px, 2cqi, 16px); }
+  .clock-hm { font-size: clamp(80px, 28cqi, 200px); }
+  .clock-side { font-size: clamp(20px, 5cqi, 32px); }
+  .date { font-size: clamp(17px, 3.8cqi, 23px); margin-top: 20px; }
+  .zone { margin-top: 7px; }
+  #setupCard, #alarmsCard { margin: 0; height: 100%; overflow: hidden; }
+  #setupCard { grid-area: setup; display: flex; flex-direction: column; }
+  #setupCard > .card-title { flex: none; }
+  .setup-fields {
+    display: block; flex: 1; min-height: 0; overflow-y: auto; overflow-x: hidden;
+    scrollbar-width: thin; scrollbar-color: var(--switch-off) transparent;
+    overscroll-behavior-y: contain; padding: 0 3px 3px;
+  }
+  .setup-actions { display: block; flex: none; padding-top: 10px; }
+  .setup-actions .primary { margin-top: 0; }
+  .setup-actions .form-msg { margin-top: 8px; margin-bottom: 0; }
+  #alarmsCard { grid-area: alarms; display: flex; flex-direction: column; }
+  #alarmsCard > .card-title { flex: none; }
+  #alarmList {
+    flex: 1; min-height: 0; overflow-y: auto; overflow-x: hidden; padding-right: 3px;
+    overscroll-behavior-y: contain; scrollbar-width: thin; scrollbar-color: var(--switch-off) transparent;
+  }
+  #alarmList:empty { display: none; }
+  #emptyText { flex: 1; display: grid; place-content: center; text-align: center; line-height: 1.7; padding: 20px 10px; }
+  #emptyText.hidden { display: none; }
+  .alarm-item { gap: 10px; padding: 14px 12px; }
+  .alarm-item > div { min-width: 0; }
+  .alarm-meta, .alarm-tests { overflow-wrap: anywhere; }
+  .browser-tools { grid-area: tips; padding: 0 8px; }
+  #footnote { grid-area: footnote; margin: 0; font-size: 11.5px; }
+}
+
+/* Laptop heights: preserve normal text size while reducing excess field spacing. */
+@media (min-width: 1000px) and (max-height: 1000px) and (hover: hover) and (pointer: fine) {
+  .app { padding-block: 18px; }
+  #setupCard, #alarmsCard { padding: 18px; }
+  #setupCard .card-title { margin-bottom: 12px; }
+  #setupCard .field-label { margin-top: 10px; margin-bottom: 6px; font-size: 11.5px; }
+  #setupCard .tabs .tab { padding-block: 8px; font-size: 14px; }
+  #setupCard .big-input { min-height: 54px; padding-block: 8px; }
+  #setupCard .option { padding-block: 10px; }
+  #setupCard .option-text strong { font-size: 14px; }
+  #setupCard .option-text span { font-size: 11.5px; }
+  #setupCard .timer-box input { font-size: 24px; padding-block: 6px; }
+  #setupCard .presets { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 5px; margin-top: 8px; }
+  #setupCard .presets .chip { padding: 7px 2px; font-size: 11.5px; white-space: nowrap; }
+  #setupCard .count-picker { padding-top: 10px; }
+  #setupCard .count-label { margin-bottom: 8px; }
+  #setupCard .count-btn { padding-block: 9px; }
+  #setupCard .hint { margin-top: 8px; font-size: 11.5px; }
+  #setupCard .full-hint { display: none; }
+  #setupCard .compact-hint { display: inline; }
+  #setupCard .primary { padding: 13px; }
+}

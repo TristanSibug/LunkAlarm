@@ -86,6 +86,66 @@ let browser;
     await page.keyboard.press('Escape');
   }
   console.log('PASS eight themes with both system color schemes');
+  // Desktop layouts must fit even with a five-character clock and expanded timer/tests.
+  await page.locator('#formatBtn').click();
+  for (const viewport of [{ width: 1440, height: 900 }, { width: 1366, height: 768 }, { width: 1280, height: 720 }, { width: 1024, height: 600 }]) {
+    await page.setViewportSize(viewport);
+    await page.locator('#typingToggle').check(); await page.locator('#mathToggle').check();
+    for (const mode of ['#tabTime', '#tabTimer']) {
+      await page.locator(mode).click();
+      const desktop = await page.evaluate(() => {
+        const rect = selector => document.querySelector(selector).getBoundingClientRect();
+        const clock = rect('.clock-card'), setup = rect('#setupCard'), alarms = rect('#alarmsCard'), add = rect('#setBtn');
+        return {
+          grid: getComputedStyle(document.querySelector('.app')).display,
+          clockFits: rect('.clock').width <= clock.width + 1,
+          pageFits: document.documentElement.scrollHeight <= innerHeight && document.documentElement.scrollWidth <= innerWidth,
+          ordered: clock.right <= setup.left && setup.right <= alarms.left,
+          cardsFit: setup.top >= 0 && setup.bottom <= innerHeight && alarms.bottom <= innerHeight,
+          addVisible: add.top >= setup.top && add.bottom <= setup.bottom,
+          clockFont: parseFloat(getComputedStyle(document.querySelector('#clockHM')).fontSize),
+          settingsHeight: document.querySelector('.setup-fields').clientHeight,
+          settingsContent: document.querySelector('.setup-fields').scrollHeight
+        };
+      });
+      assert.equal(desktop.grid, 'grid');
+      assert(desktop.pageFits && desktop.ordered && desktop.cardsFit && desktop.addVisible && desktop.clockFits, JSON.stringify({ viewport, mode, desktop }));
+      if (viewport.width >= 1366) {
+        assert(desktop.clockFont > 112);
+        assert(desktop.settingsContent <= desktop.settingsHeight + 2, JSON.stringify({ viewport, mode, desktop }));
+      }
+    }
+    await picker.click();
+    const popup = await menu.boundingBox();
+    assert(popup.y >= 0 && popup.y + popup.height <= viewport.height + 1);
+    await page.keyboard.press('Escape');
+    if (viewport.width === 1366) await page.screenshot({ path: path.join(output, 'laptop-workspace.png') });
+  }
+  await page.locator('#typingToggle').uncheck(); await page.locator('#mathToggle').uncheck();
+  await page.locator('#tabTime').click();
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.evaluate(() => localStorage.setItem('wake.alarms', JSON.stringify(Array.from({ length: 30 }, (_, i) => ({
+    id: 'desktop-' + i, targetMs: Date.now() + (i + 1) * 3600000, ringtoneId: 'classic-beep', typing: false, mathCount: 0, ringing: false
+  })))));
+  await page.reload();
+  assert.equal(await page.locator('.alarm-item').count(), 30);
+  assert(await page.evaluate(() => {
+    const list = document.querySelector('#alarmList');
+    return list.scrollHeight > list.clientHeight && document.documentElement.scrollHeight <= innerHeight;
+  }));
+  await page.locator('#alarmList').evaluate(el => { el.scrollTop = el.scrollHeight; });
+  assert(await page.locator('#alarmList').evaluate(el => el.scrollTop > 0));
+  await page.locator('#alarmList').evaluate(el => { el.scrollTop = 0; });
+  await page.screenshot({ path: path.join(output, 'desktop-workspace.png') });
+  await page.evaluate(() => localStorage.setItem('wake.alarms', '[]')); await page.reload();
+  await page.locator('#formatBtn').click();
+  const touch = await browser.newPage({ viewport: { width: 1024, height: 768 }, hasTouch: true, isMobile: true });
+  await touch.route('https://**/*', route => route.abort()); await touch.goto(url);
+  assert.equal(await touch.locator('.app').evaluate(el => getComputedStyle(el).display), 'flex');
+  assert(await touch.evaluate(() => document.documentElement.scrollHeight > innerHeight));
+  await touch.close();
+  console.log('PASS desktop three-column viewport, pinned Add button, panel scrolling, resize and touch layout');
+
   // Keep the approved form layout; the restored three-button toolbar can wrap above the clock.
   for (const width of [520, 462, 375, 320]) {
     await page.setViewportSize({ width, height: 900 });
