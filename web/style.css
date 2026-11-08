@@ -829,7 +829,8 @@ button:focus-visible, input:focus-visible { outline: 2px solid var(--accent); ou
 
 
 /* These grouping elements do not alter the approved phone layout. */
-.clock-face, .setup-fields, .setup-actions { display: contents; }
+.clock-face, .setup-fields, .setup-actions, .alarms-header, .alarms-panel { display: contents; }
+.sidebar-toggle { display: none; }
 .compact-hint { display: none; }
 
 /* Wide mouse/trackpad screens get a workspace; touch-first screens keep the phone UI.
@@ -838,9 +839,11 @@ button:focus-visible, input:focus-visible { outline: 2px solid var(--accent); ou
   html, body { height: 100%; overflow: hidden; }
   .app {
     width: 100%; max-width: 1800px; height: 100vh; height: 100dvh;
-    padding: clamp(18px, 2.2vw, 36px); gap: 16px clamp(14px, 1.6vw, 28px);
+    --workspace-gap: clamp(14px, 1.6vw, 28px);
+    --alarms-width: 56px;
+    padding: clamp(18px, 2.2vw, 36px); gap: 16px var(--workspace-gap);
     display: grid;
-    grid-template-columns: minmax(0, 1.2fr) minmax(330px, 410px) minmax(230px, .85fr);
+    grid-template-columns: minmax(0, min(42vw, 760px, calc(100% - 330px - var(--alarms-width) - 2 * var(--workspace-gap)))) minmax(330px, 1fr) var(--alarms-width);
     grid-template-rows: minmax(0, 1fr) auto auto;
     grid-template-areas: "clock setup alarms" "tips setup alarms" "footnote setup alarms";
     overflow: hidden;
@@ -872,8 +875,31 @@ button:focus-visible, input:focus-visible { outline: 2px solid var(--accent); ou
   .setup-actions { display: block; flex: none; padding-top: 10px; }
   .setup-actions .primary { margin-top: 0; }
   .setup-actions .form-msg { margin-top: 8px; margin-bottom: 0; }
-  #alarmsCard { grid-area: alarms; display: flex; flex-direction: column; }
-  #alarmsCard > .card-title { flex: none; }
+  .app.alarms-open { --alarms-width: clamp(260px, 22vw, 340px); }
+  #alarmsCard { grid-area: alarms; display: flex; flex-direction: column; padding: 8px; }
+  .alarms-header { display: flex; flex: 1; min-height: 0; justify-content: center; }
+  .alarms-header .card-title { display: none; }
+  .sidebar-toggle {
+    display: flex; width: 100%; flex-direction: column; align-items: center; gap: 14px;
+    border: 1px solid transparent; border-radius: 14px; padding: 12px 0;
+    background: transparent; color: var(--muted); cursor: pointer;
+  }
+  .sidebar-toggle:hover { color: var(--text); background: var(--hover); }
+  .sidebar-toggle:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+  .sidebar-arrow { flex: none; }
+  .sidebar-count {
+    display: grid; place-items: center; min-width: 26px; min-height: 26px; padding: 3px 6px;
+    border-radius: 999px; background: var(--soft); color: var(--accent); font-size: 12px; font-weight: 600;
+  }
+  .sidebar-label { writing-mode: vertical-rl; font-size: 13px; font-weight: 500; letter-spacing: .02em; }
+  .alarms-panel { display: none; }
+  .app.alarms-open #alarmsCard { padding: 20px; }
+  .app.alarms-open .alarms-header { flex: none; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 14px; }
+  .app.alarms-open .alarms-header .card-title { display: block; margin: 0; }
+  .app.alarms-open .sidebar-toggle { width: auto; flex-direction: row; gap: 6px; padding: 4px; }
+  .app.alarms-open .sidebar-arrow { transform: rotate(180deg); }
+  .app.alarms-open .sidebar-label { display: none; }
+  .app.alarms-open .alarms-panel { display: flex; flex: 1; min-height: 0; flex-direction: column; }
   #alarmList {
     flex: 1; min-height: 0; overflow-y: auto; overflow-x: hidden; padding-right: 3px;
     overscroll-behavior-y: contain; scrollbar-width: thin; scrollbar-color: var(--switch-off) transparent;
@@ -891,7 +917,7 @@ button:focus-visible, input:focus-visible { outline: 2px solid var(--accent); ou
 /* Laptop heights: preserve normal text size while reducing excess field spacing. */
 @media (min-width: 1000px) and (max-height: 1000px) and (hover: hover) and (pointer: fine) {
   .app { padding-block: 18px; }
-  #setupCard, #alarmsCard { padding: 18px; }
+  #setupCard, .app.alarms-open #alarmsCard { padding: 18px; }
   #setupCard .card-title { margin-bottom: 12px; }
   #setupCard .field-label { margin-top: 10px; margin-bottom: 6px; font-size: 11.5px; }
   #setupCard .tabs .tab { padding-block: 8px; font-size: 14px; }

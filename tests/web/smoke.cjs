@@ -86,10 +86,21 @@ let browser;
     await page.keyboard.press('Escape');
   }
   console.log('PASS eight themes with both system color schemes');
+  const sidebarToggle = page.locator('#alarmsToggle');
+  assert.equal(await sidebarToggle.getAttribute('aria-expanded'), 'false');
   // Desktop layouts must fit even with a five-character clock and expanded timer/tests.
   await page.locator('#formatBtn').click();
   for (const viewport of [{ width: 1440, height: 900 }, { width: 1366, height: 768 }, { width: 1280, height: 720 }, { width: 1024, height: 600 }]) {
     await page.setViewportSize(viewport);
+    if (await sidebarToggle.getAttribute('aria-expanded') === 'true') await sidebarToggle.click();
+    const expandedFormWidth = (await page.locator('#setupCard').boundingBox()).width;
+    assert((await page.locator('#alarmsCard').boundingBox()).width <= 60);
+    assert(await page.locator('#alarmsPanel').isHidden());
+    if (viewport.width === 1366) await page.screenshot({ path: path.join(output, 'desktop-sidebar-closed.png') });
+    await sidebarToggle.click();
+    assert.equal(await sidebarToggle.getAttribute('aria-expanded'), 'true');
+    assert(await page.locator('#alarmsPanel').isVisible());
+    assert((await page.locator('#setupCard').boundingBox()).width < expandedFormWidth - 100);
     await page.locator('#typingToggle').check(); await page.locator('#mathToggle').check();
     for (const mode of ['#tabTime', '#tabTimer']) {
       await page.locator(mode).click();
@@ -129,6 +140,10 @@ let browser;
   })))));
   await page.reload();
   assert.equal(await page.locator('.alarm-item').count(), 30);
+  assert.equal(await sidebarToggle.getAttribute('aria-expanded'), 'true');
+  assert.equal(await page.locator('#alarmsCount').innerText(), '30');
+  await page.locator('.delete-btn').first().click();
+  assert.equal(await page.locator('#alarmsCount').innerText(), '29');
   assert(await page.evaluate(() => {
     const list = document.querySelector('#alarmList');
     return list.scrollHeight > list.clientHeight && document.documentElement.scrollHeight <= innerHeight;
@@ -137,6 +152,20 @@ let browser;
   assert(await page.locator('#alarmList').evaluate(el => el.scrollTop > 0));
   await page.locator('#alarmList').evaluate(el => { el.scrollTop = 0; });
   await page.screenshot({ path: path.join(output, 'desktop-workspace.png') });
+  await page.locator('.delete-btn').first().focus(); await page.keyboard.press('Escape');
+  assert.equal(await sidebarToggle.getAttribute('aria-expanded'), 'false');
+  assert(await sidebarToggle.evaluate(el => el === document.activeElement));
+  await page.reload();
+  assert.equal(await sidebarToggle.getAttribute('aria-expanded'), 'false');
+  assert.equal(await page.locator('#alarmsCount').innerText(), '29');
+  await page.setViewportSize({ width: 375, height: 812 });
+  assert(await sidebarToggle.isHidden());
+  assert.equal(await page.locator('#alarmsPanel').evaluate(el => el.inert), false);
+  assert(await page.locator('.alarm-item').first().isVisible());
+  await page.setViewportSize({ width: 1440, height: 900 });
+  assert.equal(await sidebarToggle.getAttribute('aria-expanded'), 'false');
+  await sidebarToggle.click();
+  assert.equal(await page.locator('.alarm-item').count(), 29);
   await page.evaluate(() => localStorage.setItem('wake.alarms', '[]')); await page.reload();
   await page.locator('#formatBtn').click();
   const touch = await browser.newPage({ viewport: { width: 1024, height: 768 }, hasTouch: true, isMobile: true });
@@ -144,7 +173,7 @@ let browser;
   assert.equal(await touch.locator('.app').evaluate(el => getComputedStyle(el).display), 'flex');
   assert(await touch.evaluate(() => document.documentElement.scrollHeight > innerHeight));
   await touch.close();
-  console.log('PASS desktop three-column viewport, pinned Add button, panel scrolling, resize and touch layout');
+  console.log('PASS expanding desktop form, collapsible alarms/count, saved preference, keyboard focus, panel scrolling and phone layout');
 
   // Keep the approved form layout; the restored three-button toolbar can wrap above the clock.
   for (const width of [520, 462, 375, 320]) {

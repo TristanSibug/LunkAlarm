@@ -165,9 +165,19 @@
 
     <!-- ============ 3. LIST OF ALARMS ============ -->
     <section id="alarmsCard" class="card">
-      <h2 class="card-title">Your alarms</h2>
+      <div class="alarms-header">
+        <h2 id="alarmsHeading" class="card-title">Your alarms</h2>
+        <button id="alarmsToggle" class="sidebar-toggle" type="button" aria-expanded="false"
+          aria-controls="alarmsPanel" aria-label="Show your alarms">
+          <svg class="sidebar-arrow" viewBox="0 0 20 20" width="20" height="20" fill="none" aria-hidden="true"><path d="m12 5-5 5 5 5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          <span id="alarmsCount" class="sidebar-count" aria-hidden="true">0</span>
+          <span class="sidebar-label">Your alarms</span>
+        </button>
+      </div>
+      <div id="alarmsPanel" class="alarms-panel">
       <ul id="alarmList" class="alarm-list"></ul>
       <p id="emptyText" class="empty">No alarms yet. Add one above.</p>
+      </div>
     </section>
 
     <aside class="browser-tools" aria-label="Browser alarm controls">

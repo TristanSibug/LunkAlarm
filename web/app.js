@@ -702,8 +702,39 @@ function describeAlarm(alarm) {
   return parts.join(' · ');
 }
 
+// The alarms rail is desktop-only; the full list always remains visible on phones.
+const desktopWorkspace = window.matchMedia('(min-width: 1000px) and (hover: hover) and (pointer: fine)');
+let alarmsSidebarOpen = loadSaved('wake.alarmsSidebarOpen', false) === true;
+function updateAlarmsSidebar() {
+  const desktop = desktopWorkspace.matches;
+  const open = desktop && alarmsSidebarOpen;
+  const button = $('alarmsToggle'), panel = $('alarmsPanel');
+  if (desktop && !open && panel.contains(document.activeElement)) button.focus();
+  $('mainApp').classList.toggle('alarms-open', open);
+  $('alarmsCount').textContent = String(state.alarms.length);
+  button.setAttribute('aria-expanded', String(open));
+  button.setAttribute('aria-label', (open ? 'Collapse your alarms' : 'Show your alarms') + ' (' + state.alarms.length + ')');
+  button.title = open ? 'Collapse alarms sidebar' : 'Show your alarms';
+  panel.inert = desktop && !open;
+  if (desktop && !open) panel.setAttribute('aria-hidden', 'true');
+  else panel.removeAttribute('aria-hidden');
+}
+function setAlarmsSidebar(open) {
+  alarmsSidebarOpen = open;
+  save('wake.alarmsSidebarOpen', open);
+  updateAlarmsSidebar();
+}
+$('alarmsToggle').addEventListener('click', () => setAlarmsSidebar(!alarmsSidebarOpen));
+$('alarmsCard').addEventListener('keydown', event => {
+  if (event.key === 'Escape' && desktopWorkspace.matches && alarmsSidebarOpen) {
+    event.preventDefault(); setAlarmsSidebar(false); $('alarmsToggle').focus();
+  }
+});
+desktopWorkspace.addEventListener('change', updateAlarmsSidebar);
+
 // Draws the list of alarms.
 function renderAlarmList() {
+  updateAlarmsSidebar();
   const list = $('alarmList');
   list.innerHTML = '';
   $('emptyText').classList.toggle('hidden', state.alarms.length > 0);
