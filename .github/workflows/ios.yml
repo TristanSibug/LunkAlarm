@@ -40,6 +40,31 @@ jobs:
             -sdk iphoneos -destination 'generic/platform=iOS' \
             -configuration Release -derivedDataPath artifacts/ios-device \
             CODE_SIGNING_ALLOWED=NO build | tee ios-device-build.log
+      - name: Report Xcode compiler diagnostics
+        if: failure()
+        run: |
+          python3 - <<'PY'
+          import os, re
+          from pathlib import Path
+          errors = []
+          for filename in ('ios-build.log', 'ios-device-build.log'):
+              path = Path(filename)
+              if not path.exists():
+                  continue
+              for line in path.read_text().splitlines():
+                  if 'error:' not in line:
+                      continue
+                  errors.append(line)
+                  match = re.search(r'(/[^:]+):(\d+):(\d+): error: (.*)', line)
+                  escape = lambda value: value.replace('%', '%25').replace('\r', '%0D').replace('\n', '%0A')
+                  if match:
+                      source = os.path.relpath(match[1], os.environ['GITHUB_WORKSPACE'])
+                      print(f'::error file={source},line={match[2]},col={match[3]}::{escape(match[4])}')
+                  else:
+                      print('::error::' + escape(line))
+          with open(os.environ['GITHUB_STEP_SUMMARY'], 'a') as summary:
+              summary.write('### Xcode diagnostics\n\n```text\n' + '\n'.join(errors) + '\n```\n')
+          PY
       - name: Package source and unsigned builds
         run: |
           git archive --format=zip --output=LunkAlarm-iOS-source.zip HEAD ios
