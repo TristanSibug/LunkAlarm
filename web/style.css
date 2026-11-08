@@ -457,8 +457,8 @@ body {
 .presets { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
 
 .ringtone-row { display: flex; align-items: center; gap: 8px; }
-.ringtone-row .select {
-  flex: 1;
+.ringtone-control { flex: 1; min-width: 0; }
+.ringtone-control .select {
   min-width: 0;
   height: 36px;
   padding: 6px 10px;
@@ -466,6 +466,38 @@ body {
   font-size: 14px;
 }
 .ringtone-row .preview { flex: none; min-height: 36px; padding: 8px 14px; }
+
+/* The picker uses the same compact field as before; only its popup is roomier. */
+.ringtone-picker {
+  width: 100%; height: 36px; display: flex; align-items: center; justify-content: space-between;
+  gap: 10px; padding: 6px 10px; border: 1px solid var(--card-border); border-radius: 8px;
+  background: var(--field); color: var(--text); font: inherit; font-size: 14px;
+  text-align: left; cursor: pointer; transition: border-color .15s, background .15s;
+}
+.ringtone-picker[hidden] { display: none; }
+.ringtone-picker:hover { background: var(--hover); }
+.ringtone-picker:focus-visible, .ringtone-picker[aria-expanded="true"] { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 16%, transparent); }
+.ringtone-picker-label { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.ringtone-chevron { flex: none; color: var(--muted); transition: transform .15s; }
+.ringtone-picker[aria-expanded="true"] .ringtone-chevron { transform: rotate(180deg); }
+.ringtone-menu {
+  position: fixed; inset: auto; margin: 0; padding: 6px; box-sizing: border-box;
+  border: 1px solid var(--card-border); border-radius: 16px; background: var(--dialog-bg);
+  color: var(--text); font-family: var(--font); font-size: 14px;
+  box-shadow: 0 16px 48px rgba(0,0,0,.38); overflow-y: auto; overscroll-behavior: contain;
+  scrollbar-width: thin; scrollbar-color: var(--switch-off) transparent;
+}
+.ringtone-menu-title { padding: 8px 10px 10px; font-size: 10px; font-weight: 600; letter-spacing: .09em; text-transform: uppercase; color: var(--muted); }
+.ringtone-option {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  min-height: 40px; padding: 10px; border-radius: 10px; cursor: pointer; line-height: 1.4;
+}
+.ringtone-option-name { min-width: 0; overflow-wrap: anywhere; }
+.ringtone-option[data-active="true"] { background: var(--hover); }
+.ringtone-option[aria-selected="true"] { color: var(--accent); font-weight: 600; }
+.ringtone-option-check { flex: none; width: 16px; text-align: center; visibility: hidden; }
+.ringtone-option[aria-selected="true"] .ringtone-option-check { visibility: visible; }
+
 
 .ringtone-links { margin-top: 10px; font-size: 13px; display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
 .sep { color: var(--muted); }

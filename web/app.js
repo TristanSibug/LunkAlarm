@@ -466,6 +466,146 @@ function togglePreview() {
   sound.stopTimer = setTimeout(() => { stopSound(); setPreviewing(false); }, 6000);
 }
 
+// A select-only combobox. The native select remains the value model and fallback.
+let ringtonePickerReady = false;
+let activeRingtone = 0;
+let ringtoneSearch = '';
+let ringtoneSearchAt = 0;
+function ringtoneOptions() { return Array.from($('ringtoneMenu').querySelectorAll('[role="option"]')); }
+function ringtoneMenuOpen() { return ringtonePickerReady && $('ringtoneMenu').matches(':popover-open'); }
+
+function renderRingtonePicker() {
+  if (!ringtonePickerReady) return;
+  const select = $('ringtoneSelect');
+  $('ringtonePickerLabel').textContent = select.selectedOptions[0]?.textContent || 'Choose a ringtone';
+  const menu = $('ringtoneMenu');
+  menu.replaceChildren();
+  const title = document.createElement('div');
+  title.className = 'ringtone-menu-title'; title.setAttribute('role', 'presentation');
+  title.textContent = 'Choose a ringtone'; menu.appendChild(title);
+  Array.from(select.options).forEach((option, index) => {
+    const row = document.createElement('div');
+    row.id = 'ringtone-option-' + index; row.className = 'ringtone-option';
+    row.setAttribute('role', 'option'); row.setAttribute('aria-selected', String(option.selected));
+    row.dataset.value = option.value;
+    const name = document.createElement('span'); name.className = 'ringtone-option-name'; name.textContent = option.textContent;
+    const check = document.createElement('span'); check.className = 'ringtone-option-check';
+    check.textContent = '✓'; check.setAttribute('aria-hidden', 'true');
+    row.append(name, check); menu.appendChild(row);
+  });
+  activeRingtone = Math.max(0, select.selectedIndex);
+  if (ringtoneMenuOpen()) { positionRingtoneMenu(); highlightRingtone(activeRingtone); }
+}
+
+function positionRingtoneMenu() {
+  const button = $('ringtonePicker'), menu = $('ringtoneMenu');
+  const rect = button.getBoundingClientRect();
+  if (rect.bottom < 0 || rect.top > innerHeight) { closeRingtonePicker(); return; }
+  const below = innerHeight - rect.bottom - 16, above = rect.top - 16;
+  const openBelow = below >= 200 || below >= above;
+  const height = Math.min(330, Math.max(80, openBelow ? below : above));
+  const width = Math.min(rect.width, innerWidth - 24);
+  menu.style.width = width + 'px'; menu.style.maxHeight = height + 'px';
+  menu.style.left = Math.max(12, Math.min(rect.left, innerWidth - width - 12)) + 'px';
+  menu.style.top = (openBelow ? rect.bottom + 7 : rect.top - menu.getBoundingClientRect().height - 7) + 'px';
+}
+
+function highlightRingtone(index) {
+  const options = ringtoneOptions();
+  if (!options.length) return;
+  activeRingtone = Math.max(0, Math.min(index, options.length - 1));
+  options.forEach((option, i) => { option.dataset.active = String(i === activeRingtone); });
+  $('ringtonePicker').setAttribute('aria-activedescendant', options[activeRingtone].id);
+  options[activeRingtone].scrollIntoView({ block: 'nearest' });
+}
+function openRingtonePicker() {
+  if (!ringtonePickerReady || ringtoneMenuOpen()) return;
+  ringtoneSearch = ''; ringtoneSearchAt = 0;
+  $('ringtoneMenu').showPopover();
+  $('ringtonePicker').setAttribute('aria-expanded', 'true');
+  positionRingtoneMenu(); highlightRingtone($('ringtoneSelect').selectedIndex);
+}
+function closeRingtonePicker(focus = false) {
+  if (!ringtonePickerReady) return;
+  if (ringtoneMenuOpen()) $('ringtoneMenu').hidePopover();
+  $('ringtonePicker').setAttribute('aria-expanded', 'false');
+  $('ringtonePicker').removeAttribute('aria-activedescendant');
+  if (focus) $('ringtonePicker').focus();
+}
+function chooseRingtone(index) {
+  const select = $('ringtoneSelect');
+  select.selectedIndex = index;
+  select.dispatchEvent(new Event('change', { bubbles: true }));
+  closeRingtonePicker(true);
+}
+function setupRingtonePicker() {
+  // Older browsers retain the working native select instead of an incomplete custom menu.
+  if (typeof HTMLElement.prototype.showPopover !== 'function') return;
+  ringtonePickerReady = true;
+  $('ringtoneSelect').hidden = true;
+  $('ringtoneMenu').hidden = false;
+  $('ringtonePicker').hidden = false;
+  $('ringtoneLabel').htmlFor = 'ringtonePicker';
+  renderRingtonePicker();
+  const button = $('ringtonePicker'), menu = $('ringtoneMenu');
+  button.addEventListener('click', event => {
+    event.preventDefault(); // We position the associated popover and manage its active option.
+    if (ringtoneMenuOpen()) closeRingtonePicker(); else openRingtonePicker();
+  });
+  button.addEventListener('keydown', event => {
+    const open = ringtoneMenuOpen();
+    if (event.key === 'Tab') { closeRingtonePicker(); return; }
+    if (event.key === 'Escape') { if (open) { event.preventDefault(); closeRingtonePicker(true); } return; }
+    if (['ArrowDown', 'ArrowUp', 'Home', 'End', 'Enter', ' '].includes(event.key)) {
+      event.preventDefault();
+      if (!open) openRingtonePicker();
+      else if (event.key === 'Enter' || event.key === ' ') { chooseRingtone(activeRingtone); return; }
+      else if (event.key === 'ArrowDown') highlightRingtone(activeRingtone + 1);
+      else if (event.key === 'ArrowUp') highlightRingtone(activeRingtone - 1);
+      if (event.key === 'Home') highlightRingtone(0);
+      if (event.key === 'End') highlightRingtone(ringtoneOptions().length - 1);
+    } else if (event.key.length === 1 && !event.ctrlKey && !event.metaKey && !event.altKey) {
+      event.preventDefault();
+      if (!open) openRingtonePicker();
+      const now = performance.now();
+      ringtoneSearch = now - ringtoneSearchAt < 700 ? ringtoneSearch + event.key.toLowerCase() : event.key.toLowerCase();
+      ringtoneSearchAt = now;
+      const options = Array.from($('ringtoneSelect').options);
+      const start = ringtoneSearch.length === 1 ? activeRingtone + 1 : activeRingtone;
+      for (let n = 0; n < options.length; n++) {
+        const i = (start + n) % options.length;
+        if (options[i].textContent.toLowerCase().startsWith(ringtoneSearch)) { highlightRingtone(i); break; }
+      }
+    }
+  });
+  menu.addEventListener('pointerdown', event => { if (event.target.closest('[role="option"]')) event.preventDefault(); });
+  menu.addEventListener('pointermove', event => {
+    const option = event.target.closest('[role="option"]');
+    if (option) {
+      // Hover updates the keyboard cursor without scrolling a menu under the pointer.
+      activeRingtone = ringtoneOptions().indexOf(option);
+      ringtoneOptions().forEach(row => { row.dataset.active = String(row === option); });
+      button.setAttribute('aria-activedescendant', option.id);
+    }
+  });
+  menu.addEventListener('click', event => {
+    const option = event.target.closest('[role="option"]');
+    if (option) chooseRingtone(ringtoneOptions().indexOf(option));
+  });
+  menu.addEventListener('beforetoggle', event => {
+    button.setAttribute('aria-expanded', String(event.newState === 'open'));
+    if (event.newState === 'closed') button.removeAttribute('aria-activedescendant');
+  });
+  menu.addEventListener('toggle', () => {
+    const open = ringtoneMenuOpen(); button.setAttribute('aria-expanded', String(open));
+    if (!open) button.removeAttribute('aria-activedescendant');
+  });
+  window.addEventListener('resize', () => { if (ringtoneMenuOpen()) positionRingtoneMenu(); });
+  window.addEventListener('scroll', event => {
+    if (ringtoneMenuOpen() && !(event.target instanceof Node && menu.contains(event.target))) positionRingtoneMenu();
+  }, true);
+}
+
 // Fills the dropdown with the 10 built-in ringtones (+ the person's own file).
 function fillRingtoneSelect() {
   const select = $('ringtoneSelect');
@@ -489,6 +629,7 @@ function fillRingtoneSelect() {
   const exists = Array.from(select.options).some((o) => o.value === state.ringtoneId);
   if (!exists) state.ringtoneId = BUILT_IN_RINGTONES[0].id;
   select.value = state.ringtoneId;
+  renderRingtonePicker();
 }
 
 
@@ -631,6 +772,7 @@ function checkAlarm() {
 
 // Makes an alarm ring: full screen, sound, and the first test.
 function startRinging(alarm) {
+  closeRingtonePicker();
   // Remember that it is ringing, so if the page is reloaded
   // the alarm picks up ringing again instead of vanishing.
   alarm.ringing = true;
@@ -891,6 +1033,7 @@ document.querySelectorAll('.presets .chip').forEach((button) => {
 $('ringtoneSelect').addEventListener('change', () => {
   state.ringtoneId = $('ringtoneSelect').value;
   save('wake.ringtone', state.ringtoneId);
+  renderRingtonePicker();
   if (previewing) { stopSound(); setPreviewing(false); }
 });
 $('previewBtn').addEventListener('click', togglePreview);
@@ -1155,6 +1298,7 @@ function init() {
   $('zoneText').textContent = Intl.DateTimeFormat().resolvedOptions().timeZone;
 
   fillRingtoneSelect();
+  setupRingtonePicker();
   applyMode(state.mode);
   applyFormatButton();
   applyTestSettings();

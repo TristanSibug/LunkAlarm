@@ -95,9 +95,17 @@
       </div>
 
       <!-- Ringtone picker -->
-      <label class="field-label" for="ringtoneSelect">Ringtone</label>
+      <label id="ringtoneLabel" class="field-label" for="ringtoneSelect">Ringtone</label>
       <div class="ringtone-row">
-        <select id="ringtoneSelect" class="select"></select>
+        <div class="ringtone-control">
+          <select id="ringtoneSelect" class="select"></select>
+          <button id="ringtonePicker" class="ringtone-picker" type="button" role="combobox" popovertarget="ringtoneMenu"
+            aria-haspopup="listbox" aria-expanded="false" aria-controls="ringtoneMenu"
+            aria-labelledby="ringtoneLabel ringtonePickerLabel" hidden>
+            <span id="ringtonePickerLabel" class="ringtone-picker-label"></span>
+            <svg class="ringtone-chevron" viewBox="0 0 16 16" width="16" height="16" fill="none" aria-hidden="true"><path d="m4 6 4 4 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </button>
+        </div>
         <button id="previewBtn" class="chip preview" type="button">Preview</button>
       </div>
       <div class="ringtone-links">
@@ -162,6 +170,9 @@
 
     <p id="footnote" class="footnote">Alarms and themes are saved in this browser on this device.</p>
   </main>
+
+  <!-- A top-layer popup stays above the glass cards without changing their layout. -->
+  <div id="ringtoneMenu" class="ringtone-menu" role="listbox" aria-labelledby="ringtoneLabel" popover="auto" hidden></div>
 
   <!-- ============ POP-UP: ringtone websites ============ -->
   <dialog id="onlineDialog" class="dialog">

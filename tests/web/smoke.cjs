@@ -40,6 +40,31 @@ let browser;
   await page.locator('#enableSoundBtn').click();
   await page.waitForFunction(() => document.querySelector('#enableSoundBtn').textContent === 'Sound ready');
   console.log('PASS audio context enabled by user gesture');
+  const picker = page.locator('#ringtonePicker');
+  const menu = page.locator('#ringtoneMenu');
+  await picker.click();
+  assert.equal(await menu.getByRole('option').count(), 10);
+  await picker.click();
+  assert.equal(await picker.getAttribute('aria-expanded'), 'false');
+  await picker.click();
+  await page.keyboard.press('End'); await page.keyboard.press('Enter');
+  assert.match(await picker.innerText(), /Siren/);
+  assert.equal(await page.evaluate(() => localStorage.getItem('wake.ringtone')), '"siren"');
+  await picker.click(); await page.keyboard.press('ArrowUp'); await page.keyboard.press('Escape');
+  assert.match(await picker.innerText(), /Siren/);
+  assert.equal(await picker.getAttribute('aria-expanded'), 'false');
+  await picker.focus(); await page.keyboard.type('soft'); await page.keyboard.press('Enter');
+  assert.match(await picker.innerText(), /Soft Chime/);
+  await picker.click();
+  await menu.getByRole('option', { name: 'Classic Beep', exact: true }).click();
+  await picker.click(); await page.keyboard.press('Tab');
+  assert.equal(await page.locator('#previewBtn').evaluate(el => el === document.activeElement), true);
+  assert.equal(await picker.getAttribute('aria-expanded'), 'false');
+  await picker.click(); await page.locator('#themeBtn').click();
+  assert.equal(await picker.getAttribute('aria-expanded'), 'false');
+  await page.locator('#closeThemeBtn').click();
+  console.log('PASS custom picker keyboard navigation, type-ahead, selection, Escape, Tab and outside dismissal');
+
   for (const mode of ['light', 'dark']) {
     await page.emulateMedia({ colorScheme: mode });
     await page.locator('#themeBtn').click();
@@ -55,6 +80,10 @@ let browser;
     }
     await page.locator('[data-theme="sunrise"].theme-swatch').click();
     await page.locator('#closeThemeBtn').click();
+    await picker.click();
+    assert.equal(await menu.getByRole('option', { selected: true }).count(), 1);
+    assert(await menu.evaluate(el => getComputedStyle(el).backgroundColor !== 'rgba(0, 0, 0, 0)'));
+    await page.keyboard.press('Escape');
   }
   console.log('PASS eight themes with both system color schemes');
   // Keep the approved form layout; the restored three-button toolbar can wrap above the clock.
@@ -67,7 +96,7 @@ let browser;
         overflow: document.documentElement.scrollWidth > innerWidth,
         headerOffset: Math.abs(sound.y + sound.height / 2 - theme.y - theme.height / 2),
         formTop: box('setupCard').top + scrollY,
-        pickerHeight: box('ringtoneSelect').height,
+        pickerHeight: box('ringtonePicker').height,
         timeAlign: getComputedStyle(document.getElementById('timeInput')).textAlign
       };
     });
@@ -76,9 +105,19 @@ let browser;
     assert(layout.formTop < 355, `Form pushed down at ${width}px`);
     assert.equal(layout.pickerHeight, 36);
     assert.equal(layout.timeAlign, 'left');
+    await picker.click();
+    const popup = await menu.boundingBox();
+    assert(popup.x >= 0 && popup.x + popup.width <= width + 1);
+    assert(popup.y >= 0 && popup.y + popup.height <= 901);
+    await page.keyboard.press('Escape');
   }
   console.log('PASS approved form proportions and restored toolbar at 320–520px');
   await page.setViewportSize({ width: 520, height: 900 });
+  await picker.click();
+  await menu.waitFor({ state: 'visible' });
+  await page.screenshot({ path: path.join(output, 'ringtone-picker.png') });
+  assert.equal(await picker.getAttribute('aria-expanded'), 'true');
+  await page.keyboard.press('Escape');
   await page.locator('#typingToggle').check(); await page.locator('#mathToggle').check();
   await page.screenshot({ path: path.join(output, 'mac-layout.png'), fullPage: true });
   await page.locator('#typingToggle').uncheck(); await page.locator('#mathToggle').uncheck();
@@ -88,6 +127,20 @@ let browser;
   assert(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth));
   await page.screenshot({ path: path.join(output, 'phone.png'), fullPage: true });
   console.log('PASS phone layout has no horizontal overflow');
+  const wave = Buffer.alloc(204);
+  wave.write('RIFF', 0); wave.writeUInt32LE(196, 4); wave.write('WAVEfmt ', 8);
+  wave.writeUInt32LE(16, 16); wave.writeUInt16LE(1, 20); wave.writeUInt16LE(1, 22);
+  wave.writeUInt32LE(8000, 24); wave.writeUInt32LE(16000, 28); wave.writeUInt16LE(2, 32);
+  wave.writeUInt16LE(16, 34); wave.write('data', 36); wave.writeUInt32LE(160, 40);
+  await page.locator('#fileInput').setInputFiles({ name: 'My morning.wav', mimeType: 'audio/wav', buffer: wave });
+  await page.waitForFunction(() => document.querySelector('#ringtonePickerLabel').textContent.includes('My morning.wav'));
+  await page.reload();
+  assert.match(await picker.innerText(), /My morning.wav/);
+  await picker.click();
+  assert.equal(await menu.getByRole('option').count(), 11);
+  assert.match(await menu.getByRole('option', { selected: true }).innerText(), /My morning.wav/);
+  await menu.getByRole('option', { name: 'Classic Beep', exact: true }).click();
+  console.log('PASS imported custom sound and selected option survive reload');
   await page.locator('#tabTimer').click();
   await page.locator('#hoursInput').fill('0'); await page.locator('#minutesInput').fill('0');
   await page.locator('#secondsInput').fill('0'); await page.locator('#setBtn').click();
@@ -141,6 +194,17 @@ let browser;
   assert.match(await page.locator('#formMsg').innerText(), /Could not save alarms/);
   assert.equal(await page.locator('.alarm-item').count(), 0);
   console.log('PASS storage failure prevents false successful add');
+  const fallback = await browser.newPage();
+  await fallback.addInitScript(() => { delete HTMLElement.prototype.showPopover; });
+  await fallback.route('https://**/*', route => route.abort());
+  await fallback.goto(url);
+  assert(await fallback.locator('#ringtoneSelect').isVisible());
+  assert(await fallback.locator('#ringtonePicker').isHidden());
+  assert(await fallback.locator('#ringtoneMenu').isHidden());
+  await fallback.locator('#ringtoneSelect').selectOption('soft-chime');
+  assert.equal(await fallback.evaluate(() => localStorage.getItem('wake.ringtone')), '\"soft-chime\"');
+  await fallback.close();
+  console.log('PASS native select fallback on browsers without popover support');
   assert.deepEqual(errors, []);
   console.log('PASS no uncaught browser errors; static website checks complete');
 })().catch(error => { console.error(error); process.exitCode = 1; }).finally(async () => {
