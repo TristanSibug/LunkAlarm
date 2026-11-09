@@ -350,7 +350,7 @@ final class AlarmStore {
         }
     }
     func begin(_ alarm: AlarmRecord) {
-        guard !finishing, alarm.isEnabled else { return }
+        guard !finishing, alarm.isEnabled, !alarm.requiresSystemMigration else { return }
         sound.stop()
         ringing = alarm
         challenge = TimedWakeChallenge(typing: alarm.typing, mathCount: alarm.mathCount,

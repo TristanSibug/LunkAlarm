@@ -58,8 +58,10 @@ final class AlarmInteractionTests: XCTestCase {
         app.buttons["In how long"].tap()
         XCTAssertFalse(app.buttons["8 hours"].exists)
         let math = app.switches["mathTestToggle"]
-        for _ in 0..<4 where !math.isHittable { app.swipeUp(velocity: .slow) }
+        let footer = app.buttons["scheduleAlarm"]
+        for _ in 0..<6 where !math.isHittable || math.frame.maxY > footer.frame.minY - 12 { app.swipeUp(velocity: .slow) }
         XCTAssertTrue(math.isHittable)
+        XCTAssertLessThan(math.frame.maxY, footer.frame.minY)
         math.coordinate(withNormalizedOffset: CGVector(dx: 0.9, dy: 0.5)).tap()
         XCTAssertEqual(math.value as? String, "1")
         let picker = app.pickers["mathProblemPicker"]

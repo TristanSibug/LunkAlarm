@@ -5,6 +5,7 @@ struct SavedAlarmsView: View {
     var returnToClock: () -> Void
     var add: () -> Void
     var edit: (AlarmRecord) -> Void
+    @State private var lastSwipe = Date.distantPast
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 14) {
@@ -16,7 +17,7 @@ struct SavedAlarmsView: View {
                     Text("No alarms yet. Tap + to add one.").foregroundStyle(store.theme.muted).padding(.vertical, 40)
                 }
                 ForEach(store.orderedAlarms) { alarm in
-                    SwipeDeleteAlarmRow(enabled: canChange(alarm), name: alarm.accessibleName, delete: { store.remove(alarm) }) {
+                    SwipeDeleteAlarmRow(enabled: canChange(alarm), name: alarm.accessibleName, delete: { store.remove(alarm) }, onSwipe: { lastSwipe = Date() }) {
                         alarmCard(alarm)
                     }
                 }
@@ -32,6 +33,10 @@ struct SavedAlarmsView: View {
             }.buttonStyle(.plain).padding(24).accessibilityLabel("New alarm").accessibilityIdentifier("newAlarmButton")
         }
     }
+    private func openEditor(_ alarm: AlarmRecord) {
+        guard canChange(alarm), Date().timeIntervalSince(lastSwipe) > 0.3 else { return }
+        edit(alarm)
+    }
     private func canChange(_ alarm: AlarmRecord) -> Bool { !store.saving && !store.readOnly && store.ringing?.id != alarm.id }
     private var nextLabel: String {
         guard let alarm = store.orderedAlarms.first(where: { $0.isEnabled && $0.status != .notScheduled }) else { return "No upcoming alarms" }
@@ -40,7 +45,7 @@ struct SavedAlarmsView: View {
     private func alarmCard(_ alarm: AlarmRecord) -> some View {
         VStack(alignment: .leading, spacing: 8) {
             HStack(alignment: .center, spacing: 10) {
-                Button { edit(alarm) } label: {
+                Button { openEditor(alarm) } label: {
                     VStack(alignment: .leading, spacing: 3) {
                         if !alarm.displayName.isEmpty { Text(alarm.displayName).font(.system(size: 15, weight: .semibold)).lineLimit(1) }
                         Group {
@@ -95,7 +100,7 @@ struct SavedAlarmsView: View {
                 Button("Finish wake-up tests") { store.begin(alarm) }.foregroundStyle(store.theme.accent)
             }
         }.padding(14).frame(maxWidth: .infinity, alignment: .leading)
-            .background { RoundedRectangle(cornerRadius: 18).fill(store.theme.card).onTapGesture { if !store.saving && !store.readOnly && store.ringing?.id != alarm.id { edit(alarm) } } }
+            .background { RoundedRectangle(cornerRadius: 18).fill(store.theme.card).onTapGesture { openEditor(alarm) } }
             .overlay(RoundedRectangle(cornerRadius: 18).stroke(store.theme.border).allowsHitTesting(false))
     }
 }

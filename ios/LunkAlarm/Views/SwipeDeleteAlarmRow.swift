@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit
 
 /// A horizontal gesture alongside the vertical list scroll. A partial swipe
 /// reveals Delete; a long swipe crosses a tactile threshold and commits on lift.
@@ -6,6 +7,7 @@ struct SwipeDeleteAlarmRow<Content: View>: View {
     var enabled: Bool
     var name: String
     var delete: () -> Bool
+    var onSwipe: () -> Void = {}
     @ViewBuilder var content: Content
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var width: CGFloat = 320
@@ -33,26 +35,21 @@ struct SwipeDeleteAlarmRow<Content: View>: View {
         }
         .contentShape(Rectangle())
         .onGeometryChange(for: CGFloat.self) { $0.size.width } action: { width = $0 }
-        .simultaneousGesture(DragGesture(minimumDistance: 18)
-            .onChanged { value in
-                guard enabled, !deleting else { return }
-                if dragStart == nil {
-                    guard abs(value.translation.width) > abs(value.translation.height) * 1.3 else { return }
-                    dragStart = offset
-                }
-                offset = min(0, max(-width, (dragStart ?? 0) + value.translation.width))
-                let next = -offset >= threshold
-                if next && !armed { AlarmHaptics.deleteThreshold() }
-                armed = next
-            }
-            .onEnded { value in
-                guard dragStart != nil else { return }
-                dragStart = nil
-                // A fast, deliberate swipe also commits; a short flick only reveals.
-                let fastFullSwipe = -offset > width * 0.35 && value.predictedEndTranslation.width < -width * 0.85
-                if armed || fastFullSwipe { performDelete() }
-                else { withAnimation(animation) { offset = -offset > reveal * 0.5 ? -reveal : 0; armed = false } }
-            })
+        .gesture(AlarmRowPan(enabled: enabled && !deleting, changed: { translation in
+            onSwipe()
+            if dragStart == nil { dragStart = offset }
+            offset = min(0, max(-width, (dragStart ?? 0) + translation))
+            let next = -offset >= threshold
+            if next && !armed { AlarmHaptics.deleteThreshold() }
+            armed = next
+        }, ended: { translation, velocity, cancelled in
+            guard dragStart != nil else { return }
+            onSwipe()
+            dragStart = nil
+            let fastFullSwipe = -offset > width * 0.35 && translation + velocity * 0.16 < -width * 0.85
+            if !cancelled && (armed || fastFullSwipe) { performDelete() }
+            else { withAnimation(animation) { offset = -offset > reveal * 0.5 ? -reveal : 0; armed = false } }
+        }))
         .accessibilityAction(named: "Delete") { if enabled { performDelete() } }
         .onChange(of: enabled) { _, value in if !value && !deleting { withAnimation(animation) { offset = 0; armed = false } } }
     }
@@ -64,6 +61,43 @@ struct SwipeDeleteAlarmRow<Content: View>: View {
             if delete() { AlarmHaptics.deleted() }
             else { withAnimation(animation) { offset = 0 } }
             armed = false; deleting = false
+        }
+    }
+}
+
+// A horizontal-only native pan cancels the card's tap/control tracking before
+// release. Vertical drags stay with the list's scrolling/navigation recognizers.
+private struct AlarmRowPan: UIGestureRecognizerRepresentable {
+    var enabled: Bool
+    var changed: (CGFloat) -> Void
+    var ended: (CGFloat, CGFloat, Bool) -> Void
+    func makeCoordinator(converter: CoordinateSpaceConverter) -> Coordinator { Coordinator() }
+    func makeUIGestureRecognizer(context: Context) -> UIPanGestureRecognizer {
+        let pan = UIPanGestureRecognizer()
+        pan.maximumNumberOfTouches = 1
+        pan.cancelsTouchesInView = true
+        pan.delegate = context.coordinator
+        pan.isEnabled = enabled
+        return pan
+    }
+    func updateUIGestureRecognizer(_ pan: UIPanGestureRecognizer, context: Context) { pan.isEnabled = enabled }
+    func handleUIGestureRecognizerAction(_ pan: UIPanGestureRecognizer, context: Context) {
+        let translation = pan.translation(in: pan.view).x
+        switch pan.state {
+        case .began, .changed: changed(translation)
+        case .ended: ended(translation, pan.velocity(in: pan.view).x, false)
+        case .cancelled, .failed: ended(translation, 0, true)
+        default: break
+        }
+    }
+    final class Coordinator: NSObject, UIGestureRecognizerDelegate {
+        func gestureRecognizerShouldBegin(_ recognizer: UIGestureRecognizer) -> Bool {
+            guard let pan = recognizer as? UIPanGestureRecognizer else { return false }
+            let velocity = pan.velocity(in: pan.view)
+            return abs(velocity.x) > abs(velocity.y) * 1.3
+        }
+        func gestureRecognizer(_ recognizer: UIGestureRecognizer, shouldRecognizeSimultaneouslyWith other: UIGestureRecognizer) -> Bool {
+            other.view is UIScrollView
         }
     }
 }

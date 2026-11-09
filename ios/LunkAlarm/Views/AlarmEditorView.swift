@@ -13,6 +13,7 @@ struct AlarmEditorView: View {
     @State private var ringtoneAction: RingtoneAction?
     private enum RingtoneAction { case file, online }
     var body: some View {
+        VStack(spacing: 0) {
         ScrollView {
         AlarmCard(theme: store.theme) {
             if onAdded == nil { Text("New alarm").font(.system(size: 14, weight: .medium)).foregroundStyle(store.theme.muted) }
@@ -53,8 +54,7 @@ struct AlarmEditorView: View {
             wakeUpTests
             if let message = store.message { Text(message).font(.caption).foregroundStyle(store.theme.accent) }
         }.padding(20)
-        }.scrollDismissesKeyboard(.interactively)
-        .safeAreaInset(edge: .bottom, spacing: 0) {
+        }.scrollDismissesKeyboard(.interactively).clipped()
             saveButton.padding(.horizontal, 20).padding(.top, 12).padding(.bottom, 12)
                 .background {
                     LinearGradient(colors: [store.theme.background.opacity(0), store.theme.background.opacity(0.92)], startPoint: .top, endPoint: .bottom)
