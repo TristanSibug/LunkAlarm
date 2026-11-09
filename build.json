@@ -1,0 +1,11 @@
+{
+  "commit": "8a4a9f0558f97deeede7fa672a5eedb3c4a68cc6",
+  "run": "https://github.com/TristanSibug/LunkAlarm/actions/runs/42618366021",
+  "status": "failure",
+  "build": "skipped",
+  "emulator": "skipped",
+  "release": "skipped",
+  "tests": [],
+  "errors": [],
+  "previews": []
+}
