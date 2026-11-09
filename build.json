@@ -1,6 +1,6 @@
 {
-  "commit": "053201b257bbb9aad0ea474e87b9f62b1c6ec84a",
-  "run": "https://github.com/TristanSibug/LunkAlarm/actions/runs/42549280647",
+  "commit": "3f484f8f3601d3a4c11aff7bd496131c98ee8f11",
+  "run": "https://github.com/TristanSibug/LunkAlarm/actions/runs/42549578676",
   "status": "failure",
   "simulator": "failure",
   "device": "skipped",
