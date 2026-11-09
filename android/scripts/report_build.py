@@ -20,7 +20,7 @@ for pattern in ['android/app/build/test-results/testDebugUnitTest/TEST-*.xml','a
             for failure in root.iter('failure'):
                 report['errors'].append((failure.text or failure.get('message') or '')[:8000])
         except ET.ParseError: pass
-for name in ['artifacts/android-build.log','artifacts/android-ui-test.log','artifacts/android-permission-test.log']:
+for name in ['artifacts/android-sdk-setup.log','artifacts/android-build.log','artifacts/android-ui-test.log','artifacts/android-permission-test.log']:
     p=Path(name)
     if not p.exists(): continue
     lines=p.read_text(errors='replace').splitlines()

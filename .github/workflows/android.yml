@@ -13,17 +13,16 @@ concurrency:
   cancel-in-progress: true
 jobs:
   build:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 35
     permissions:
       contents: write
     steps:
       - uses: actions/checkout@v5
-      - uses: actions/setup-java@v4
+      - uses: actions/setup-java@v5
         with:
           distribution: temurin
           java-version: '21'
-      - uses: android-actions/setup-android@v3
       - uses: gradle/actions/setup-gradle@v4
       - name: Cache development signing identity for installable updates
         uses: actions/cache@v4
@@ -32,8 +31,14 @@ jobs:
           key: lunkalarm-android-development-keystore-v1
       - name: Prepare SDK and development signing key
         run: |
-          sdkmanager 'platforms;android-36' 'build-tools;35.0.0'
           mkdir -p ~/.android artifacts
+          set -o pipefail
+          python3 - <<'PYSDK' 2>&1 | tee artifacts/android-sdk-setup.log
+          import os, subprocess
+          sdk = os.path.join(os.environ['ANDROID_HOME'], 'cmdline-tools', 'latest', 'bin', 'sdkmanager')
+          subprocess.run([sdk, '--version'], check=True)
+          subprocess.run([sdk, 'platforms;android-36', 'build-tools;35.0.0'], input='y\n' * 100, text=True, check=True)
+          PYSDK
           if [ ! -f ~/.android/debug.keystore ]; then
             keytool -genkeypair -keystore ~/.android/debug.keystore -storepass android \
               -alias androiddebugkey -keypass android -dname 'CN=Android Debug,O=Android,C=US' \
