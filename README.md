@@ -81,3 +81,7 @@ docs/                  Windows acceptance checks and migration notes
 The scheduling core is independent of WPF and can support future platforms. The website uses its own JavaScript scheduler and cannot provide Windows power-management capabilities.
 
 MIT license. The supplied app's icon and original sound recipes are reused.
+
+## Native Android app
+
+The native Kotlin / Jetpack Compose Android app is in [`android/`](android/README.md). It follows the current iOS interface and uses Android exact alarms, foreground alarm playback, local persistence, themes, ringtone imports and timed wake-up tests. The **Native Android app** workflow builds an installable development APK, runs core/lint/emulator checks and publishes successful test builds on [GitHub Releases](https://github.com/TristanSibug/LunkAlarm/releases/tag/android-v1.0.0). Requires Android 8.0 or later.

@@ -14,3 +14,13 @@ artifacts/
 *.xcuserstate
 *.ipa
 *.mobileprovision
+
+# Native Android local build/signing state
+android/.gradle/
+android/.kotlin/
+android/**/build/
+android/local.properties
+*.apk
+*.aab
+*.jks
+*.keystore
