@@ -32,7 +32,10 @@ import online.reeeserve.lunkalarm.core.*
     val theme = Themes.find(state.theme)
     SideEffect { activity.applyBars(theme) }
     val session = state.session
-    LaunchedEffect(session?.owner) { if (session == null) activity.finish() }
+    LaunchedEffect(session?.owner, activity.locked) {
+        if (session == null) activity.finish()
+        else if (!activity.locked) controller.opened()
+    }
     BackHandler { activity.moveTaskToBack(true) }
     if (session == null) return
     val alarm = state.alarms.firstOrNull { it.id == session.owner } ?: return

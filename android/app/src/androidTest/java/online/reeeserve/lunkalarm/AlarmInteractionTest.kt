@@ -172,4 +172,22 @@ class AlarmInteractionTest {
         assertTrue(repo.state.value.session!!.sound)
         assertEquals(0L, repo.state.value.session!!.challenge.deadline)
     }
+    @Test fun h_queuedAlarmStartsItsTestsWithoutReopeningActivity() {
+        mission(AlarmDraft(mathCount = 1, mathSeconds = 12, volume = .2f))
+        var second = ""
+        rule.runOnUiThread {
+            assertTrue(controller.save(AlarmDraft(timer = true, seconds = 120, mathCount = 1, mathSeconds = 12, tone = "soft-chime", volume = .2f)))
+            second = repo.state.value.alarms.first { !it.active }.id
+            controller.scheduler.cancel(second); controller.trigger(second)
+        }
+        val first = repo.state.value.session!!.challenge
+        (first.left + first.right).toString().forEach { rule.onNodeWithTag("key-$it").performScrollTo().performClick() }
+        rule.waitUntil(8000) { repo.state.value.session?.owner == second && repo.state.value.session?.opened == true }
+        rule.onNodeWithTag("challenge-sound").assertIsOff()
+        val next = repo.state.value.session!!.challenge
+        (next.left + next.right).toString().forEach { rule.onNodeWithTag("key-$it").performScrollTo().performClick() }
+        rule.waitUntil(8000) { repo.state.value.session == null }
+        assertTrue(repo.state.value.alarms.isEmpty())
+    }
+
 }
