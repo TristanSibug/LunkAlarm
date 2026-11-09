@@ -38,14 +38,14 @@ final class SoundService {
                 }
             }
         } catch {
-            try? session.setActive(false, options: .notifyOthersOnDeactivation)
+            if !AudioAlarmService.hasArmedPlayers { try? session.setActive(false, options: .notifyOthersOnDeactivation) }
             throw error
         }
     }
     func stop() {
         previewTask?.cancel(); previewTask = nil
         player?.stop(); player = nil; previewing = false
-        try? AVAudioSession.sharedInstance().setActive(false, options: .notifyOthersOnDeactivation)
+        if !AudioAlarmService.hasArmedPlayers { try? AVAudioSession.sharedInstance().setActive(false, options: .notifyOthersOnDeactivation) }
     }
 
     func resumeAfterInterruption() {

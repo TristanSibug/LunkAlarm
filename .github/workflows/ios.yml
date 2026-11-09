@@ -14,7 +14,7 @@ concurrency:
 jobs:
   build:
     runs-on: macos-15
-    timeout-minutes: 20
+    timeout-minutes: 25
     permissions:
       contents: write
     steps:
@@ -61,9 +61,9 @@ jobs:
             sleep 3
             xcrun simctl io "$device_id" screenshot artifacts/ios-clock.png
           } 2>&1 | tee ios-launch.log
-      - name: Test native gestures, wheels and automatic math entry
+      - name: Test native editing, duplicate alarms and continuous audio
         id: uiTests
-        timeout-minutes: 8
+        timeout-minutes: 12
         run: |
           set -o pipefail
           xcodebuild test -project ios/LunkAlarm.xcodeproj -scheme LunkAlarm \

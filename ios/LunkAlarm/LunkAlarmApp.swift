@@ -20,6 +20,7 @@ private struct AlarmRootView: View {
     var body: some View {
         themedContent
             .task { await store.observeAlarms() }
+            .task { await store.observeAudioAlarms() }
             .task { await store.observeAuthorization() }
             .onChange(of: scenePhase, initial: true) { _, phase in sceneChanged(phase) }
             .onChange(of: store.state.settings) { _, _ in store.saveSettings() }
@@ -30,11 +31,10 @@ private struct AlarmRootView: View {
         store.setActive(phase == .active, backgrounded: phase == .background)
     }
     private func handleInterruption(_ note: Notification) {
-        guard store.ringing != nil, store.challengeSoundEnabled else { return }
         guard let type = note.userInfo?[AVAudioSessionInterruptionTypeKey] as? UInt,
               type == AVAudioSession.InterruptionType.ended.rawValue else { return }
         guard let rawOptions = note.userInfo?[AVAudioSessionInterruptionOptionKey] as? UInt else { return }
         let options = AVAudioSession.InterruptionOptions(rawValue: rawOptions)
-        if options.contains(.shouldResume) { store.sound.resumeAfterInterruption() }
+        if options.contains(.shouldResume) { store.resumeAudioAfterInterruption() }
     }
 }

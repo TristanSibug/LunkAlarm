@@ -7,6 +7,8 @@ struct ContentView: View {
     @State private var pickerOpen = false
     @State private var themeOpen = false
     @State private var editorOpen = false
+    @State private var ringingOpen = false
+    @State private var editingID: UUID?
     @State private var timersOpen = false
     @Namespace private var clockSpace
 
@@ -17,7 +19,11 @@ struct ContentView: View {
                 VStack(spacing: 0) {
                     toolbar.padding(.horizontal, 20).padding(.top, 12).padding(.bottom, 8)
                     if pickerOpen {
-                        SavedAlarmsView(store: store, returnToClock: { pickerOpen = false }, add: { editorOpen = true })
+                        SavedAlarmsView(store: store, returnToClock: { pickerOpen = false }, add: {
+                            editingID = nil; store.state.settings.alarmName = ""; store.state.settings.mode = .time; editorOpen = true
+                        }, edit: { alarm in
+                            store.loadEditor(alarm); editingID = alarm.id; editorOpen = true
+                        })
                             .transition(.opacity.combined(with: .move(edge: .top)))
                     } else {
                         VStack {
@@ -31,7 +37,7 @@ struct ContentView: View {
                             }
                         }.frame(maxWidth: .infinity, maxHeight: .infinity)
                             .contentShape(Rectangle())
-                            .gesture(AlarmNavigationSwipe(direction: .down) { pickerOpen = true })
+                            .gesture(AlarmNavigationSwipe(direction: .up) { pickerOpen = true })
                             .accessibilityAction(named: "View alarms") { pickerOpen = true }
                     }
                 }
@@ -51,11 +57,19 @@ struct ContentView: View {
             }
         }
         .sheet(isPresented: $editorOpen) {
-            SheetShell(title: "New alarm", theme: store.theme) {
-                AlarmEditorView(store: store, onAdded: { editorOpen = false })
+            SheetShell(title: editingID == nil ? "New alarm" : "Edit alarm", theme: store.theme) {
+                AlarmEditorView(store: store, editingID: editingID, onAdded: { editorOpen = false })
             }
         }
-        .fullScreenCover(isPresented: Binding(get: { store.ringing != nil }, set: { _ in })) {
+        .onChange(of: store.ringing?.id, initial: true) { _, id in
+            guard let id else { ringingOpen = false; return }
+            editorOpen = false; timersOpen = false; themeOpen = false
+            Task { @MainActor in
+                try? await Task.sleep(for: .milliseconds(500))
+                if store.ringing?.id == id { ringingOpen = true }
+            }
+        }
+        .fullScreenCover(isPresented: $ringingOpen) {
             RingingView(store: store).interactiveDismissDisabled()
                 .preferredColorScheme(store.theme.isLight ? .light : .dark)
         }
@@ -90,11 +104,11 @@ struct ContentView: View {
             }
             HStack(spacing: 10) {
                 VStack(spacing: 7) {
-                    Image(systemName: "chevron.down").font(.system(size: 14, weight: .medium))
-                    Text("Swipe down to view alarms").font(.system(size: 12))
+                    Image(systemName: "chevron.up").font(.system(size: 14, weight: .medium))
+                    Text("Swipe up to view alarms").font(.system(size: 12))
                 }.foregroundStyle(store.theme.muted).padding(.vertical, 8)
                     .accessibilityElement(children: .ignore)
-                    .accessibilityLabel("Swipe down to view alarms")
+                    .accessibilityLabel("Swipe up to view alarms")
                     .accessibilityAction { pickerOpen = true }
                     .accessibilityIdentifier("alarmSwipeHint")
             }
@@ -154,7 +168,7 @@ struct SheetShell<Content: View>: View {
     @Environment(\.dismiss) private var dismiss
     var body: some View {
         NavigationStack {
-            ScrollView { content.padding(20) }
+            ScrollView { content.padding(20) }.scrollDismissesKeyboard(.interactively)
                 .background(theme.background).foregroundStyle(theme.text)
                 .navigationTitle(title).navigationBarTitleDisplayMode(.inline)
                 .toolbar { ToolbarItem(placement: .confirmationAction) { Button("Done") { dismiss() } } }

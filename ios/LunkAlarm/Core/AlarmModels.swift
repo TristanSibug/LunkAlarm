@@ -1,5 +1,9 @@
 import Foundation
 
+public enum AlarmEngine: String, Codable, CaseIterable, Sendable {
+    case continuousAudio, systemAlarm
+}
+
 public enum AlarmMode: String, Codable, CaseIterable, Sendable {
     case time, timer
 }
@@ -14,6 +18,7 @@ public struct ImportedSound: Codable, Identifiable, Equatable, Sendable {
 }
 
 public struct AlarmSettings: Codable, Equatable, Sendable {
+    public var engine: AlarmEngine?
     public var alarmName: String?
     public var repeatDays: [Int]?
     public var themeID = "sunrise"
@@ -52,13 +57,26 @@ public struct AlarmRecord: Codable, Identifiable, Equatable, Sendable {
     public var typingCodeLength: Int?
     public var typingTimeLimit: Int?
     public var mathTimeLimit: Int?
+    public var engine: AlarmEngine?
+    public var playbackEngine: AlarmEngine { engine ?? .systemAlarm }
     public var name: String?
     public var repeatDays: [Int]?
     public var enabled: Bool?
     public var clockHour: Int?
     public var clockMinute: Int?
     public var isEnabled: Bool { enabled != false }
-    public var displayName: String { name?.isEmpty == false ? name! : "Alarm" }
+    public var displayName: String { name ?? "Alarm" }
+    public var accessibleName: String { displayName.isEmpty ? "Alarm" : displayName }
+    public var timeDate: Date {
+        Calendar.current.date(bySettingHour: clockHour ?? Calendar.current.component(.hour, from: target), minute: clockMinute ?? Calendar.current.component(.minute, from: target), second: 0, of: Date()) ?? target
+    }
+    public func duplicated(now: Date = Date(), calendar: Calendar = .current) throws -> AlarmRecord {
+        guard !isTimer else { throw AlarmDataError.invalidTime }
+        var copy = self
+        copy.id = UUID(); copy.challengeAlarmIDs = nil; copy.status = .scheduled
+        copy.target = try AlarmRoutine.next(hour: clockHour ?? calendar.component(.hour, from: target), minute: clockMinute ?? calendar.component(.minute, from: target), days: days, now: now, calendar: calendar)
+        return copy
+    }
     public var days: [Int] { repeatDays ?? [] }
     public var challengeAlarmIDs: [UUID]?
     public var nativeAlarmIDs: [UUID] { [id] + (challengeAlarmIDs ?? []) }

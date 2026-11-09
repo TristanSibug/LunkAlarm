@@ -272,4 +272,45 @@ final class AlarmCoreTests: XCTestCase {
         XCTAssertTrue(missing[0].isEnabled)
     }
 
+    func testExactDuplicateCopiesDefinitionButNeverSharesNativeOwnership() throws {
+        let now = Date()
+        var alarm = AlarmRecord(target: now.addingTimeInterval(-100), isTimer: false, ringtoneID: "siren", soundFilename: "siren.wav", soundName: "Siren", typing: true, mathCount: 7)
+        alarm.name = ""; alarm.enabled = false; alarm.engine = .continuousAudio
+        alarm.repeatDays = [2,4,6]; alarm.clockHour = 7; alarm.clockMinute = 15
+        alarm.typingCodeLength = 10; alarm.typingTimeLimit = 15; alarm.mathTimeLimit = 12
+        alarm.soundLevel = 0.6; alarm.gradualVolume = true; alarm.challengeAlarmIDs = [UUID()]
+        let duplicate = try alarm.duplicated(now: now)
+        XCTAssertNotEqual(duplicate.id, alarm.id)
+        XCTAssertEqual(duplicate.name, "")
+        XCTAssertEqual(duplicate.displayName, "")
+        XCTAssertEqual(duplicate.accessibleName, "Alarm")
+        XCTAssertEqual(duplicate.engine, .continuousAudio)
+        XCTAssertEqual(duplicate.enabled, false)
+        XCTAssertEqual(duplicate.mathCount, 7)
+        XCTAssertEqual(duplicate.typingCodeLength, 10)
+        XCTAssertEqual(duplicate.typingTimeLimit, 15)
+        XCTAssertEqual(duplicate.mathTimeLimit, 12)
+        XCTAssertEqual(duplicate.soundLevel, 0.6)
+        XCTAssertEqual(duplicate.gradualVolume, true)
+        XCTAssertEqual(duplicate.days, alarm.days)
+        XCTAssertNil(duplicate.challengeAlarmIDs)
+        XCTAssertGreaterThan(duplicate.target, now)
+        var state = SavedState(); state.alarms = [alarm, duplicate]
+        XCTAssertEqual(try JSONDecoder().decode(SavedState.self, from: JSONEncoder().encode(state)).validated(), state)
+    }
+    func testAudioAlarmsHaveIndependentReconciliationAndLegacyDefaultsToSystem() {
+        let now = Date()
+        var alarm = AlarmRecord(target: now.addingTimeInterval(30), isTimer: true, ringtoneID: "siren", soundFilename: "siren.wav", soundName: "Siren", typing: false, mathCount: 0)
+        XCTAssertEqual(alarm.playbackEngine, .systemAlarm)
+        alarm.engine = .continuousAudio
+        let future = AlarmReconciliation.reconcile([alarm], systemIDs: [], stoppedIDs: [], now: now)
+        XCTAssertEqual(future[0].status, .scheduled)
+        let due = AlarmReconciliation.reconcile(future, systemIDs: [], stoppedIDs: [], now: now.addingTimeInterval(31))
+        XCTAssertEqual(due[0].status, .needsChallenge)
+        alarm.enabled = false
+        let off = AlarmReconciliation.reconcile([alarm], systemIDs: [], stoppedIDs: [], now: now.addingTimeInterval(31))
+        XCTAssertEqual(off[0].status, .scheduled)
+        XCTAssertFalse(off[0].isEnabled)
+    }
+
 }

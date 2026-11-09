@@ -3,6 +3,7 @@ import UniformTypeIdentifiers
 
 struct AlarmEditorView: View {
     @Bindable var store: AlarmStore
+    var editingID: UUID? = nil
     var onAdded: (() -> Void)? = nil
     @State private var ringtoneOpen = false
     @State private var onlineOpen = false
@@ -17,7 +18,7 @@ struct AlarmEditorView: View {
             if store.state.settings.mode == .time {
                 VStack(alignment: .leading, spacing: 10) {
                     sectionLabel("Alarm name")
-                    TextField("Please fill in the alarm name", text: Binding(get: { store.state.settings.alarmName ?? "" }, set: { store.state.settings.alarmName = $0 }))
+                    TextField("Alarm name (optional)", text: Binding(get: { store.state.settings.alarmName ?? "" }, set: { store.state.settings.alarmName = $0 }))
                         .padding(12).background(store.theme.field, in: RoundedRectangle(cornerRadius: 12))
                         .accessibilityIdentifier("alarmNameField")
                 }
@@ -47,17 +48,16 @@ struct AlarmEditorView: View {
                         .buttonStyle(ChipStyle(theme: store.theme))
                 }
             }.font(.system(size: 13)).foregroundStyle(store.theme.accent)
+            playbackControls
             soundLevelControls()
             wakeUpTests
             if let message = store.message { Text(message).font(.caption).foregroundStyle(store.theme.accent) }
             Button {
                 Task {
-                    let previous = store.state.alarms.count
-                    await store.addAlarm()
-                    if store.state.alarms.count > previous { onAdded?() }
+                    if await store.addAlarm(replacing: editingID) { onAdded?() }
                 }
             } label: {
-                HStack { if store.saving { ProgressView() }; Text(store.saving ? "Scheduling…" : "Add alarm") }
+                HStack { if store.saving { ProgressView() }; Text(store.saving ? "Saving…" : editingID == nil ? "Add alarm" : "Save changes") }
             }.buttonStyle(AccentButtonStyle(theme: store.theme)).disabled(store.saving || store.readOnly)
                 .accessibilityIdentifier("scheduleAlarm")
         }
@@ -83,6 +83,19 @@ struct AlarmEditorView: View {
         .onChange(of: store.state.settings.soundLevel) { _, level in store.sound.updatePreviewVolume(level ?? 1) }
     }
 
+    private var playbackControls: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            sectionLabel("Playback")
+            Picker("Playback", selection: Binding(get: { store.state.settings.engine ?? .continuousAudio }, set: { store.state.settings.engine = $0 })) {
+                Text("Continuous audio").tag(AlarmEngine.continuousAudio)
+                Text("System alarm").tag(AlarmEngine.systemAlarm)
+            }.pickerStyle(.segmented).accessibilityIdentifier("playbackEngine")
+            if (store.state.settings.engine ?? .continuousAudio) == .continuousAudio {
+                Text("Experimental: leave LunkAlarm running. Force-quitting stops audio alarms. Test with your phone locked before relying on this mode.")
+                    .font(.caption).foregroundStyle(store.theme.muted)
+            }
+        }
+    }
     private var repeatControls: some View {
         VStack(alignment: .leading, spacing: 12) {
             HStack {
@@ -212,6 +225,7 @@ struct AlarmEditorView: View {
                 .foregroundStyle(store.state.settings.mode == mode ? store.theme.text : store.theme.muted)
                 .background(store.state.settings.mode == mode ? store.theme.text.opacity(0.13) : .clear, in: RoundedRectangle(cornerRadius: 12))
         }.buttonStyle(.plain).accessibilityAddTraits(store.state.settings.mode == mode ? .isSelected : [])
+            .disabled(editingID != nil && mode == .timer)
     }
     private var timeWheels: some View {
         NativeTimePicker(hour: $store.state.settings.hour, minute: $store.state.settings.minute,

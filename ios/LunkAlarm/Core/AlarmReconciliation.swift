@@ -8,6 +8,10 @@ public enum AlarmReconciliation {
         records.compactMap { original in
             var record = original
             if !record.isEnabled { return record }
+            if record.playbackEngine == .continuousAudio {
+                if record.status == .scheduled && record.target <= now { record.status = .needsChallenge }
+                return record
+            }
             if !record.isTimer && !record.hasTests && record.target <= now && !alertingIDs.contains(record.id) {
                 if record.days.isEmpty { record.enabled = false }
                 else if !existsPrimary(record, systemIDs) { record.status = .notScheduled }

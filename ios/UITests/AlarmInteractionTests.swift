@@ -10,7 +10,7 @@ final class AlarmInteractionTests: XCTestCase {
     }
     @MainActor private func openEditor(_ app: XCUIApplication) {
         XCTAssertTrue(app.descendants(matching: .any)["alarmSwipeHint"].waitForExistence(timeout: 10))
-        app.swipeDown(velocity: .fast)
+        app.swipeUp(velocity: .fast)
         XCTAssertTrue(app.staticTexts["savedAlarmsTitle"].waitForExistence(timeout: 5))
         app.buttons["newAlarmButton"].tap()
         XCTAssertTrue(app.staticTexts["New alarm"].waitForExistence(timeout: 5))
@@ -181,11 +181,55 @@ final class AlarmInteractionTests: XCTestCase {
         for _ in 0..<8 where !add.isHittable { app.swipeUp(velocity: .slow) }
         add.tap()
         XCTAssertTrue(app.staticTexts["savedAlarmsTitle"].waitForExistence(timeout: 5))
-        XCTAssertTrue(app.staticTexts["Morning routine"].exists)
+        XCTAssertTrue(app.buttons.matching(NSPredicate(format: "label == %@", "Edit Morning routine")).firstMatch.exists)
         let toggle = app.switches["Enable Morning routine"]
         toggle.coordinate(withNormalizedOffset: CGVector(dx: 0.9, dy: 0.5)).tap()
-        XCTAssertTrue(app.staticTexts["Morning routine"].exists)
+        XCTAssertTrue(app.buttons.matching(NSPredicate(format: "label == %@", "Edit Morning routine")).firstMatch.exists)
         capture(app, name: "ios-saved-alarms")
+    }
+
+    @MainActor private func saveEditor(_ app: XCUIApplication) {
+        let save = app.buttons["scheduleAlarm"]
+        for _ in 0..<9 where !save.isHittable { app.swipeUp(velocity: .slow) }
+        save.tap()
+        XCTAssertTrue(app.staticTexts["savedAlarmsTitle"].waitForExistence(timeout: 5))
+    }
+    @MainActor func testBlankNameEditInPlaceAndExactDuplicate() {
+        let app = launch()
+        openEditor(app)
+        saveEditor(app)
+        let blankCards = app.buttons.matching(NSPredicate(format: "label == %@", "Edit Alarm"))
+        XCTAssertEqual(blankCards.count, 1)
+        blankCards.firstMatch.tap()
+        XCTAssertTrue(app.navigationBars["Edit alarm"].waitForExistence(timeout: 5))
+        let name = app.textFields["alarmNameField"]
+        name.tap(); name.typeText("Same alarm")
+        saveEditor(app)
+        XCTAssertEqual(app.buttons.matching(NSPredicate(format: "label == %@", "Edit Same alarm")).count, 1)
+        app.buttons["Options for Same alarm"].tap()
+        app.buttons["Duplicate"].tap()
+        let duplicated = XCTNSPredicateExpectation(predicate: NSPredicate(format: "count == 2"), object: app.buttons.matching(NSPredicate(format: "label == %@", "Edit Same alarm")))
+        wait(for: [duplicated], timeout: 5)
+        XCTAssertEqual(app.buttons.matching(NSPredicate(format: "label == %@", "Edit Same alarm")).count, 2)
+        capture(app, name: "ios-compact-duplicates")
+    }
+
+    @MainActor func testRealContinuousAudioSoundCheckAndSheetHandoff() {
+        let app = XCUIApplication()
+        app.launchArguments = ["--ui-testing", "--ui-audio-playback"]
+        app.launch()
+        openEditor(app)
+        let check = app.buttons["Check alarm sound"]
+        for _ in 0..<6 where !check.isHittable { app.swipeUp(velocity: .slow) }
+        check.tap()
+        XCTAssertTrue(app.buttons["testAlarmSound"].waitForExistence(timeout: 5))
+        app.buttons["testAlarmSound"].tap()
+        let stop = app.buttons["Stop alarm"]
+        XCTAssertTrue(stop.waitForExistence(timeout: 15))
+        capture(app, name: "ios-continuous-audio-check")
+        stop.tap()
+        XCTAssertTrue(app.staticTexts["savedAlarmsTitle"].waitForExistence(timeout: 5))
+        XCTAssertFalse(app.buttons["Active timers"].exists)
     }
 
 }
