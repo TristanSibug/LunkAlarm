@@ -9,7 +9,6 @@ struct ContentView: View {
     @State private var editorOpen = false
     @State private var ringingOpen = false
     @State private var editingID: UUID?
-    @State private var timersOpen = false
     @Namespace private var clockSpace
 
     var body: some View {
@@ -18,13 +17,14 @@ struct ContentView: View {
                 AlarmBackground(theme: store.theme)
                 VStack(spacing: 0) {
                     toolbar.padding(.horizontal, 20).padding(.top, 12).padding(.bottom, 8)
+                    ZStack {
                     if pickerOpen {
                         SavedAlarmsView(store: store, returnToClock: { pickerOpen = false }, add: {
                             editingID = nil; store.state.settings.alarmName = ""; store.state.settings.mode = .time; editorOpen = true
                         }, edit: { alarm in
                             store.loadEditor(alarm); editingID = alarm.id; editorOpen = true
                         })
-                            .transition(.opacity.combined(with: .move(edge: .top)))
+                            .transition(.move(edge: .bottom).combined(with: .opacity))
                     } else {
                         VStack {
                             Spacer(minLength: 8)
@@ -36,34 +36,25 @@ struct ContentView: View {
                                     .padding(.horizontal, 24).padding(.bottom, 16)
                             }
                         }.frame(maxWidth: .infinity, maxHeight: .infinity)
+                            .transition(.move(edge: .top).combined(with: .opacity))
                             .contentShape(Rectangle())
                             .gesture(AlarmNavigationSwipe(direction: .up) { pickerOpen = true })
                             .accessibilityAction(named: "View alarms") { pickerOpen = true }
                     }
+                    }.frame(maxWidth: .infinity, maxHeight: .infinity).clipped()
                 }
             }.foregroundStyle(store.theme.text)
                 .animation(reduceMotion ? nil : .spring(response: 0.48, dampingFraction: 0.88), value: pickerOpen)
         }
         .sheet(isPresented: $themeOpen) { themeSheet }
-        .sheet(isPresented: $timersOpen) {
-            SheetShell(title: "Active timers", theme: store.theme) {
-                ForEach(store.orderedAlarms.filter { $0.isTimer }) { alarm in
-                    HStack {
-                        Text(alarm.target, style: .timer).monospacedDigit()
-                        Spacer()
-                        Button("Cancel", role: .destructive) { store.remove(alarm) }
-                    }.padding(.vertical, 12)
-                }
-            }
-        }
         .sheet(isPresented: $editorOpen) {
-            SheetShell(title: editingID == nil ? "New alarm" : "Edit alarm", theme: store.theme) {
+            SheetShell(title: editingID == nil ? "New alarm" : "Edit alarm", theme: store.theme, scrolls: false, showsDone: false) {
                 AlarmEditorView(store: store, editingID: editingID, onAdded: { editorOpen = false })
             }
         }
         .onChange(of: store.ringing?.id, initial: true) { _, id in
             guard let id else { ringingOpen = false; return }
-            editorOpen = false; timersOpen = false; themeOpen = false
+            editorOpen = false; themeOpen = false
             Task { @MainActor in
                 try? await Task.sleep(for: .milliseconds(500))
                 if store.ringing?.id == id { ringingOpen = true }
@@ -99,9 +90,6 @@ struct ContentView: View {
             ClockFaceView(use24Hour: store.state.settings.use24Hour, theme: store.theme,
                           digitSize: min(pickerOpen ? 146 : 260, max(64, min((width - 55) * 0.36, height * 0.46))))
                 .matchedGeometryEffect(id: "clock", in: clockSpace)
-            if store.state.alarms.contains(where: { $0.isTimer }) {
-                Button("Active timers") { timersOpen = true }.buttonStyle(ChipStyle(theme: store.theme))
-            }
             HStack(spacing: 10) {
                 VStack(spacing: 7) {
                     Image(systemName: "chevron.up").font(.system(size: 14, weight: .medium))
@@ -164,14 +152,27 @@ struct ClockFaceView: View {
 struct SheetShell<Content: View>: View {
     let title: String
     let theme: AlarmTheme
+    var scrolls = true
+    var showsDone = true
     @ViewBuilder let content: Content
     @Environment(\.dismiss) private var dismiss
     var body: some View {
         NavigationStack {
-            ScrollView { content.padding(20) }.scrollDismissesKeyboard(.interactively)
+            Group {
+                if scrolls { ScrollView { content.padding(20) }.scrollDismissesKeyboard(.interactively) }
+                else { content }
+            }
                 .background(theme.background).foregroundStyle(theme.text)
                 .navigationTitle(title).navigationBarTitleDisplayMode(.inline)
-                .toolbar { ToolbarItem(placement: .confirmationAction) { Button("Done") { dismiss() } } }
+                .toolbar {
+                    ToolbarItem(placement: .confirmationAction) {
+                        if showsDone { Button("Done") { dismiss() } }
+                        else {
+                            Button { dismiss() } label: { Image(systemName: "xmark") }
+                                .accessibilityLabel("Close alarm editor").accessibilityIdentifier("closeAlarmEditor")
+                        }
+                    }
+                }
                 .toolbarBackground(theme.card, for: .navigationBar).toolbarBackground(.visible, for: .navigationBar)
         }.tint(theme.accent).preferredColorScheme(theme.isLight ? .light : .dark)
             .presentationDragIndicator(.visible).presentationBackground(theme.background)

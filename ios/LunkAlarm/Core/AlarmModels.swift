@@ -1,9 +1,5 @@
 import Foundation
 
-public enum AlarmEngine: String, Codable, CaseIterable, Sendable {
-    case continuousAudio, systemAlarm
-}
-
 public enum AlarmMode: String, Codable, CaseIterable, Sendable {
     case time, timer
 }
@@ -18,7 +14,6 @@ public struct ImportedSound: Codable, Identifiable, Equatable, Sendable {
 }
 
 public struct AlarmSettings: Codable, Equatable, Sendable {
-    public var engine: AlarmEngine?
     public var alarmName: String?
     public var repeatDays: [Int]?
     public var themeID = "sunrise"
@@ -57,24 +52,30 @@ public struct AlarmRecord: Codable, Identifiable, Equatable, Sendable {
     public var typingCodeLength: Int?
     public var typingTimeLimit: Int?
     public var mathTimeLimit: Int?
-    public var engine: AlarmEngine?
-    public var playbackEngine: AlarmEngine { engine ?? .systemAlarm }
+    // Decode the removed 1.4 playback preference only to migrate existing records.
+    // Every new/edited alarm is scheduled exclusively through AlarmKit.
+    public var engine: String?
+    public var requiresSystemMigration: Bool { engine == "continuousAudio" }
+    public var durationSeconds: Int?
     public var name: String?
     public var repeatDays: [Int]?
     public var enabled: Bool?
     public var clockHour: Int?
     public var clockMinute: Int?
     public var isEnabled: Bool { enabled != false }
-    public var displayName: String { name ?? "Alarm" }
+    public var displayName: String { name ?? (isTimer ? "Timer" : "Alarm") }
     public var accessibleName: String { displayName.isEmpty ? "Alarm" : displayName }
     public var timeDate: Date {
         Calendar.current.date(bySettingHour: clockHour ?? Calendar.current.component(.hour, from: target), minute: clockMinute ?? Calendar.current.component(.minute, from: target), second: 0, of: Date()) ?? target
     }
     public func duplicated(now: Date = Date(), calendar: Calendar = .current) throws -> AlarmRecord {
-        guard !isTimer else { throw AlarmDataError.invalidTime }
         var copy = self
         copy.id = UUID(); copy.challengeAlarmIDs = nil; copy.status = .scheduled
-        copy.target = try AlarmRoutine.next(hour: clockHour ?? calendar.component(.hour, from: target), minute: clockMinute ?? calendar.component(.minute, from: target), days: days, now: now, calendar: calendar)
+        if isTimer {
+            let seconds = durationSeconds ?? min(AlarmScheduling.maximumDuration, max(1, Int(ceil(target.timeIntervalSince(now)))))
+            copy.target = try AlarmScheduling.countdown(seconds: seconds, now: now)
+            copy.durationSeconds = seconds
+        } else { copy.target = try AlarmRoutine.next(hour: clockHour ?? calendar.component(.hour, from: target), minute: clockMinute ?? calendar.component(.minute, from: target), days: days, now: now, calendar: calendar) }
         return copy
     }
     public var days: [Int] { repeatDays ?? [] }
@@ -108,6 +109,7 @@ public struct SavedState: Codable, Equatable, Sendable {
               WakeTestOptions.valid(codeLength: settings.typingCodeLength, typingTime: settings.typingTimeLimit, mathTime: settings.mathTimeLimit),
               settings.soundLevel.map({ (0.1...1).contains($0) }) ?? true,
               (0...AlarmScheduling.maximumDuration).contains(settings.durationSeconds),
+              alarms.allSatisfy({ $0.durationSeconds.map({ (1...AlarmScheduling.maximumDuration).contains($0) }) ?? true }),
               alarms.allSatisfy({ (0...8).contains($0.mathCount) && Self.safeFilename($0.soundFilename) }),
               alarms.allSatisfy({ $0.playbackSoundFilename.map(Self.safeFilename) ?? true }),
               alarms.allSatisfy({ WakeTestOptions.valid(codeLength: $0.typingCodeLength, typingTime: $0.typingTimeLimit, mathTime: $0.mathTimeLimit) }),

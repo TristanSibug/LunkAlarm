@@ -12,11 +12,16 @@ struct SavedAlarmsView: View {
                     .buttonStyle(.plain).foregroundStyle(store.theme.muted)
                 Text("Your alarms").font(.system(size: 30, weight: .bold)).accessibilityIdentifier("savedAlarmsTitle")
                 Text(nextLabel).font(.system(size: 14)).foregroundStyle(store.theme.muted)
-                if store.savedAlarms.isEmpty {
-                    Text("No saved alarms yet. Tap + to add one.").foregroundStyle(store.theme.muted).padding(.vertical, 40)
+                if store.orderedAlarms.isEmpty {
+                    Text("No alarms yet. Tap + to add one.").foregroundStyle(store.theme.muted).padding(.vertical, 40)
                 }
-                ForEach(store.savedAlarms) { alarm in alarmCard(alarm) }
-            }.padding(20).padding(.bottom, 100).frame(maxWidth: 680).frame(maxWidth: .infinity)
+                ForEach(store.orderedAlarms) { alarm in
+                    SwipeDeleteAlarmRow(enabled: canChange(alarm), name: alarm.accessibleName, delete: { store.remove(alarm) }) {
+                        alarmCard(alarm)
+                    }
+                }
+            }.frame(maxWidth: .infinity, alignment: .leading).padding(20).padding(.bottom, 100)
+                .frame(maxWidth: 680).frame(maxWidth: .infinity, alignment: .top)
         }
         .gesture(AlarmNavigationSwipe(direction: .down, action: returnToClock))
         .overlay(alignment: .bottomTrailing) {
@@ -27,8 +32,9 @@ struct SavedAlarmsView: View {
             }.buttonStyle(.plain).padding(24).accessibilityLabel("New alarm").accessibilityIdentifier("newAlarmButton")
         }
     }
+    private func canChange(_ alarm: AlarmRecord) -> Bool { !store.saving && !store.readOnly && store.ringing?.id != alarm.id }
     private var nextLabel: String {
-        guard let alarm = store.savedAlarms.first(where: { $0.isEnabled && $0.status != .notScheduled }) else { return "No upcoming alarms" }
+        guard let alarm = store.orderedAlarms.first(where: { $0.isEnabled && $0.status != .notScheduled }) else { return "No upcoming alarms" }
         return "Next alarm " + alarm.target.formatted(date: .abbreviated, time: .shortened)
     }
     private func alarmCard(_ alarm: AlarmRecord) -> some View {
@@ -37,12 +43,17 @@ struct SavedAlarmsView: View {
                 Button { edit(alarm) } label: {
                     VStack(alignment: .leading, spacing: 3) {
                         if !alarm.displayName.isEmpty { Text(alarm.displayName).font(.system(size: 15, weight: .semibold)).lineLimit(1) }
-                        Text(alarm.timeDate.formatted(.dateTime.hour().minute().locale(Locale(identifier: store.state.settings.use24Hour ? "en_GB" : "en_US"))))
-                            .font(.system(size: 32, weight: .light)).monospacedDigit()
+                        Group {
+                            if alarm.isTimer {
+                                Text(timerInterval: Date.distantPast...alarm.target, countsDown: true)
+                            } else {
+                                Text(alarm.timeDate.formatted(.dateTime.hour().minute().locale(Locale(identifier: store.state.settings.use24Hour ? "en_GB" : "en_US"))))
+                            }
+                        }.font(.system(size: 32, weight: .light)).monospacedDigit()
                             .foregroundStyle(alarm.isEnabled ? store.theme.text : store.theme.muted)
                         HStack(spacing: 8) {
-                            Text(AlarmRoutine.summary(alarm.days))
-                            Image(systemName: alarm.playbackEngine == .continuousAudio ? "waveform" : "alarm")
+                            Text(alarm.isTimer ? "Countdown" : AlarmRoutine.summary(alarm.days))
+                            Image(systemName: alarm.isTimer ? "timer" : "alarm")
                             if alarm.typing { Image(systemName: "keyboard") }
                             if alarm.mathCount > 0 { Label("\(alarm.mathCount)", systemImage: "plus.forwardslash.minus") }
                         }.font(.system(size: 11)).foregroundStyle(store.theme.muted)
@@ -50,11 +61,17 @@ struct SavedAlarmsView: View {
                 }.buttonStyle(.plain).accessibilityLabel("Edit \(alarm.accessibleName)")
                     .accessibilityIdentifier("editAlarm-\(alarm.id)")
                     .disabled(store.saving || store.readOnly || store.ringing?.id == alarm.id)
+                if !alarm.isTimer {
                 Toggle("Enabled", isOn: Binding(get: { alarm.isEnabled }, set: { value in Task { await store.setEnabled(alarm, value) } }))
                     .labelsHidden().tint(store.theme.accent2).disabled(store.saving || store.readOnly || store.ringing?.id == alarm.id)
                     .accessibilityLabel("Enable \(alarm.accessibleName)")
+                }
             }
             HStack(spacing: 8) {
+                if alarm.isTimer {
+                    Text("Rings at " + alarm.target.formatted(date: .omitted, time: .shortened))
+                        .font(.system(size: 11)).foregroundStyle(store.theme.muted).frame(maxWidth: .infinity, alignment: .leading)
+                } else {
                 HStack(spacing: 0) {
                     ForEach(1...7, id: \.self) { day in
                         Text(["S", "M", "T", "W", "T", "F", "S"][day - 1])
@@ -62,6 +79,7 @@ struct SavedAlarmsView: View {
                             .frame(maxWidth: .infinity)
                     }
                 }.frame(maxWidth: .infinity)
+                }
                 Menu {
                     Button("Delete", role: .destructive) { store.remove(alarm) }
                     Button("Duplicate") { Task { await store.duplicate(alarm) } }

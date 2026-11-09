@@ -20,7 +20,6 @@ private struct AlarmRootView: View {
     var body: some View {
         themedContent
             .task { await store.observeAlarms() }
-            .task { await store.observeAudioAlarms() }
             .task { await store.observeAuthorization() }
             .onChange(of: scenePhase, initial: true) { _, phase in sceneChanged(phase) }
             .onChange(of: store.state.settings) { _, _ in store.saveSettings() }

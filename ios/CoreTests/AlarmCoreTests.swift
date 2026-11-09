@@ -275,7 +275,7 @@ final class AlarmCoreTests: XCTestCase {
     func testExactDuplicateCopiesDefinitionButNeverSharesNativeOwnership() throws {
         let now = Date()
         var alarm = AlarmRecord(target: now.addingTimeInterval(-100), isTimer: false, ringtoneID: "siren", soundFilename: "siren.wav", soundName: "Siren", typing: true, mathCount: 7)
-        alarm.name = ""; alarm.enabled = false; alarm.engine = .continuousAudio
+        alarm.name = ""; alarm.enabled = false; alarm.engine = "systemAlarm"
         alarm.repeatDays = [2,4,6]; alarm.clockHour = 7; alarm.clockMinute = 15
         alarm.typingCodeLength = 10; alarm.typingTimeLimit = 15; alarm.mathTimeLimit = 12
         alarm.soundLevel = 0.6; alarm.gradualVolume = true; alarm.challengeAlarmIDs = [UUID()]
@@ -284,7 +284,7 @@ final class AlarmCoreTests: XCTestCase {
         XCTAssertEqual(duplicate.name, "")
         XCTAssertEqual(duplicate.displayName, "")
         XCTAssertEqual(duplicate.accessibleName, "Alarm")
-        XCTAssertEqual(duplicate.engine, .continuousAudio)
+        XCTAssertEqual(duplicate.engine, "systemAlarm")
         XCTAssertEqual(duplicate.enabled, false)
         XCTAssertEqual(duplicate.mathCount, 7)
         XCTAssertEqual(duplicate.typingCodeLength, 10)
@@ -298,19 +298,48 @@ final class AlarmCoreTests: XCTestCase {
         var state = SavedState(); state.alarms = [alarm, duplicate]
         XCTAssertEqual(try JSONDecoder().decode(SavedState.self, from: JSONEncoder().encode(state)).validated(), state)
     }
-    func testAudioAlarmsHaveIndependentReconciliationAndLegacyDefaultsToSystem() {
+    func testRemovedAudioPreferenceDecodesForSystemMigrationWithoutLosingRecords() throws {
         let now = Date()
         var alarm = AlarmRecord(target: now.addingTimeInterval(30), isTimer: true, ringtoneID: "siren", soundFilename: "siren.wav", soundName: "Siren", typing: false, mathCount: 0)
-        XCTAssertEqual(alarm.playbackEngine, .systemAlarm)
-        alarm.engine = .continuousAudio
-        let future = AlarmReconciliation.reconcile([alarm], systemIDs: [], stoppedIDs: [], now: now)
-        XCTAssertEqual(future[0].status, .scheduled)
-        let due = AlarmReconciliation.reconcile(future, systemIDs: [], stoppedIDs: [], now: now.addingTimeInterval(31))
-        XCTAssertEqual(due[0].status, .needsChallenge)
-        alarm.enabled = false
-        let off = AlarmReconciliation.reconcile([alarm], systemIDs: [], stoppedIDs: [], now: now.addingTimeInterval(31))
-        XCTAssertEqual(off[0].status, .scheduled)
-        XCTAssertFalse(off[0].isEnabled)
+        alarm.engine = "continuousAudio"
+        var state = SavedState(); state.alarms = [alarm]
+        let decoded = try JSONDecoder().decode(SavedState.self, from: JSONEncoder().encode(state)).validated()
+        XCTAssertTrue(decoded.alarms[0].requiresSystemMigration)
+        let pending = AlarmReconciliation.reconcile(decoded.alarms, systemIDs: [], stoppedIDs: [], now: now.addingTimeInterval(60))
+        XCTAssertEqual(pending, [alarm]) // Migration owns the record until AlarmKit accepts it.
+        var migrated = alarm; migrated.engine = nil
+        XCTAssertFalse(migrated.requiresSystemMigration)
+        let installed = AlarmReconciliation.reconcile([migrated], systemIDs: [alarm.id], stoppedIDs: [], now: now)
+        XCTAssertEqual(installed[0].status, .scheduled)
     }
-
+    func testTimerDuplicateRestartsDefinitionWithIndependentAlertOwnership() throws {
+        let now = Date()
+        var timer = AlarmRecord(target: now.addingTimeInterval(40), isTimer: true, ringtoneID: "siren", soundFilename: "siren.wav", soundName: "Siren", typing: true, mathCount: 2)
+        timer.durationSeconds = 1800; timer.soundLevel = 0.6; timer.gradualVolume = true
+        timer.challengeAlarmIDs = [UUID()]
+        let copy = try timer.duplicated(now: now)
+        XCTAssertNotEqual(copy.id, timer.id)
+        XCTAssertEqual(copy.target, now.addingTimeInterval(1800))
+        XCTAssertEqual(copy.durationSeconds, 1800)
+        XCTAssertEqual(copy.mathCount, 2); XCTAssertTrue(copy.typing)
+        XCTAssertEqual(copy.soundLevel, 0.6); XCTAssertEqual(copy.gradualVolume, true)
+        XCTAssertNil(copy.challengeAlarmIDs)
+        XCTAssertEqual(copy.accessibleName, "Timer")
+        var state = SavedState(); state.alarms = [timer, copy]
+        XCTAssertNoThrow(try state.validated())
+        state.alarms[0].durationSeconds = 0
+        XCTAssertThrowsError(try state.validated())
+    }
+    func testSystemRecoveryKeepsTimerUntilTestsCompleteAfterUnsuccessfulUnlock() {
+        let now = Date()
+        var timer = AlarmRecord(target: now.addingTimeInterval(-30), isTimer: true, ringtoneID: "siren", soundFilename: "siren.wav", soundName: "Siren", typing: false, mathCount: 2)
+        let backup = UUID(); timer.challengeAlarmIDs = [backup]
+        let stopped = AlarmReconciliation.reconcile([timer], systemIDs: [backup], stoppedIDs: [timer.id], now: now)
+        XCTAssertEqual(stopped.count, 1)
+        XCTAssertEqual(stopped[0].status, .needsChallenge)
+        XCTAssertEqual(stopped[0].challengeAlarmIDs, [backup])
+        let later = AlarmReconciliation.reconcile(stopped, systemIDs: [backup], stoppedIDs: [], now: now.addingTimeInterval(15), alertingIDs: [backup])
+        XCTAssertEqual(later[0].status, .needsChallenge)
+        XCTAssertEqual(later[0].id, timer.id)
+    }
 }

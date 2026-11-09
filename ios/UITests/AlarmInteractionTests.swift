@@ -23,6 +23,10 @@ final class AlarmInteractionTests: XCTestCase {
         let app = launch()
         XCTAssertFalse(app.buttons["alarmPickerToggle"].exists)
         openEditor(app)
+        XCTAssertFalse(app.buttons["Done"].exists)
+        XCTAssertFalse(app.segmentedControls["playbackEngine"].exists)
+        XCTAssertFalse(app.buttons["Continuous audio"].exists)
+        XCTAssertTrue(app.buttons["scheduleAlarm"].isHittable)
         let picker = app.datePickers["alarmTimePicker"]
         XCTAssertTrue(picker.waitForExistence(timeout: 5))
         XCTAssertEqual(picker.pickerWheels.count, 3)
@@ -43,7 +47,7 @@ final class AlarmInteractionTests: XCTestCase {
         // A fast downward adjustment of the picker must not close the page.
         picker.swipeDown(velocity: .fast)
         XCTAssertTrue(app.staticTexts["New alarm"].exists)
-        app.buttons["Done"].tap()
+        app.buttons["closeAlarmEditor"].tap()
         XCTAssertTrue(app.staticTexts["savedAlarmsTitle"].waitForExistence(timeout: 5))
         app.buttons["Clock"].tap()
         XCTAssertTrue(app.descendants(matching: .any)["alarmSwipeHint"].waitForExistence(timeout: 5))
@@ -102,6 +106,10 @@ final class AlarmInteractionTests: XCTestCase {
         }
         XCTAssertTrue(app.descendants(matching: .any)["alarmSwipeHint"].waitForExistence(timeout: 5))
         XCTAssertFalse(app.staticTexts["Alarm dismissed. Have a good day."].exists)
+        app.swipeUp(velocity: .fast)
+        XCTAssertTrue(app.staticTexts["savedAlarmsTitle"].waitForExistence(timeout: 5))
+        XCTAssertFalse(app.buttons["Edit Timer"].exists)
+        XCTAssertTrue(app.staticTexts["No alarms yet. Tap + to add one."].exists)
     }
     @MainActor func testMathTimeoutResetsProgressAndEnablesSound() {
         let app = launch(mathAlarm: true)
@@ -214,22 +222,83 @@ final class AlarmInteractionTests: XCTestCase {
         capture(app, name: "ios-compact-duplicates")
     }
 
-    @MainActor func testRealContinuousAudioSoundCheckAndSheetHandoff() {
-        let app = XCUIApplication()
-        app.launchArguments = ["--ui-testing", "--ui-audio-playback"]
-        app.launch()
+    @MainActor func testCountdownIsInYourAlarmsAndCanBeEdited() {
+        let app = launch()
         openEditor(app)
-        let check = app.buttons["Check alarm sound"]
-        for _ in 0..<6 where !check.isHittable { app.swipeUp(velocity: .slow) }
-        check.tap()
-        XCTAssertTrue(app.buttons["testAlarmSound"].waitForExistence(timeout: 5))
-        app.buttons["testAlarmSound"].tap()
-        let stop = app.buttons["Stop alarm"]
-        XCTAssertTrue(stop.waitForExistence(timeout: 15))
-        capture(app, name: "ios-continuous-audio-check")
-        stop.tap()
-        XCTAssertTrue(app.staticTexts["savedAlarmsTitle"].waitForExistence(timeout: 5))
-        XCTAssertFalse(app.buttons["Active timers"].exists)
+        app.buttons["In how long"].tap()
+        saveEditor(app)
+        XCTAssertEqual(app.buttons.matching(NSPredicate(format: "label == %@", "Edit Timer")).count, 1)
+        let card = app.buttons["Edit Timer"]
+        card.tap()
+        XCTAssertTrue(app.navigationBars["Edit alarm"].waitForExistence(timeout: 5))
+        XCTAssertFalse(app.textFields["alarmNameField"].exists)
+        XCTAssertFalse(app.buttons["At a time"].isEnabled)
+        XCTAssertTrue(app.buttons["In how long"].isEnabled)
+        XCTAssertEqual(app.buttons["scheduleAlarm"].label, "Save changes")
+        XCTAssertTrue(app.buttons["scheduleAlarm"].isHittable)
+        capture(app, name: "ios-floating-save-timer")
+        saveEditor(app)
+        XCTAssertEqual(app.buttons.matching(NSPredicate(format: "label == %@", "Edit Timer")).count, 1)
+        capture(app, name: "ios-countdown-in-list")
     }
-
+    @MainActor func testEmptyAndPopulatedHeaderAlignmentAndFloatingEditorButton() {
+        let app = launch()
+        app.swipeUp(velocity: .fast)
+        let title = app.staticTexts["savedAlarmsTitle"]
+        XCTAssertTrue(title.waitForExistence(timeout: 5))
+        let emptyX = title.frame.minX
+        let emptyClockX = app.buttons["Clock"].frame.minX
+        capture(app, name: "ios-aligned-empty-list")
+        app.buttons["newAlarmButton"].tap()
+        let save = app.buttons["scheduleAlarm"]
+        XCTAssertTrue(save.waitForExistence(timeout: 5)); XCTAssertTrue(save.isHittable)
+        let initialY = save.frame.midY
+        app.swipeUp(velocity: .slow)
+        XCTAssertEqual(save.frame.midY, initialY, accuracy: 2)
+        capture(app, name: "ios-floating-add-button")
+        saveEditor(app)
+        XCTAssertEqual(title.frame.minX, emptyX, accuracy: 1)
+        XCTAssertEqual(app.buttons["Clock"].frame.minX, emptyClockX, accuracy: 1)
+        XCTAssertEqual(emptyX, 20, accuracy: 2)
+        app.swipeDown(velocity: .fast)
+        XCTAssertTrue(app.descendants(matching: .any)["alarmSwipeHint"].waitForExistence(timeout: 5))
+    }
+    @MainActor func testPartialSwipeRevealsDeleteAndFullSwipeDeletesWithoutOpeningEditor() {
+        let app = XCUIApplication()
+        app.launchArguments = ["--ui-testing", "--ui-mixed-alarms"]
+        app.launch()
+        app.swipeUp(velocity: .fast)
+        let timer = app.buttons["Edit Timer"]
+        XCTAssertTrue(timer.waitForExistence(timeout: 5))
+        let start = timer.coordinate(withNormalizedOffset: CGVector(dx: 0.85, dy: 0.5))
+        let partial = timer.coordinate(withNormalizedOffset: CGVector(dx: 0.55, dy: 0.5))
+        start.press(forDuration: 0.1, thenDragTo: partial)
+        let delete = app.buttons["swipeDeleteAlarm"]
+        XCTAssertTrue(delete.waitForExistence(timeout: 5))
+        XCTAssertFalse(app.navigationBars["Edit alarm"].exists)
+        capture(app, name: "ios-swipe-reveal-delete")
+        delete.tap()
+        let timerGone = XCTNSPredicateExpectation(predicate: NSPredicate(format: "exists == false"), object: timer)
+        wait(for: [timerGone], timeout: 5)
+        let routine = app.buttons["Edit Morning"]
+        let fullStart = routine.coordinate(withNormalizedOffset: CGVector(dx: 0.95, dy: 0.5))
+        let fullEnd = routine.coordinate(withNormalizedOffset: CGVector(dx: 0.0, dy: 0.5))
+        fullStart.press(forDuration: 0.1, thenDragTo: fullEnd)
+        let gone = XCTNSPredicateExpectation(predicate: NSPredicate(format: "exists == false"), object: routine)
+        wait(for: [gone], timeout: 5)
+        XCTAssertTrue(app.staticTexts["No alarms yet. Tap + to add one."].exists)
+        XCTAssertFalse(app.navigationBars["Edit alarm"].exists)
+    }
+    @MainActor func testTypingKeyboardAcceptsOneCharacterAndBackspace() {
+        let app = XCUIApplication()
+        app.launchArguments = ["--ui-testing", "--ui-typing-alarm"]
+        app.launch()
+        let field = app.textFields["Wake-up code"]
+        XCTAssertTrue(field.waitForExistence(timeout: 10))
+        field.tap(); field.typeText("aB3")
+        XCTAssertEqual(field.value as? String, "aB3")
+        field.typeText(XCUIKeyboardKey.delete.rawValue)
+        XCTAssertEqual(field.value as? String, "aB")
+        capture(app, name: "ios-typing-keyboard")
+    }
 }

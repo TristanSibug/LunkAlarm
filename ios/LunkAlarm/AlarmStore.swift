@@ -16,7 +16,6 @@ final class AlarmStore {
     private(set) var challengeSoundEnabled = false
     private(set) var finishing = false
     let sound = SoundService()
-    private let audio = AudioAlarmService()
     private let repository: StateRepository
     private let service = NativeAlarmService()
     private var systemIDs = Set<UUID>()
@@ -51,11 +50,25 @@ final class AlarmStore {
                 ringtoneID: "classic-beep", soundFilename: "classic-beep.wav", soundName: "Classic Beep",
                 typing: false, mathCount: 3, status: .needsChallenge)]
         }
+        if uiTesting && ProcessInfo.processInfo.arguments.contains("--ui-typing-alarm") {
+            var alarm = AlarmRecord(target: Date().addingTimeInterval(-1), isTimer: true,
+                ringtoneID: "classic-beep", soundFilename: "classic-beep.wav", soundName: "Classic Beep",
+                typing: true, mathCount: 0, status: .needsChallenge)
+            alarm.typingCodeLength = 4
+            state.alarms = [alarm]
+        }
+        if uiTesting && ProcessInfo.processInfo.arguments.contains("--ui-mixed-alarms") {
+            var routine = AlarmRecord(target: Date().addingTimeInterval(3600), isTimer: false,
+                ringtoneID: "classic-beep", soundFilename: "classic-beep.wav", soundName: "Classic Beep", typing: false, mathCount: 0)
+            routine.name = "Morning"; routine.repeatDays = Array(1...7)
+            var timer = routine; timer.id = UUID(); timer.isTimer = true; timer.name = nil; timer.repeatDays = []; timer.durationSeconds = 1800
+            timer.target = Date().addingTimeInterval(1800)
+            state.alarms = [routine, timer]
+        }
         #endif
     }
     var theme: AlarmTheme { AlarmTheme.find(state.settings.themeID) }
     var orderedAlarms: [AlarmRecord] { state.alarms.sorted { $0.target < $1.target } }
-    var savedAlarms: [AlarmRecord] { orderedAlarms.filter { !$0.isTimer } }
     var selectedSound: (name: String, filename: String)? {
         if let tone = RingtoneCatalog.tones.first(where: { $0.id == state.settings.ringtoneID }) {
             return (tone.name, tone.filename)
@@ -66,7 +79,6 @@ final class AlarmStore {
         return nil
     }
     var authorizationLabel: String {
-        if state.alarms.contains(where: { $0.isEnabled && $0.playbackEngine == .continuousAudio }) { return "Audio mode · keep app running" }
         return switch authorization {
         case .authorized: "Alarms allowed"
         case .denied: "Alarms disabled"
@@ -102,7 +114,7 @@ final class AlarmStore {
             var record = AlarmRecord(id: id ?? UUID(), target: target, isTimer: soundCheck || settings.mode == .timer,
                 ringtoneID: settings.ringtoneID, soundFilename: filename, soundName: selectedSound.name,
                 typing: soundCheck ? false : settings.typing, mathCount: soundCheck ? 0 : settings.mathCount)
-            record.engine = settings.engine ?? .continuousAudio
+            record.durationSeconds = record.isTimer ? (soundCheck ? 5 : settings.durationSeconds) : nil
             record.enabled = original?.isEnabled ?? true
             if !record.isTimer {
                 record.name = (settings.alarmName ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
@@ -117,13 +129,13 @@ final class AlarmStore {
     }
     func loadEditor(_ alarm: AlarmRecord) {
         var settings = state.settings
-        settings.mode = .time; settings.alarmName = alarm.name ?? ""
+        settings.mode = alarm.isTimer ? .timer : .time; settings.alarmName = alarm.name ?? ""
+        if alarm.isTimer { settings.durationSeconds = alarm.durationSeconds ?? max(1, min(AlarmScheduling.maximumDuration, Int(ceil(alarm.target.timeIntervalSinceNow)))) }
         settings.repeatDays = alarm.days; settings.hour = alarm.clockHour ?? Calendar.current.component(.hour, from: alarm.target)
         settings.minute = alarm.clockMinute ?? Calendar.current.component(.minute, from: alarm.target)
         settings.ringtoneID = alarm.ringtoneID; settings.typing = alarm.typing; settings.mathCount = alarm.mathCount
         settings.soundLevel = alarm.soundLevel; settings.gradualVolume = alarm.gradualVolume
         settings.typingCodeLength = alarm.typingCodeLength; settings.typingTimeLimit = alarm.typingTimeLimit; settings.mathTimeLimit = alarm.mathTimeLimit
-        settings.engine = alarm.playbackEngine
         state.settings = settings; message = nil; errorMessage = nil
     }
     func duplicate(_ alarm: AlarmRecord) async {
@@ -135,22 +147,17 @@ final class AlarmStore {
     }
     private func prepared(_ original: AlarmRecord) -> AlarmRecord {
         var record = original
+        record.engine = nil
         record.challengeAlarmIDs = recoveryDates(record).map { _ in UUID() }
         return record
     }
     private func recoveryDates(_ alarm: AlarmRecord) -> [Date] {
-        guard alarm.isEnabled, alarm.hasTests, alarm.playbackEngine == .systemAlarm else { return [] }
+        guard alarm.isEnabled, alarm.hasTests else { return [] }
         return alarm.days.isEmpty ? AlarmRecovery.dates(after: alarm.target) : [60.0, 120, 180].map { alarm.target.addingTimeInterval($0) }
     }
     private func install(_ record: AlarmRecord) async throws {
         guard record.isEnabled else { return }
-        if isUITesting {
-            #if DEBUG
-            if record.playbackEngine == .continuousAudio && ProcessInfo.processInfo.arguments.contains("--ui-audio-playback") { try audio.schedule(record) }
-            #endif
-            return
-        }
-        if record.playbackEngine == .continuousAudio { try audio.schedule(record); return }
+        if isUITesting { return }
         try await service.schedule(record, tint: theme.accent)
         for (id, date) in zip(record.challengeAlarmIDs ?? [], recoveryDates(record)) {
             try await service.schedule(recoveryRecord(record, id: id, date: date), tint: theme.accent)
@@ -194,18 +201,17 @@ final class AlarmStore {
             }
         } catch { errorMessage = error.localizedDescription; return false }
     }
-    func remove(_ alarm: AlarmRecord) {
-        guard !readOnly, !saving else { return }
-        guard ringing?.id != alarm.id else { return }
+    @discardableResult func remove(_ alarm: AlarmRecord) -> Bool {
+        guard !readOnly, !saving, ringing?.id != alarm.id else { return false }
         do {
             try stopNativeAlarms(alarm, onlyAlerting: false)
             var next = state; next.alarms.removeAll { $0.id == alarm.id }
             guard commit(next) else {
                 if let index = state.alarms.firstIndex(where: { $0.id == alarm.id }) { state.alarms[index].status = .notScheduled }
-                return
+                return false
             }
-            if ringing?.id == alarm.id { endChallengeSession() }
-        } catch { errorMessage = "Could not cancel the iOS alarm: \(error.localizedDescription)" }
+            return true
+        } catch { errorMessage = "Could not cancel the iOS alarm: \(error.localizedDescription)"; return false }
     }
     private func recoveryRecord(_ alarm: AlarmRecord, id: UUID, date: Date) -> AlarmRecord {
         var result = alarm
@@ -229,43 +235,33 @@ final class AlarmStore {
             var record = original
             record.enabled = enabled; record.status = .scheduled
             if enabled {
-                record.target = try AlarmRoutine.next(hour: record.clockHour ?? Calendar.current.component(.hour, from: record.target), minute: record.clockMinute ?? Calendar.current.component(.minute, from: record.target), days: record.days)
+                if record.isTimer { record.target = try AlarmScheduling.countdown(seconds: record.durationSeconds ?? max(1, min(AlarmScheduling.maximumDuration, Int(ceil(record.target.timeIntervalSinceNow))))) }
+                else { record.target = try AlarmRoutine.next(hour: record.clockHour ?? Calendar.current.component(.hour, from: record.target), minute: record.clockMinute ?? Calendar.current.component(.minute, from: record.target), days: record.days) }
             }
             _ = await persistDefinition(record, replacing: original)
         } catch { errorMessage = error.localizedDescription }
     }
-    func observeAudioAlarms() async {
-        synchronizeAudio()
-        while !Task.isCancelled {
-            do { try await Task.sleep(for: .milliseconds(250)) } catch { return }
-            guard !saving, !readOnly else { continue }
-            let due = state.alarms.filter { $0.playbackEngine == .continuousAudio && $0.isEnabled && $0.status == .scheduled && $0.target <= Date() }
-            if !due.isEmpty {
-                var next = state
-                for alarm in due {
-                    if let index = next.alarms.firstIndex(where: { $0.id == alarm.id }) { next.alarms[index].status = .needsChallenge }
+    // Upgrade alarms created with the removed experimental engine, preserving
+    // their definitions/IDs. Existing system alarms and their recovery guards
+    // never pass through this migration.
+    private func migrateLegacyAudioAlarms() async {
+        guard !readOnly, !saving else { return }
+        saving = true
+        defer { saving = false }
+        for original in state.alarms where original.requiresSystemMigration {
+            do {
+                var record = original
+                record.engine = nil
+                if record.isEnabled && record.target <= Date() {
+                    if record.hasTests { record.status = .needsChallenge }
+                    record.target = record.isTimer ? Date().addingTimeInterval(5)
+                        : try AlarmRoutine.next(hour: record.clockHour ?? Calendar.current.component(.hour, from: record.target), minute: record.clockMinute ?? Calendar.current.component(.minute, from: record.target), days: record.days)
                 }
-                _ = commit(next)
-            }
-            if isActive, ringing == nil, let alarm = orderedAlarms.first(where: { $0.isEnabled && $0.playbackEngine == .continuousAudio && $0.status == .needsChallenge }) { begin(alarm) }
-        }
-    }
-    private func synchronizeAudio() {
-        guard !readOnly, !isUITesting else { return }
-        do { try audio.synchronize(state.alarms, answeringID: ringing?.id) }
-        catch {
-            if let failure = error as? AudioArmingFailure {
-                audio.cancel(failure.id)
-                var next = state
-                if let index = next.alarms.firstIndex(where: { $0.id == failure.id }) { next.alarms[index].status = .notScheduled }
-                _ = commit(next)
-            }
-            errorMessage = "Could not arm continuous audio: \(error.localizedDescription)"
+                _ = await persistDefinition(record, replacing: original)
+            } catch { errorMessage = "Could not move an existing alarm to iOS: \(error.localizedDescription)" }
         }
     }
     func resumeAudioAfterInterruption() {
-        do { try audio.resumeAfterInterruption() }
-        catch { errorMessage = error.localizedDescription }
         if challengeSoundEnabled { sound.resumeAfterInterruption() }
     }
     func preview() {
@@ -287,6 +283,7 @@ final class AlarmStore {
         } catch { errorMessage = error.localizedDescription }
     }
     func observeAlarms() async {
+        await migrateLegacyAudioAlarms()
         refresh()
         for await alarms in service.manager.alarmUpdates {
             if Task.isCancelled { return }
@@ -316,7 +313,6 @@ final class AlarmStore {
         guard !saving else { return }
         do {
             reconcile(service.manager.authorizationState == .authorized ? try service.manager.alarms : [])
-            synchronizeAudio()
         }
         catch { errorMessage = "Could not read iOS alarms: \(error.localizedDescription)" }
     }
@@ -355,7 +351,6 @@ final class AlarmStore {
     }
     func begin(_ alarm: AlarmRecord) {
         guard !finishing, alarm.isEnabled else { return }
-        if alarm.playbackEngine == .continuousAudio { audio.cancel(alarm.id) }
         sound.stop()
         ringing = alarm
         challenge = TimedWakeChallenge(typing: alarm.typing, mathCount: alarm.mathCount,
@@ -426,7 +421,6 @@ final class AlarmStore {
     private var currentRecord: AlarmRecord? { state.alarms.first { $0.id == ringing?.id } }
     private func nativeAlertIsSounding(_ alarm: AlarmRecord) -> Bool { alarm.nativeAlarmIDs.contains { alertingIDs.contains($0) } }
     private func stopNativeAlarms(_ alarm: AlarmRecord, onlyAlerting: Bool) throws {
-        audio.cancel(alarm.id)
         guard !isUITesting, service.manager.authorizationState == .authorized else { return }
         let ids = Set(alarm.nativeAlarmIDs)
         for native in try service.manager.alarms where ids.contains(native.id) {
@@ -451,9 +445,6 @@ final class AlarmStore {
             sound.stop()
             do { try stopNativeAlarms(alarm, onlyAlerting: true) }
             catch { errorMessage = "Could not pause alarm sound: \(error.localizedDescription)" }
-        }
-        if alarm.playbackEngine == .continuousAudio {
-            if enabled { audio.cancel(alarm.id) } else { armChallengeDeadline() }
         }
     }
     private func startChallengeTimer() {
@@ -485,14 +476,6 @@ final class AlarmStore {
         let revision = watchdogRevision
         watchdogTask?.cancel()
         guard !isUITesting, let deadline = challenge?.deadline, let alarm = currentRecord else { return }
-        if alarm.playbackEngine == .continuousAudio {
-            audio.cancel(alarm.id)
-            if !challengeSoundEnabled {
-                do { try audio.schedule(alarm, at: deadline) }
-                catch { errorMessage = "Could not arm the audio question timer: \(error.localizedDescription)" }
-            }
-            return
-        }
         watchdogTask = Task {
             do {
                 // Retain every in-flight ID in its owner's record until the session

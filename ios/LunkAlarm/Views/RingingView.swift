@@ -86,6 +86,7 @@ struct RingingView: View {
         }.padding(.horizontal, 24).padding(.vertical, 12)
     }
     private func press(_ key: String) {
+        AlarmHaptics.keypress()
         switch key {
         case "⌫": if !answer.isEmpty { answer.removeLast() }
         default:
@@ -139,7 +140,9 @@ struct NativeCodeField: UIViewRepresentable {
         init(_ parent: NativeCodeField) { self.parent = parent }
         @objc func changed(_ field: UITextField) { parent.text = field.text ?? "" }
         func textField(_ field: UITextField, shouldChangeCharactersIn range: NSRange, replacementString string: String) -> Bool {
-            string.count <= 1 && ((field.text ?? "") as NSString).replacingCharacters(in: range, with: string).count <= parent.maximumLength
+            let accepted = string.count <= 1 && ((field.text ?? "") as NSString).replacingCharacters(in: range, with: string).count <= parent.maximumLength
+            if accepted && (!string.isEmpty || range.length > 0) { AlarmHaptics.keypress() }
+            return accepted
         }
     }
 }

@@ -13,6 +13,7 @@ struct AlarmEditorView: View {
     @State private var ringtoneAction: RingtoneAction?
     private enum RingtoneAction { case file, online }
     var body: some View {
+        ScrollView {
         AlarmCard(theme: store.theme) {
             if onAdded == nil { Text("New alarm").font(.system(size: 14, weight: .medium)).foregroundStyle(store.theme.muted) }
             if store.state.settings.mode == .time {
@@ -48,18 +49,17 @@ struct AlarmEditorView: View {
                         .buttonStyle(ChipStyle(theme: store.theme))
                 }
             }.font(.system(size: 13)).foregroundStyle(store.theme.accent)
-            playbackControls
             soundLevelControls()
             wakeUpTests
             if let message = store.message { Text(message).font(.caption).foregroundStyle(store.theme.accent) }
-            Button {
-                Task {
-                    if await store.addAlarm(replacing: editingID) { onAdded?() }
+        }.padding(20)
+        }.scrollDismissesKeyboard(.interactively)
+        .safeAreaInset(edge: .bottom, spacing: 0) {
+            saveButton.padding(.horizontal, 20).padding(.top, 12).padding(.bottom, 12)
+                .background {
+                    LinearGradient(colors: [store.theme.background.opacity(0), store.theme.background.opacity(0.92)], startPoint: .top, endPoint: .bottom)
+                        .ignoresSafeArea(edges: .bottom)
                 }
-            } label: {
-                HStack { if store.saving { ProgressView() }; Text(store.saving ? "Saving…" : editingID == nil ? "Add alarm" : "Save changes") }
-            }.buttonStyle(AccentButtonStyle(theme: store.theme)).disabled(store.saving || store.readOnly)
-                .accessibilityIdentifier("scheduleAlarm")
         }
         .sheet(isPresented: $ringtoneOpen, onDismiss: {
             switch ringtoneAction {
@@ -83,18 +83,16 @@ struct AlarmEditorView: View {
         .onChange(of: store.state.settings.soundLevel) { _, level in store.sound.updatePreviewVolume(level ?? 1) }
     }
 
-    private var playbackControls: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            sectionLabel("Playback")
-            Picker("Playback", selection: Binding(get: { store.state.settings.engine ?? .continuousAudio }, set: { store.state.settings.engine = $0 })) {
-                Text("Continuous audio").tag(AlarmEngine.continuousAudio)
-                Text("System alarm").tag(AlarmEngine.systemAlarm)
-            }.pickerStyle(.segmented).accessibilityIdentifier("playbackEngine")
-            if (store.state.settings.engine ?? .continuousAudio) == .continuousAudio {
-                Text("Experimental: leave LunkAlarm running. Force-quitting stops audio alarms. Test with your phone locked before relying on this mode.")
-                    .font(.caption).foregroundStyle(store.theme.muted)
+    private var saveButton: some View {
+        Button {
+            Task { if await store.addAlarm(replacing: editingID) { onAdded?() } }
+        } label: {
+            HStack {
+                if store.saving { ProgressView() }
+                Text(store.saving ? "Saving…" : editingID == nil ? "Add alarm" : "Save changes")
             }
-        }
+        }.buttonStyle(AccentButtonStyle(theme: store.theme)).disabled(store.saving || store.readOnly)
+            .accessibilityIdentifier("scheduleAlarm")
     }
     private var repeatControls: some View {
         VStack(alignment: .leading, spacing: 12) {
@@ -225,7 +223,7 @@ struct AlarmEditorView: View {
                 .foregroundStyle(store.state.settings.mode == mode ? store.theme.text : store.theme.muted)
                 .background(store.state.settings.mode == mode ? store.theme.text.opacity(0.13) : .clear, in: RoundedRectangle(cornerRadius: 12))
         }.buttonStyle(.plain).accessibilityAddTraits(store.state.settings.mode == mode ? .isSelected : [])
-            .disabled(editingID != nil && mode == .timer)
+            .disabled(editingID != nil && mode != (store.state.alarms.first(where: { $0.id == editingID })?.isTimer == true ? .timer : .time))
     }
     private var timeWheels: some View {
         NativeTimePicker(hour: $store.state.settings.hour, minute: $store.state.settings.minute,
