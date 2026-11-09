@@ -18,7 +18,7 @@ struct AlarmTheme: Identifiable, Sendable {
     static func find(_ id: String) -> AlarmTheme { all.first { $0.id == id } ?? all[0] }
     // Light palettes, neutral darks, warm palettes, then green/blue/purple families.
     static var arranged: [AlarmTheme] {
-        ["light", "linen", "sea-glass", "oled", "dark", "sunrise", "ember", "forest", "nord", "deep-ocean", "vscode-blue", "tokyo-night", "amethyst", "dracula"].map(find)
+        ["light", "eggshell-white", "linen", "sea-glass", "heritage", "oled", "dark", "sunrise", "ember", "midnight-cherry", "forest", "nord", "deep-ocean", "vscode-blue", "cobalt-coral", "signal-blue", "tokyo-night", "amethyst", "dracula"].map(find)
     }
     static let all: [AlarmTheme] = [
         AlarmTheme(id: "sunrise", name: "Sunrise", background: Color(hex: 0x0a0c16), card: Color(hex: 0x171923), text: Color(hex: 0xf4f2ff), muted: Color(hex: 0x9a9bb8), accent: Color(hex: 0xffa94d), accent2: Color(hex: 0xff6b7a), glow: true),
@@ -34,7 +34,15 @@ struct AlarmTheme: Identifiable, Sendable {
         AlarmTheme(id: "forest", name: "Forest", background: Color(hex: 0x0b1714), card: Color(hex: 0x142720), text: Color(hex: 0xe4f2e9), muted: Color(hex: 0x9bb5a4), accent: Color(hex: 0x9dcc88), accent2: Color(hex: 0x59c7a5)),
         AlarmTheme(id: "ember", name: "Ember", background: Color(hex: 0x1b1110), card: Color(hex: 0x2b1d1a), text: Color(hex: 0xffeee3), muted: Color(hex: 0xc3a49a), accent: Color(hex: 0xffbb74), accent2: Color(hex: 0xef876d)),
         AlarmTheme(id: "amethyst", name: "Amethyst", background: Color(hex: 0x171123), card: Color(hex: 0x251d36), text: Color(hex: 0xf1eaff), muted: Color(hex: 0xb3a3cb), accent: Color(hex: 0xc5a2ff), accent2: Color(hex: 0xf0a4ce)),
-        AlarmTheme(id: "deep-ocean", name: "Deep Ocean", background: Color(hex: 0x081a24), card: Color(hex: 0x102b38), text: Color(hex: 0xe1f5fb), muted: Color(hex: 0x99b9c6), accent: Color(hex: 0x79d2de), accent2: Color(hex: 0x82b0f7))
+        AlarmTheme(id: "deep-ocean", name: "Deep Ocean", background: Color(hex: 0x081a24), card: Color(hex: 0x102b38), text: Color(hex: 0xe1f5fb), muted: Color(hex: 0x99b9c6), accent: Color(hex: 0x79d2de), accent2: Color(hex: 0x82b0f7)),
+        AlarmTheme(id: "eggshell-white", name: "Eggshell White", background: Color(hex: 0xf7f3e8), card: Color(hex: 0xfffefa), text: Color(hex: 0x28343c), muted: Color(hex: 0x636b70), accent: Color(hex: 0x566a78), accent2: Color(hex: 0x6d6252), isLight: true),
+        // Reference stripes 1 / 3 / 4: oxblood, ivory and navy.
+        AlarmTheme(id: "heritage", name: "Heritage", background: Color(hex: 0xf9efd4), card: Color(hex: 0xfff8e8), text: Color(hex: 0x032d3f), muted: Color(hex: 0x52626b), accent: Color(hex: 0x7d0500), accent2: Color(hex: 0x032d3f), isLight: true),
+        // Reference stripes 2 / 4 / 5: crimson cards, navy background, steel-blue accents.
+        // Pale blue/rose text keeps the saturated red surfaces readable.
+        AlarmTheme(id: "signal-blue", name: "Signal Blue", background: Color(hex: 0x032d3f), card: Color(hex: 0xbe0d1f), text: Color(hex: 0xf1f7fa), muted: Color(hex: 0xe8d7e1), accent: Color(hex: 0xd2e7f2), accent2: Color(hex: 0x699db8)),
+        AlarmTheme(id: "cobalt-coral", name: "Cobalt & Coral", background: Color(hex: 0x101c3d), card: Color(hex: 0x1d3057), text: Color(hex: 0xf2f6ff), muted: Color(hex: 0xa8b8d6), accent: Color(hex: 0x92bdff), accent2: Color(hex: 0xff8a85)),
+        AlarmTheme(id: "midnight-cherry", name: "Midnight Cherry", background: Color(hex: 0x260f19), card: Color(hex: 0x3d1c2a), text: Color(hex: 0xfff2f6), muted: Color(hex: 0xcaa6b5), accent: Color(hex: 0x9ecbf5), accent2: Color(hex: 0xff8d87))
     ]
 }
 

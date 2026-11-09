@@ -303,4 +303,71 @@ final class AlarmInteractionTests: XCTestCase {
         XCTAssertEqual(field.value as? String, "aB")
         capture(app, name: "ios-typing-keyboard")
     }
+    @MainActor private func chooseCustomRepeatDays(_ app: XCUIApplication) {
+        let daily = app.buttons["dailyRepeat"]
+        let save = app.buttons["scheduleAlarm"]
+        for _ in 0..<5 where !daily.isHittable || daily.frame.maxY > save.frame.minY - 12 { app.swipeUp(velocity: .slow) }
+        daily.tap() // New alarms default to all seven days; clear them first.
+        app.buttons["Tuesday"].tap()
+        app.buttons["Friday"].tap()
+    }
+    @MainActor func testRepeatDaysUseSelectedCirclesAndAllDaysUseDaily() {
+        let app = launch()
+        openEditor(app)
+        saveEditor(app)
+        let edit = app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH 'editAlarm-' ")).firstMatch
+        let id = String(edit.identifier.dropFirst("editAlarm-".count))
+        XCTAssertTrue(app.staticTexts["alarmDaily-\(id)"].exists)
+        XCTAssertFalse(app.descendants(matching: .any)["alarmWeekdays-\(id)"].exists)
+        capture(app, name: "ios-repeat-daily")
+        edit.tap()
+        XCTAssertTrue(app.navigationBars["Edit alarm"].waitForExistence(timeout: 5))
+        chooseCustomRepeatDays(app)
+        saveEditor(app)
+        XCTAssertFalse(app.staticTexts["alarmDaily-\(id)"].exists)
+        XCTAssertTrue(app.descendants(matching: .any)["alarmWeekdays-\(id)"].exists)
+        for day in 1...7 {
+            let badge = app.descendants(matching: .any)["alarmDay-\(id)-\(day)"]
+            XCTAssertTrue(badge.exists)
+            XCTAssertEqual(badge.value as? String, [3, 6].contains(day) ? "Selected" : "Not selected")
+        }
+        XCTAssertFalse(app.staticTexts["Tue"].exists)
+        XCTAssertFalse(app.staticTexts["Tue · Fri"].exists)
+        capture(app, name: "ios-repeat-selected-circles")
+        edit.tap()
+        let daily = app.buttons["dailyRepeat"]
+        for _ in 0..<5 where !daily.isHittable { app.swipeUp(velocity: .slow) }
+        daily.tap()
+        saveEditor(app)
+        XCTAssertTrue(app.staticTexts["alarmDaily-\(id)"].exists)
+        XCTAssertFalse(app.descendants(matching: .any)["alarmWeekdays-\(id)"].exists)
+    }
+    @MainActor func testFiveNewThemesRenderClockAndRepeatCards() {
+        let app = launch()
+        openEditor(app)
+        chooseCustomRepeatDays(app)
+        saveEditor(app)
+        app.buttons["newAlarmButton"].tap()
+        let daily = app.buttons["dailyRepeat"]
+        for _ in 0..<5 where !daily.isHittable { app.swipeUp(velocity: .slow) }
+        daily.tap() // The previous custom days are remembered; select all for this alarm.
+        saveEditor(app)
+        app.buttons["Clock"].tap()
+        for name in ["Eggshell White", "Heritage", "Midnight Cherry", "Cobalt & Coral", "Signal Blue"] {
+            app.buttons["Theme"].tap()
+            let choice = app.buttons[name]
+            for _ in 0..<8 where !choice.isHittable { app.swipeUp(velocity: .slow) }
+            XCTAssertTrue(choice.isHittable, "Theme must be reachable: \(name)")
+            choice.tap()
+            XCTAssertTrue(choice.isSelected)
+            app.buttons["Done"].tap()
+            XCTAssertTrue(app.descendants(matching: .any)["alarmSwipeHint"].waitForExistence(timeout: 5))
+            capture(app, name: "ios-theme-\(name)-clock")
+            app.swipeUp(velocity: .fast)
+            XCTAssertTrue(app.staticTexts["savedAlarmsTitle"].waitForExistence(timeout: 5))
+            capture(app, name: "ios-theme-\(name)-alarms")
+            app.buttons["Clock"].tap()
+        }
+    }
+
 }

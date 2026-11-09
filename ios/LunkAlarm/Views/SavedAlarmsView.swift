@@ -57,11 +57,12 @@ struct SavedAlarmsView: View {
                         }.font(.system(size: 32, weight: .light)).monospacedDigit()
                             .foregroundStyle(alarm.isEnabled ? store.theme.text : store.theme.muted)
                         HStack(spacing: 8) {
-                            Text(alarm.isTimer ? "Countdown" : AlarmRoutine.summary(alarm.days))
+                            if alarm.isTimer { Text("Countdown") }
                             Image(systemName: alarm.isTimer ? "timer" : "alarm")
                             if alarm.typing { Image(systemName: "keyboard") }
                             if alarm.mathCount > 0 { Label("\(alarm.mathCount)", systemImage: "plus.forwardslash.minus") }
                         }.font(.system(size: 11)).foregroundStyle(store.theme.muted)
+                            .accessibilityIdentifier("alarmMetadata-\(alarm.id)")
                     }.frame(maxWidth: .infinity, alignment: .leading).contentShape(Rectangle())
                 }.buttonStyle(.plain).accessibilityLabel("Edit \(alarm.accessibleName)")
                     .accessibilityIdentifier("editAlarm-\(alarm.id)")
@@ -76,14 +77,30 @@ struct SavedAlarmsView: View {
                 if alarm.isTimer {
                     Text("Rings at " + alarm.target.formatted(date: .omitted, time: .shortened))
                         .font(.system(size: 11)).foregroundStyle(store.theme.muted).frame(maxWidth: .infinity, alignment: .leading)
+                } else if alarm.days.count == 7 {
+                    Text("Daily").font(.system(size: 12)).foregroundStyle(store.theme.muted)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .accessibilityIdentifier("alarmDaily-\(alarm.id)")
                 } else {
-                HStack(spacing: 0) {
-                    ForEach(1...7, id: \.self) { day in
-                        Text(["S", "M", "T", "W", "T", "F", "S"][day - 1])
-                            .font(.system(size: 11)).foregroundStyle(alarm.days.contains(day) ? store.theme.accent : store.theme.muted)
-                            .frame(maxWidth: .infinity)
-                    }
-                }.frame(maxWidth: .infinity)
+                    HStack(spacing: 0) {
+                        ForEach(1...7, id: \.self) { day in
+                            let selected = alarm.days.contains(day)
+                            Text(["S", "M", "T", "W", "T", "F", "S"][day - 1])
+                                .font(.system(size: 11, weight: selected ? .semibold : .regular))
+                                .foregroundStyle(selected ? store.theme.accent : store.theme.muted)
+                                .frame(width: 26, height: 26)
+                                .background(Circle().fill(selected ? store.theme.accent.opacity(0.08) : .clear))
+                                .overlay(Circle().strokeBorder(selected ? store.theme.accent : .clear, lineWidth: 1.3))
+                                .frame(maxWidth: .infinity)
+                                .accessibilityElement(children: .ignore)
+                                .accessibilityLabel(["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"][day - 1])
+                                .accessibilityValue(selected ? "Selected" : "Not selected")
+                                .accessibilityAddTraits(selected ? .isSelected : [])
+                                .accessibilityIdentifier("alarmDay-\(alarm.id)-\(day)")
+                        }
+                    }.frame(maxWidth: .infinity)
+                        .accessibilityElement(children: .contain)
+                        .accessibilityIdentifier("alarmWeekdays-\(alarm.id)")
                 }
                 Menu {
                     Button("Delete", role: .destructive) { store.remove(alarm) }

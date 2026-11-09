@@ -7,7 +7,7 @@ The website in `web/` remains separately deployable. **Find more ringtones onlin
 ## What is included
 
 - A centered large clock on launch, local date/time zone, and 12/24-hour display. Swipe up to view alarms; the floating + opens the editor. Swipe down at the top of the alarm list or use Clock to return. Wheel/control interactions do not dismiss the page. VoiceOver exposes equivalent actions. Reduced Motion disables the transition.
-- Fourteen app-owned themes (the original eight, plus Linen, Sea Glass, Forest, Ember, Amethyst, and Deep Ocean) that remain independent of the iPhone's light/dark setting.
+- Nineteen app-owned themes (the original fourteen, plus Eggshell White, Heritage, Signal Blue, Cobalt & Coral, and Midnight Cherry) that remain independent of the iPhone's light/dark setting.
 - Apple's native heading-free time wheel with unpadded 12-hour hours and AM/PM rollover, duration wheels, and paired looping test controls: 1–8 math problems / 5–12 seconds per question, and 4–10 code characters / 15–30 seconds. Wake-up tests start expanded and collapse with their header arrow. The presets are 5 min, 10 min, 30 min, and 1 hour; trailing choices hide when space is limited.
 - Ten offline PCM ringtones rendered from the existing app's synthesizer recipes; six-second previews.
 - Import from Files: browser-downloadable audio smaller than 2 MB and shorter than 30 seconds, converted to mono PCM WAV in `Library/Sounds`. Each alarm remembers its selected sound and tests; importing a new sound does not change older alarms.
@@ -74,7 +74,7 @@ Before distribution, test on a real iPhone:
 - Trigger a challenged alarm while locked, tap Wake-up tests and deliberately fail Face ID/passcode. Wait for a recovery alert; unlock successfully and complete tests. Verify every recovery alert is cancelled. Repeat by terminating the app before the first alarm.
 - Check relative sound levels and gradual fade-in using both preview and a locked-device test. The five-second test starts after five seconds, then uses the full ten-second fade when enabled. Confirm the ten-second rise and that old alarms retain their earlier sound/volume snapshots.
 - Cancel before due, restart the app, restart the phone, and revoke/re-enable permission; compare the displayed list with actual iOS alerts.
-- Check all 14 themes (including the two new light palettes), Dynamic Type, VoiceOver, Reduce Motion, portrait/landscape, small iPhones, and iPad.
+- Check all 19 themes (including Eggshell White and the four new blue/red palettes), Dynamic Type, VoiceOver, Reduce Motion, portrait/landscape, small iPhones, and iPad.
 
 ## Maintenance
 
@@ -114,3 +114,9 @@ The editor has an × close control and a floating Add alarm / Save changes actio
 Swipe a card left to reveal a circular Delete action. A full swipe past 65% of the card width gives medium impact feedback and deletes on release; a deliberate fast full swipe also commits. Short swipes reveal the action, and right swipes close it. Vertical movement continues scrolling/navigation. Delete is also available to VoiceOver. A failed cancellation/save restores the card and displays the error. Calculator keys and accepted typing-keyboard insertions/deletions give light haptic feedback; physical-device testing is required to feel the haptics.
 
 Validation covers scheduling/persistence/recovery, optional names, exact duplicates, countdown editing/lifecycle, header alignment, a fixed editor action, partial/full swipe deletion, native wheels, keypad entry and question timers. Simulator tests cannot verify physical haptics or locked-iPhone alarm behavior. On a real iPhone, test a system alarm with wake-up tests, attempt an incomplete unlock at the Lock Screen stop action, relock, confirm a recovery alert, then unlock and complete the tests. Recovery alerts remain bounded as described above; this build does not promise an indefinite or undismissable alarm.
+
+## Version 1.6: repeat-day badges and five more themes
+
+Saved alarm cards no longer repeat a weekday summary such as Tue below the time. For a custom repeat schedule, the selected weekday letters have an outlined circle with a subtle tint; other letters remain plain. Choosing all seven days replaces the letters with one Daily label in the card footer. Countdown labels and sound/test icons stay in their existing positions. VoiceOver announces each visible weekday and whether it is selected. Editing the alarm updates the same card's badges immediately after saving.
+
+Five iOS-only palettes bring the theme count to nineteen. Eggshell White is a warm off-white neutral; Heritage uses the reference's stripes 1/3/4 (oxblood, ivory and navy); Signal Blue uses stripes 2/4/5 (crimson, navy and steel blue) with lighter foregrounds for readability. Cobalt & Coral and Midnight Cherry offer blue-dominant and red-dominant alternatives. Existing themes and the two-column picker are retained, with the additions inserted into the existing light/warm/blue color groups. Android and the website are unchanged.
