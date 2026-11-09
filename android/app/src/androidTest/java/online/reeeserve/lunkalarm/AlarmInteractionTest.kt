@@ -5,6 +5,7 @@ import android.os.SystemClock
 import android.view.KeyEvent
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.test.*
+import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.test.platform.app.InstrumentationRegistry
 import androidx.test.uiautomator.UiDevice
@@ -188,6 +189,16 @@ class AlarmInteractionTest {
         (next.left + next.right).toString().forEach { rule.onNodeWithTag("key-$it").performScrollTo().performClick() }
         rule.waitUntil(8000) { repo.state.value.session == null }
         assertTrue(repo.state.value.alarms.isEmpty())
+    }
+
+    @Test fun i_adjustingPreviewVolumeDoesNotStopPreview() {
+        openEditor()
+        rule.onNodeWithTag("editor-form").performScrollToNode(hasTestTag("ringtone-picker"))
+        rule.onNodeWithText("Preview", substring = false).performClick()
+        rule.onNodeWithTag("editor-form").performScrollToNode(hasTestTag("alarm-volume"))
+        rule.onNodeWithTag("alarm-volume").performSemanticsAction(SemanticsActions.SetProgress) { it(.4f) }
+        rule.onNodeWithText("Stop", substring = false).assertExists().performClick()
+        rule.onNodeWithText("Preview", substring = false).assertExists()
     }
 
 }

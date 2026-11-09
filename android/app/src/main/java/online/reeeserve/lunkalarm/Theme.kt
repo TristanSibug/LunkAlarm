@@ -2,6 +2,7 @@ package online.reeeserve.lunkalarm
 
 import android.graphics.Typeface
 import android.os.Build
+import android.view.ContextThemeWrapper
 import android.view.HapticFeedbackConstants
 import android.view.View
 import android.widget.EditText
@@ -75,7 +76,7 @@ fun haptic(view: View, strong: Boolean = false) {
     labels: List<String>? = null, change: (Int) -> Unit) {
     val latest by rememberUpdatedState(change)
     AndroidView(modifier = modifier.height(116.dp).clip(RoundedCornerShape(12.dp)).testTag(tag), factory = { context ->
-        NumberPicker(context).apply {
+        NumberPicker(ContextThemeWrapper(context, if (theme.light) android.R.style.Theme_Material_Light else android.R.style.Theme_Material)).apply {
             minValue = range.first; maxValue = range.last; wrapSelectorWheel = true
             descendantFocusability = NumberPicker.FOCUS_BLOCK_DESCENDANTS
             setOnValueChangedListener { _, _, selected -> latest(selected) }

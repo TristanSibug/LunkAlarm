@@ -48,6 +48,7 @@ class AlarmAudio(private val context: Context, private val repository: AlarmRepo
             audio.setVolume(initial, initial); audio.start(); player = audio
         } catch (failure: Exception) { audio.release(); stop(); throw failure }
     }
+    fun updateLevel(level: Float) { volume = level; tick() }
     fun tick() {
         val gain = AlarmTime.gain(volume, SystemClock.elapsedRealtime() - started, gradual)
         runCatching { player?.setVolume(gain, gain) }

@@ -53,13 +53,16 @@ import online.reeeserve.lunkalarm.core.*
         lifecycle.addObserver(observer)
         onDispose { lifecycle.removeObserver(observer); preview.stop() }
     }
-    LaunchedEffect(previewing, draft.tone, draft.volume, draft.gradual) {
+    SideEffect { preview.updateLevel(draft.volume) }
+    LaunchedEffect(previewing, draft.tone, draft.gradual) {
         if (previewing) {
             try {
                 preview.play(draft.tone, draft.volume, draft.gradual)
                 repeat(if (draft.gradual) 48 else 24) { preview.tick(); delay(250) }
-            } catch (failure: Exception) { repo.report(failure.localizedMessage ?: "Could not preview this sound.") }
-            finally { preview.stop(); previewing = false }
+                previewing = false
+            } catch (cancelled: CancellationException) { throw cancelled }
+            catch (failure: Exception) { repo.report(failure.localizedMessage ?: "Could not preview this sound."); previewing = false }
+            finally { preview.stop() }
         } else preview.stop()
     }
     Column(Modifier.fillMaxSize().background(theme.background).imePadding().testTag("alarm-editor")) {
