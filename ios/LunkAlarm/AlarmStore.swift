@@ -67,7 +67,7 @@ final class AlarmStore {
     }
     var authorizationLabel: String {
         if state.alarms.contains(where: { $0.isEnabled && $0.playbackEngine == .continuousAudio }) { return "Audio mode · keep app running" }
-        switch authorization {
+        return switch authorization {
         case .authorized: "Alarms allowed"
         case .denied: "Alarms disabled"
         case .notDetermined: "iPhone system time"
