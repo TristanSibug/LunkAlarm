@@ -1,24 +1,72 @@
-# Wake — Alarm Clock
+# LunkAlarm
 
-A C# / WPF implementation of Wake, based on the supplied Tauri alarm clock. The Windows app uses native controls, Windows audio and Windows power APIs. It has **no Tauri, Rust, JavaScript, WebView or browser dependency**. The standalone website lives in `web/` and reuses the original browser UI. The native macOS version is future work.
+LunkAlarm is an alarm clock available as a **website**, a **native Android app**, and a **native iOS app**. It combines a large clock, custom themes, ringtones, and optional wake-up tests.
 
-## Native iPhone app
+**[Open the website → alarm.reeeserve.online](https://alarm.reeeserve.online)** · **[Download mobile builds](https://github.com/TristanSibug/LunkAlarm/releases)**
 
-The native SwiftUI app is in **`ios/`**. Open `ios/LunkAlarm.xcodeproj` with Xcode 26 or later; it targets iOS 26+ and uses AlarmKit for system-scheduled alarms. It retains the website's themes, clock-first view, wheel pickers, sound previews/imports, and ringtone-site links. See [iOS setup, cloud builds, signing, and device testing](ios/README.md). macOS Monterey cannot run the required Xcode; GitHub Actions provides an unsigned cloud build, and iPhone installation still requires Apple signing/provisioning or TestFlight.
+## Platforms
 
-## Deploy the website with Vercel
+| Platform | Get started | Requirements | Source and setup |
+| --- | --- | --- | --- |
+| Website | [alarm.reeeserve.online](https://alarm.reeeserve.online) | A modern browser | [`web/`](web/) · [Deployment guide](docs/WEBSITE-DEPLOYMENT.md) |
+| Android | [Download the APK](https://github.com/TristanSibug/LunkAlarm/releases/tag/android-v1.0.0) | Android 8.0 or later | [`android/`](android/) · [Android guide](android/README.md) |
+| iOS | [Releases](https://github.com/TristanSibug/LunkAlarm/releases) · [IPA builds](https://github.com/TristanSibug/LunkAlarm/actions/workflows/ios.yml) | iOS 26 or later; Apple signing/provisioning | [`ios/`](ios/) · [iOS guide](ios/README.md) |
 
-Import this repository into a **separate Vercel project** with **Root Directory `web`** and **Framework Preset Other**. No build/install commands, database or environment variables are required. Deploy, then add `alarm.reeeserve.online` in the new project's Domains settings and enter the exact DNS record shown by Vercel at your DNS provider.
+The Android app uses **Kotlin and Jetpack Compose**. The iOS app uses **SwiftUI and AlarmKit**. Both are native apps with their own system alarm integration. The standalone website runs directly in a browser.
 
-See [the Namecheap + Vercel deployment guide](docs/WEBSITE-DEPLOYMENT.md) for the full steps. Upload/deploy the contents of `web/`, not the Windows build or the whole repository. Alarms and settings are stored in each browser; Supabase integration is not included. Keep the page open and the device awake for alarms.
+The repository also contains the earlier native C# / WPF Windows implementation, documented below. A native macOS app remains future work.
 
-## Run on Windows
+## Mobile app features
+
+- A large clock-first screen with local date, time zone, and 12/24-hour display. Swipe up to view alarms and down to return to the clock.
+- Saved alarms with optional names, daily or selected-weekday repeats, editing, duplication, and swipe-to-delete with haptic feedback.
+- Active countdowns alongside saved alarms. Completed countdowns disappear; At a time alarms stay until deleted.
+- Floating Add alarm / Save changes buttons, looping time controls, and collapsible wake-up test settings.
+- Fourteen app-owned themes, ten offline ringtones, sound previews, audio-file imports, a volume slider, and optional gradual fade-in.
+- Configurable timed typing and math tests, automatic math answer submission, an answering sound switch, and progress resets when a test times out.
+- Native alarm scheduling so a scheduled alarm does not depend on keeping the clock screen open.
+
+Alarms, themes, and imported sounds are saved locally on each device. There is no account requirement or cross-device synchronization. The website and mobile apps have separate saved data, and some features differ by platform.
+
+## Install the mobile apps
+
+**Android:** Download the `.apk` from [Releases](https://github.com/TristanSibug/LunkAlarm/releases), open it on your phone, and allow installation from your browser or file manager if Android asks. In LunkAlarm, open **Alarm access** and enable alarms, notifications, and full-screen alarms where available. Overall sound level uses your device's alarm volume.
+
+**iOS:** Download the `.ipa` from [Releases](https://github.com/TristanSibug/LunkAlarm/releases) when attached, or extract it from a successful **Native iOS app** Actions build. The cloud-generated IPA is unsigned and needs signing/provisioning through AltStore Classic/AltServer or another compatible signing tool before installation. GitHub hosting does not replace Apple's signing requirements. See the [iOS guide](ios/README.md) for setup and build instructions.
+
+These are development/test builds, separate from App Store or Google Play distribution. Test a short alarm with the phone locked before relying on it overnight. System permissions, volume, Focus/Do Not Disturb, force-stop behavior, and device battery settings affect alarm behavior; the platform guides explain the differences.
+
+## Use and deploy the website
+
+Use **[alarm.reeeserve.online](https://alarm.reeeserve.online)** directly, without installing an app. Keep the page open, sound available, and the device awake: browsers can delay background tabs, and the website cannot wake a sleeping device.
+
+To deploy your own copy with Vercel, use **Root Directory `web`** and **Framework Preset Other**. No build/install command, database, Supabase connection, or environment variables are required. Add your domain in Vercel and configure the DNS records Vercel provides. See the [Namecheap + Vercel deployment guide](docs/WEBSITE-DEPLOYMENT.md).
+
+## Source, builds, and tests
+
+| Directory | Contents |
+| --- | --- |
+| [`web/`](web/) | Browser app and Vercel configuration |
+| [`ios/`](ios/) | Native SwiftUI app, AlarmKit integration, core/UI tests, and Xcode project |
+| [`android/`](android/) | Native Compose app, Android alarm service, core/UI tests, and Gradle project |
+| [`src/Wake.Core/`](src/Wake.Core/) | Earlier Windows scheduling, persistence, challenges, and sound synthesis |
+| [`src/Wake.Windows/`](src/Wake.Windows/) | Earlier native WPF Windows app |
+| [`docs/`](docs/) | Deployment and Windows documentation |
+
+The **Native iOS app** workflow builds simulator/device targets, runs core and native UI tests, and uploads an unsigned IPA. The **Native Android app** workflow builds a signed development APK, runs core tests, Android lint, and emulator checks, and publishes successful test builds to GitHub Releases. Each platform guide includes local build commands and installation details.
+
+## Earlier Windows implementation
+
+<details>
+<summary>Windows installation, features, development, and testing</summary>
+
+### Run on Windows
 
 Extract **Wake-Windows-x64.zip** into a permanent folder, then open **Wake.exe**. This is a portable, self-contained x64 build: no separate .NET installation is required. Use a supported Windows 10/11 x64 system. Unsigned builds may show SmartScreen's unknown-publisher warning. There is no installer or code-signing certificate included.
 
 Closing the window keeps Wake running in the notification area (possibly under the tray's hidden-icons arrow). Double-click its icon to reopen. Right-click → **Quit Wake…** stops the application after confirmation if alarms remain. Alarms cannot sound while Wake is not running. Start-at-login uses the current executable's location, so enable it after moving the app to its permanent folder.
 
-## Features
+### Windows features
 
 - Clock with local date/time zone, 12/24-hour display and a Windows time-settings shortcut.
 - One-shot alarms at a clock time (24-hour `HH:mm` input), or countdowns up to 99h 59m 59s; quick duration presets and custom labels.
@@ -30,7 +78,7 @@ Closing the window keeps Wake running in the notification area (possibly under t
 - Tray operation, a single running instance per Windows session, optional login startup, optional idle-sleep prevention and a Windows wake-timer request.
 - Atomic local JSON saves with a previous-save backup. Corrupt/unsupported saved data is reported and left untouched. Save and audio failures are visible; audio playback failures trigger a repeating Windows system sound.
 
-## Alarm reliability and data
+### Windows alarm reliability and data
 
 Wake uses the **Windows system clock**, rather than an independent correction from third-party time services. Enable automatic time/time zone in Windows Settings. Timers are stored as UTC deadlines so they survive restart; manually moving the Windows clock changes their remaining duration. A time-of-day alarm is converted to a fixed UTC deadline when added, so changing your time zone later does not reschedule it.
 
@@ -40,7 +88,7 @@ When daylight saving skips a requested local time, Wake asks for another time. W
 
 State and imported audio are stored under `%LOCALAPPDATA%\WakeNative\`. `state.json.bak` contains the preceding save. To recover corrupt data, quit Wake, back up this directory, and restore the backup as `state.json`. Existing Tauri/localStorage alarms are **not automatically migrated**. Removing a custom alarm does not delete imported audio files; these can be cleaned up manually while Wake is stopped.
 
-## Develop
+### Develop the Windows app
 
 Install the **.NET 10 SDK** on Windows. For Visual Studio, use a version supporting .NET 10 with the **.NET desktop development** workload. Open `Wake.sln`, or run from the repository root:
 
@@ -69,7 +117,7 @@ Run `artifacts/win-x64/Wake.exe`. The single-file app may extract runtime files 
 
 The GitHub Actions workflow builds/tests on Windows, runs native WPF theme checks, captures all eight themes, and uploads zipped executable/source/preview downloads plus SHA-256 files. Pushing a `v*` tag publishes those downloads as a GitHub release after the build succeeds. Branch/PR builds only upload workflow artifacts. The workflow does not install or sign the application. See [Windows acceptance checks](docs/WINDOWS-TESTING.md) before distribution.
 
-## Structure
+### Windows project structure
 
 ```text
 src/Wake.Core/          Scheduling, alarm data, persistence, challenges, PCM synthesis
@@ -82,6 +130,4 @@ The scheduling core is independent of WPF and can support future platforms. The 
 
 MIT license. The supplied app's icon and original sound recipes are reused.
 
-## Native Android app
-
-The native Kotlin / Jetpack Compose Android app is in [`android/`](android/README.md). It follows the current iOS interface and uses Android exact alarms, foreground alarm playback, local persistence, themes, ringtone imports and timed wake-up tests. The **Native Android app** workflow builds an installable development APK, runs core/lint/emulator checks and publishes successful test builds on [GitHub Releases](https://github.com/TristanSibug/LunkAlarm/releases/tag/android-v1.0.0). Requires Android 8.0 or later.
+</details>
