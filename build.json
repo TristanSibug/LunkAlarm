@@ -1,19 +1,14 @@
 {
-  "commit": "d27dde6ab03e3c6a12890ab341fa5526887ed72c",
-  "run": "https://github.com/TristanSibug/LunkAlarm/actions/runs/42503930550",
-  "status": "success",
-  "simulator": "success",
-  "device": "success",
-  "launch": "success",
-  "uiTests": "success",
-  "errors": [],
-  "screenshot": "ios-clock.png",
-  "uiPreviews": [
-    "ios-ui-preview-1.png",
-    "ios-ui-preview-2.png",
-    "ios-ui-preview-3.png",
-    "ios-ui-preview-4.png",
-    "ios-ui-preview-5.png",
-    "ios-ui-preview-6.png"
-  ]
+  "commit": "053201b257bbb9aad0ea474e87b9f62b1c6ec84a",
+  "run": "https://github.com/TristanSibug/LunkAlarm/actions/runs/42549280647",
+  "status": "failure",
+  "simulator": "failure",
+  "device": "skipped",
+  "launch": "skipped",
+  "uiTests": "skipped",
+  "errors": [
+    "/Users/runner/work/LunkAlarm/LunkAlarm/ios/LunkAlarm/AlarmStore.swift:76:5: error: missing return in getter for property expected to return 'String'"
+  ],
+  "screenshot": null,
+  "uiPreviews": []
 }
