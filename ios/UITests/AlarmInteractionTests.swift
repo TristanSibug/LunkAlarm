@@ -273,11 +273,17 @@ final class AlarmInteractionTests: XCTestCase {
         let timerGone = XCTNSPredicateExpectation(predicate: NSPredicate(format: "exists == false"), object: timer)
         wait(for: [timerGone], timeout: 5)
         let routine = app.buttons["Edit Morning"]
-        let fullStart = routine.coordinate(withNormalizedOffset: CGVector(dx: 0.95, dy: 0.5))
-        let fullEnd = routine.coordinate(withNormalizedOffset: CGVector(dx: 0.0, dy: 0.5))
+        let ready = XCTNSPredicateExpectation(predicate: NSPredicate(format: "hittable == true AND enabled == true"), object: routine)
+        wait(for: [ready], timeout: 5)
+        // The edit button excludes the toggle and card padding. A full card
+        // swipe must cross the row's threshold, rather than that shorter label.
+        let swipeY = routine.frame.midY / app.frame.height
+        let fullStart = app.coordinate(withNormalizedOffset: CGVector(dx: 0.92, dy: swipeY))
+        let fullEnd = app.coordinate(withNormalizedOffset: CGVector(dx: 0.02, dy: swipeY))
         fullStart.press(forDuration: 0.1, thenDragTo: fullEnd)
         let gone = XCTNSPredicateExpectation(predicate: NSPredicate(format: "exists == false"), object: routine)
         wait(for: [gone], timeout: 5)
+        capture(app, name: "ios-full-swipe-delete")
         XCTAssertTrue(app.staticTexts["No alarms yet. Tap + to add one."].exists)
         XCTAssertFalse(app.navigationBars["Edit alarm"].exists)
     }
