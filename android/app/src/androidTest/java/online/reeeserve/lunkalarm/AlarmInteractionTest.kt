@@ -115,9 +115,10 @@ class AlarmInteractionTest {
         rule.onNodeWithTag("alarm-editor").assertDoesNotExist()
         capture("android-swipe-delete")
         rule.onNodeWithTag("swipe-delete-${first.id}").performClick()
-        rule.waitUntil { repo.state.value.alarms.none { it.id == first.id } }
+        // The animated delete also cancels AlarmManager ownership and writes storage asynchronously.
+        rule.waitUntil(5000) { repo.state.value.alarms.none { it.id == first.id } }
         rule.onNodeWithTag("alarm-${second.id}").performTouchInput { swipeLeft(durationMillis = 400) }
-        rule.waitUntil { repo.state.value.alarms.isEmpty() }
+        rule.waitUntil(5000) { repo.state.value.alarms.isEmpty() }
         rule.onNodeWithTag("your-alarms").performTouchInput { swipeDown() }
         rule.onNodeWithTag("big-clock").assertExists()
     }
