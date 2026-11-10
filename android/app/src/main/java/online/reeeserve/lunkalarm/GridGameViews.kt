@@ -23,7 +23,7 @@ import online.reeeserve.lunkalarm.core.*
     var flagMode by rememberSaveable { mutableStateOf(false) }
     val view = LocalView.current
     Text("Minesweeper", color = theme.text, fontSize = 20.sp, fontWeight = FontWeight.SemiBold)
-    Text("Tap to reveal · Hold to flag", color = theme.muted, fontSize = 12.sp)
+    Text("Reveal safe squares and flag all mines.\nTap to reveal · Hold to flag", color = theme.muted, fontSize = 12.sp)
     Row(Modifier.widthIn(max = 360.dp).fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
         Text("${board.flags.size}/${board.mines.size} flags", color = theme.muted, fontSize = 13.sp, modifier = Modifier.weight(1f).testTag("mine-progress"))
         Chip(if (flagMode) "⚑ Flag" else "Reveal", theme, Modifier.testTag("mine-mode")) { flagMode = !flagMode }

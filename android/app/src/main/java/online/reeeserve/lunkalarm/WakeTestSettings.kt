@@ -84,19 +84,19 @@ enum class WakeTest(val title: String, val short: String) {
                     IconButton(onClick = { settings = null }, modifier = Modifier.size(36.dp).testTag("close-test-settings")) { Icon(Icons.Default.Close, "Close test settings", tint = theme.muted) }
                 }
                 when (test) {
-                    WakeTest.TYPING -> Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                    WakeTest.TYPING -> Row(Modifier.height(IntrinsicSize.Min), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                         SettingBox(Modifier.weight(.42f), theme) { CountSetting("Code length", draft.codeLength, 4..10, "4–10 characters", "typing-length", theme) { change(draft.copy(codeLength = it)) } }
                         SettingBox(Modifier.weight(.58f), theme) { ChoiceSetting("Time limit", draft.typingSeconds, WakeTimers.typing, "typing-timer", theme, suffix = "", footer = "seconds") { change(draft.copy(typingSeconds = it)) } }
                     }
                     WakeTest.MATH -> {
-                        Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                        Row(Modifier.height(IntrinsicSize.Min), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                             SettingBox(Modifier.weight(.42f), theme) { CountSetting("Problems", draft.mathCount.coerceAtLeast(1), 1..8, "1–8 problems", "math-count", theme) { mathCount = it; change(draft.copy(mathCount = it)) } }
                             SettingBox(Modifier.weight(.58f), theme) { ChoiceSetting("Time per question", draft.mathSeconds, WakeTimers.math, "math-timer", theme) { change(draft.copy(mathSeconds = it)) } }
                         }
                         HorizontalDivider(color = theme.border)
                         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                             Text("Use native keyboard/keypad", color = theme.text, fontSize = 13.sp, modifier = Modifier.weight(1f))
-                            Switch(draft.nativeMathKeyboard, onCheckedChange = { change(draft.copy(nativeMathKeyboard = it)) }, modifier = Modifier.testTag("native-math-keyboard"))
+                            Switch(draft.nativeMathKeyboard, onCheckedChange = { change(draft.copy(nativeMathKeyboard = it)) }, modifier = Modifier.testTag("native-math-keyboard"), colors = SwitchDefaults.colors(checkedTrackColor = theme.accent2))
                         }
                     }
                     WakeTest.PUZZLE -> {
@@ -131,7 +131,7 @@ enum class WakeTest(val title: String, val short: String) {
 }
 
 @Composable private fun SettingBox(modifier: Modifier, theme: LunkTheme, content: @Composable ColumnScope.() -> Unit) {
-    Column(modifier.clip(RoundedCornerShape(14.dp)).background(theme.field).border(1.dp, theme.border, RoundedCornerShape(14.dp)).padding(10.dp),
+    Column(modifier.fillMaxHeight().clip(RoundedCornerShape(14.dp)).background(theme.field).border(1.dp, theme.border, RoundedCornerShape(14.dp)).padding(10.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp), content = content)
 }
 @Composable private fun CountSetting(title: String, value: Int, range: IntRange, footer: String, tag: String, theme: LunkTheme, change: (Int) -> Unit) {
