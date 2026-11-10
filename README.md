@@ -21,18 +21,34 @@ The repository also retains the earlier native C# / WPF Windows implementation i
 - A large clock-first screen with local date, time zone, and 12/24-hour display. Swipe up to view alarms and down to return to the clock.
 - Saved alarms with optional names, daily or selected-weekday repeats, editing, duplication, and swipe-to-delete with haptic feedback.
 - Active countdowns alongside saved alarms. Completed countdowns disappear; At a time alarms stay until deleted.
-- Floating Add alarm / Save changes buttons, looping time controls, and collapsible wake-up test settings.
+- Floating Add alarm / Save changes buttons, time and duration wheels, and collapsible wake-up test settings.
 - Nineteen app-owned themes, ten offline ringtones, sound previews, audio-file imports, a volume slider, and optional gradual fade-in.
-- Configurable timed typing and math tests (plus Android jigsaw puzzles), automatic math answer submission, an answering sound switch, and progress resets when a test times out.
+- Configurable timed typing and math tests, automatic math answer submission, an answering sound switch, and progress resets when a test times out. Android also includes puzzle, Minesweeper and Sudoku tests, described below.
 - Native alarm scheduling so a scheduled alarm does not depend on keeping the clock screen open.
 
-Android 1.1 adds readable dark-theme controls, the iOS 1.6 theme/repeat-day updates, keyboard entry for time wheels, an optional native math keypad, and solid-color jigsaw tests with 6–10 randomized pieces. Wake-up test timers use five-second steps: math 5/10/15, typing 15/20/25/30, and puzzle 15/20/25/30/35/40 seconds.
+### Android 1.2.0
+
+Choose wake-up tests using five icon tiles. Enabling a tile opens its settings; disabling it leaves the other selected tests enabled. Each test has a **Try** button for a practice run you can exit anytime without scheduling an alarm. Test settings use fixed buttons and bounded **− / +** controls instead of looping wheels.
+
+| Wake-up test | Options | Time limit |
+| --- | --- | --- |
+| Typing | 4–10 code characters | 15 / 20 / 25 / 30 seconds |
+| Math | 1–8 addition problems; built-in or native Android keypad | 5 / 10 / 15 seconds per question |
+| Puzzle | 6 / 8 / 10 randomized jigsaw pieces | 15–40 seconds in five-second steps |
+| Minesweeper | Easy 3×3, Medium 4×4, Hard 5×5 | 15–40 seconds in five-second steps |
+| Sudoku | Easy: 4×4 easy; Medium: 4×4 hard; Hard: 6×6 easy; Difficult: 6×6 hard | 30 / 60 / 90 / 120 seconds |
+
+Minesweeper boards have a safe opening and can be solved from their clues without guessing. Every generated Sudoku has one solution. Puzzle boards hide empty-piece outlines and provide exactly one snap position per piece; placement progress appears above the instructions. The typing answer field has a faint outline and placeholder.
+
+Enabled tests run in sequence. A timeout restarts the configured sequence and restores alarm audio; hitting a mine does the same. Practice runs stay separate from saved alarms and live progress. The clock, time/duration pickers, ringtone controls, themes and navigation retain their existing design.
+
+These additions are **Android only**. iOS retains its current typing and math tests. See the [Android guide](android/README.md) for game rules, installation and build instructions. The [verified Android 1.2.0 build](https://github.com/TristanSibug/LunkAlarm/actions/runs/42785336619) passed 27 core tests, 18 emulator UI tests, the denied-permission check, and Android lint.
 
 Alarms, themes, and imported sounds are saved locally on each device. There is no account requirement or cross-device synchronization. The website and mobile apps have separate saved data, and some features differ by platform.
 
 ## Install the mobile apps
 
-**Android:** Download the `.apk` from [Releases](https://github.com/TristanSibug/LunkAlarm/releases), open it on your phone, and allow installation from your browser or file manager if Android asks. In LunkAlarm, open **Alarm access** and enable alarms, notifications, and full-screen alarms where available. Overall sound level uses your device's alarm volume.
+**Android:** Download the `.apk` from [Releases](https://github.com/TristanSibug/LunkAlarm/releases), or extract `artifacts/LunkAlarm-Android-1.2.0.apk` from the **LunkAlarm-Android** artifact in the [verified 1.2.0 build](https://github.com/TristanSibug/LunkAlarm/actions/runs/42785336619). Open it on your phone, and allow installation from your browser or file manager if Android asks. In LunkAlarm, open **Alarm access** and enable alarms, notifications, and full-screen alarms where available. Overall sound level uses your device's alarm volume.
 
 **iOS:** Download the `.ipa` from [Releases](https://github.com/TristanSibug/LunkAlarm/releases) when attached, or extract it from a successful **Native iOS app** Actions build. The cloud-generated IPA is unsigned and needs signing/provisioning through AltStore Classic/AltServer or another compatible signing tool before installation. GitHub hosting does not replace Apple's signing requirements. See the [iOS guide](ios/README.md) for setup and build instructions.
 
