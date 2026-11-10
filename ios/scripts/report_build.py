@@ -37,7 +37,7 @@ for filename in ("ios-launch.log", "ios-ui-test.log"):
             lines = path.read_text().splitlines()
             report["uiFailureContexts"] = [lines[max(0, i - 18):i + 4] for i, line in enumerate(lines) if "error:" in line][:10]
 previews = []
-for index, path in enumerate(sorted(Path("artifacts/ios-ui-previews").rglob("*.png"))[:40]):
+for index, path in enumerate(sorted(Path("artifacts/ios-ui-previews").rglob("*.png"))[:60]):
     name = f"ios-ui-preview-{index + 1}.png"
     shutil.copyfile(path, output / name)
     previews.append(name)

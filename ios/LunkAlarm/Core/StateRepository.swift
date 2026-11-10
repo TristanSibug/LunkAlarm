@@ -6,7 +6,10 @@ public struct StateRepository: Sendable {
     public init(url: URL) { self.url = url }
     public func load() throws -> SavedState {
         guard FileManager.default.fileExists(atPath: url.path) else { return SavedState() }
-        return try JSONDecoder().decode(SavedState.self, from: Data(contentsOf: url)).validated()
+        var state = try JSONDecoder().decode(SavedState.self, from: Data(contentsOf: url)).validated()
+        if let value = state.settings.mathTimeLimit { state.settings.mathTimeLimit = WakeTestOptions.nearest(value, choices: WakeTestOptions.mathTimes) }
+        if let value = state.settings.typingTimeLimit { state.settings.typingTimeLimit = WakeTestOptions.nearest(value, choices: WakeTestOptions.typingChoices) }
+        return state
     }
     public func save(_ state: SavedState) throws {
         _ = try state.validated()

@@ -52,42 +52,30 @@ final class AlarmInteractionTests: XCTestCase {
         app.buttons["Clock"].tap()
         XCTAssertTrue(app.descendants(matching: .any)["alarmSwipeHint"].waitForExistence(timeout: 5))
     }
-    @MainActor func testLoopingProblemCountAndFourPresets() {
-        let app = launch()
-        openEditor(app)
+    @MainActor private func openTest(_ app: XCUIApplication, _ kind: String) {
+        let tile = app.buttons["test-tile-" + kind]
+        let save = app.buttons["scheduleAlarm"]
+        for _ in 0..<7 where !tile.isHittable || tile.frame.maxY > save.frame.minY - 10 { app.swipeUp(velocity: .slow) }
+        XCTAssertTrue(tile.isHittable)
+        tile.tap()
+        XCTAssertTrue(app.buttons["try-" + kind].waitForExistence(timeout: 5))
+    }
+    @MainActor func testBoundedProblemButtonsAndFourPresets() {
+        let app = launch(); openEditor(app)
         app.buttons["In how long"].tap()
         XCTAssertFalse(app.buttons["8 hours"].exists)
-        let math = app.switches["mathTestToggle"]
-        let footer = app.buttons["scheduleAlarm"]
-        for _ in 0..<6 where !math.isHittable || math.frame.maxY > footer.frame.minY - 12 { app.swipeUp(velocity: .slow) }
-        XCTAssertTrue(math.isHittable)
-        XCTAssertLessThan(math.frame.maxY, footer.frame.minY)
-        math.coordinate(withNormalizedOffset: CGVector(dx: 0.9, dy: 0.5)).tap()
-        XCTAssertEqual(math.value as? String, "1")
-        let picker = app.pickers["mathProblemPicker"]
-        guard picker.waitForExistence(timeout: 5) else {
-            capture(app, name: "ios-math-picker-missing")
-            XCTFail("Enabling math must reveal its paired wheels")
-            return
-        }
-        for _ in 0..<3 where !picker.isHittable { app.swipeUp(velocity: .slow) }
-        let wheel = picker.pickerWheels.firstMatch
-        wheel.adjust(toPickerWheelValue: "8")
-        XCTAssertEqual(wheel.value as? String, "8")
-        wheel.swipeUp(velocity: .slow)
-        XCTAssertNotEqual(wheel.value as? String, "8")
-        XCTAssertNotNil(Int(wheel.value as? String ?? ""))
-        wheel.adjust(toPickerWheelValue: "1")
-        wheel.swipeDown(velocity: .slow)
-        XCTAssertNotEqual(wheel.value as? String, "1")
-        let timer = app.pickers["mathTimerPicker"]
-        XCTAssertTrue(timer.exists)
-        XCTAssertEqual(picker.frame.midY, timer.frame.midY, accuracy: 2)
-        timer.pickerWheels.firstMatch.adjust(toPickerWheelValue: "5")
-        XCTAssertEqual(timer.pickerWheels.firstMatch.value as? String, "5")
-        timer.pickerWheels.firstMatch.adjust(toPickerWheelValue: "12")
-        XCTAssertEqual(timer.pickerWheels.firstMatch.value as? String, "12")
-        capture(app, name: "ios-problem-wheel")
+        openTest(app, "math")
+        XCTAssertFalse(app.pickers["mathProblemPicker"].exists)
+        for _ in 0..<5 { app.buttons["math-count-plus"].tap() }
+        XCTAssertEqual(app.staticTexts["math-count-value"].label, "8")
+        XCTAssertFalse(app.buttons["math-count-plus"].isEnabled)
+        for _ in 0..<7 { app.buttons["math-count-minus"].tap() }
+        XCTAssertEqual(app.staticTexts["math-count-value"].label, "1")
+        XCTAssertFalse(app.buttons["math-count-minus"].isEnabled)
+        app.buttons["math-timer-15"].tap()
+        XCTAssertTrue(app.buttons["math-timer-15"].isSelected)
+        XCTAssertGreaterThanOrEqual(app.buttons["try-math"].frame.width, 88)
+        capture(app, name: "ios-math-buttons")
     }
     @MainActor func testMathEntryAdvancesWithoutOKAndClearsWrongAnswer() {
         let app = launch(mathAlarm: true)
@@ -129,44 +117,30 @@ final class AlarmInteractionTests: XCTestCase {
         wait(for: [muted], timeout: 3)
         capture(app, name: "ios-timed-math")
     }
-    @MainActor func testTypingWheelsCollapseAndCompactSoundCheck() {
-        let app = launch()
-        openEditor(app)
-        let typing = app.switches["typingTestToggle"]
-        for _ in 0..<5 where !typing.isHittable { app.swipeUp(velocity: .slow) }
-        typing.tap()
-        let length = app.pickers["typingLengthPicker"]
-        XCTAssertTrue(length.waitForExistence(timeout: 5))
-        for _ in 0..<4 where !length.isHittable { app.swipeUp(velocity: .slow) }
-        let timer = app.pickers["typingTimerPicker"]
-        XCTAssertTrue(length.waitForExistence(timeout: 5))
-        XCTAssertTrue(timer.exists)
-        XCTAssertEqual(length.frame.midY, timer.frame.midY, accuracy: 2)
-        length.pickerWheels.firstMatch.adjust(toPickerWheelValue: "10")
-        XCTAssertEqual(length.pickerWheels.firstMatch.value as? String, "10")
-        length.pickerWheels.firstMatch.adjust(toPickerWheelValue: "4")
-        timer.pickerWheels.firstMatch.adjust(toPickerWheelValue: "15")
-        XCTAssertEqual(timer.pickerWheels.firstMatch.value as? String, "15")
-        timer.pickerWheels.firstMatch.adjust(toPickerWheelValue: "30")
-        capture(app, name: "ios-typing-wheels")
+    @MainActor func testTypingButtonsCollapseAndCompactSoundCheck() {
+        let app = launch(); openEditor(app); openTest(app, "typing")
+        for _ in 0..<2 { app.buttons["typing-length-plus"].tap() }
+        XCTAssertEqual(app.staticTexts["typing-length-value"].label, "10")
+        XCTAssertFalse(app.buttons["typing-length-plus"].isEnabled)
+        app.buttons["typing-timer-15"].tap(); XCTAssertTrue(app.buttons["typing-timer-15"].isSelected)
+        XCTAssertGreaterThanOrEqual(app.buttons["try-typing"].frame.width, 88)
+        capture(app, name: "ios-typing-buttons")
+        app.buttons["testSettingsDone"].tap()
         let disclosure = app.buttons["wakeTestsDisclosure"]
-        for _ in 0..<4 where !disclosure.isHittable { app.swipeDown(velocity: .slow) }
         disclosure.tap()
-        XCTAssertFalse(app.pickers["typingLengthPicker"].exists)
-        XCTAssertFalse(app.switches["typingTestToggle"].exists)
+        XCTAssertFalse(app.buttons["test-tile-typing"].exists)
         XCTAssertEqual(disclosure.value as? String, "Collapsed")
         XCTAssertTrue(app.buttons["scheduleAlarm"].exists)
-        let check = app.buttons["Check alarm sound"]
-        for _ in 0..<4 where !check.isHittable { app.swipeDown(velocity: .slow) }
-        check.tap()
-        let preview = app.buttons["previewAlarmSound"]
-        let test = app.buttons["testAlarmSound"]
-        XCTAssertTrue(preview.waitForExistence(timeout: 5))
-        XCTAssertTrue(test.exists)
+        let vibration = app.buttons["inAppVibration"]
+        for _ in 0..<5 where !vibration.isHittable { app.swipeDown(velocity: .slow) }
+        vibration.tap(); XCTAssertEqual(vibration.value as? String, "On")
+        app.buttons["Check alarm sound"].tap()
+        let preview = app.buttons["previewAlarmSound"], test = app.buttons["testAlarmSound"]
+        XCTAssertTrue(preview.waitForExistence(timeout: 5)); XCTAssertTrue(test.exists)
         XCTAssertEqual(preview.frame.midY, test.frame.midY, accuracy: 2)
         XCTAssertGreaterThan(test.frame.minX, preview.frame.maxX)
         XCTAssertFalse(app.buttons["Use this level and add alarm"].exists)
-        capture(app, name: "ios-sound-check")
+        capture(app, name: "ios-sound-check-vibration")
     }
     @MainActor func testRingtoneActionsLiveInsideChooserAndOpenOnlineSheet() {
         let app = launch()
@@ -295,7 +269,7 @@ final class AlarmInteractionTests: XCTestCase {
         let app = XCUIApplication()
         app.launchArguments = ["--ui-testing", "--ui-typing-alarm"]
         app.launch()
-        let field = app.textFields["Wake-up code"]
+        let field = app.textFields["wakeCodeField"]
         XCTAssertTrue(field.waitForExistence(timeout: 10))
         field.tap(); field.typeText("aB3")
         XCTAssertEqual(field.value as? String, "aB3")
@@ -368,6 +342,93 @@ final class AlarmInteractionTests: XCTestCase {
             capture(app, name: "ios-theme-\(name)-alarms")
             app.buttons["Clock"].tap()
         }
+    }
+
+    @MainActor func testTypingPracticeStaysOpenWhenKeyboardAppears() {
+        let app = launch(); openEditor(app); openTest(app, "typing")
+        app.buttons["try-typing"].tap()
+        let field = app.textFields["wakeCodeField"]
+        XCTAssertTrue(field.waitForExistence(timeout: 5))
+        field.tap(); field.typeText("aB3")
+        XCTAssertEqual(field.value as? String, "aB3")
+        XCTAssertTrue(app.buttons["exitPractice"].isHittable)
+        XCTAssertTrue(app.staticTexts["challengeCode"].exists)
+        capture(app, name: "ios-practice-typing-keyboard")
+        field.typeText(XCUIKeyboardKey.delete.rawValue)
+        XCTAssertEqual(field.value as? String, "aB")
+        app.buttons["exitPractice"].tap()
+        XCTAssertTrue(app.buttons["try-typing"].waitForExistence(timeout: 5))
+    }
+    @MainActor func testPracticeCompletionHasRetryAndCloseWithoutBackToSettings() {
+        let app = launch(); openEditor(app); openTest(app, "math")
+        app.buttons["math-count-minus"].tap(); app.buttons["math-count-minus"].tap()
+        app.buttons["math-timer-15"].tap(); app.buttons["try-math"].tap()
+        let problem = app.staticTexts["mathProblem"]
+        XCTAssertTrue(problem.waitForExistence(timeout: 5))
+        let sum = problem.label.split(separator: "+").compactMap { Int($0.trimmingCharacters(in: .whitespaces)) }.reduce(0, +)
+        for digit in String(sum) { app.buttons[String(digit)].tap() }
+        XCTAssertTrue(app.buttons["retryPractice"].waitForExistence(timeout: 5))
+        XCTAssertFalse(app.buttons["Back to settings"].exists)
+        capture(app, name: "ios-practice-complete")
+        app.buttons["retryPractice"].tap()
+        XCTAssertTrue(app.staticTexts["mathProblem"].exists)
+        app.buttons["exitPractice"].tap(); app.buttons["testSettingsDone"].tap()
+        app.buttons["closeAlarmEditor"].tap()
+        XCTAssertTrue(app.staticTexts["No alarms yet. Tap + to add one."].exists)
+    }
+    @MainActor func testMinesweeperSizesAndHoldNumberKeepPracticeOpen() {
+        let app = launch(); openEditor(app); openTest(app, "mines")
+        for level in 0..<3 {
+            app.buttons["mine-difficulty-\(level)"].tap()
+            XCTAssertTrue(app.buttons["mine-difficulty-\(level)"].isSelected)
+            app.buttons["mine-timer-40"].tap(); app.buttons["try-mines"].tap()
+            XCTAssertTrue(app.buttons["exitPractice"].waitForExistence(timeout: 5))
+            let cells = app.descendants(matching: .any).matching(NSPredicate(format: "identifier BEGINSWITH 'mine-cell-'"))
+            XCTAssertEqual(cells.count, [25, 49, 81][level])
+            let number = cells.matching(NSPredicate(format: "value CONTAINS 'adjacent mines' AND NOT value BEGINSWITH '0 '")).firstMatch
+            XCTAssertTrue(number.exists)
+            number.press(forDuration: 0.6)
+            XCTAssertTrue(app.buttons["exitPractice"].exists)
+            capture(app, name: "ios-mine-\(level)-practice")
+            app.buttons["exitPractice"].tap()
+            XCTAssertTrue(app.buttons["try-mines"].waitForExistence(timeout: 5))
+        }
+    }
+    @MainActor func testGameSettingsTilesAndSudokuTimersPersistOnSameAlarm() {
+        let app = launch(); openEditor(app)
+        for kind in ["typing", "math", "puzzle", "mines", "sudoku"] {
+            openTest(app, kind)
+            if kind == "puzzle" { app.buttons["puzzle-pieces-10"].tap(); capture(app, name: "ios-puzzle-settings") }
+            if kind == "mines" { app.buttons["mine-difficulty-2"].tap(); capture(app, name: "ios-mines-settings") }
+            if kind == "sudoku" {
+                app.buttons["sudoku-difficulty-3"].tap(); app.buttons["sudoku-timer-240"].tap()
+                let tops = [60, 120, 180, 240].map { app.buttons["sudoku-timer-\($0)"].frame.minY }
+                XCTAssertTrue(tops.allSatisfy { abs($0 - tops[0]) < 1 })
+                XCTAssertFalse(app.buttons["sudoku-timer-30"].exists)
+                capture(app, name: "ios-sudoku-settings")
+            }
+            app.buttons["testSettingsDone"].tap()
+        }
+        for kind in ["typing", "math", "puzzle", "mines", "sudoku"] { XCTAssertTrue(app.buttons["test-tile-" + kind].isSelected) }
+        capture(app, name: "ios-wake-test-tiles")
+        saveEditor(app)
+        app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH 'editAlarm-' ")).firstMatch.tap()
+        let tile = app.buttons["test-tile-sudoku"]
+        let save = app.buttons["scheduleAlarm"]
+        for _ in 0..<7 where !tile.isHittable || tile.frame.maxY > save.frame.minY - 10 { app.swipeUp(velocity: .slow) }
+        tile.tap(); XCTAssertFalse(tile.isSelected)
+        XCTAssertFalse(app.buttons["try-sudoku"].exists)
+        tile.tap(); XCTAssertTrue(app.buttons["try-sudoku"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.buttons["sudoku-difficulty-3"].isSelected)
+        XCTAssertTrue(app.buttons["sudoku-timer-240"].isSelected)
+        app.buttons["try-sudoku"].tap()
+        XCTAssertTrue(app.buttons["exitPractice"].waitForExistence(timeout: 5))
+        let empty = app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH 'sudoku-cell-' AND value CONTAINS 'Empty'")).firstMatch
+        XCTAssertTrue(empty.exists); empty.tap()
+        app.buttons["sudoku-digit-1"].tap()
+        app.buttons["sudokuErase"].tap()
+        capture(app, name: "ios-sudoku-practice")
+        app.buttons["exitPractice"].tap()
     }
 
 }

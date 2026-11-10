@@ -124,6 +124,8 @@ final class AlarmStore {
             record.playbackSoundFilename = selectedSound.filename
             record.soundLevel = settings.soundLevel ?? 1; record.gradualVolume = settings.gradualVolume == true
             record.typingCodeLength = settings.typingCodeLength; record.typingTimeLimit = settings.typingTimeLimit; record.mathTimeLimit = settings.mathTimeLimit
+            record.wakeGames = soundCheck ? nil : settings.wakeGames
+            record.nativeMathKeyboard = settings.nativeMathKeyboard; record.vibrateInApp = settings.vibrateInApp
             return await persistDefinition(record, replacing: original)
         } catch { errorMessage = error.localizedDescription; return false }
     }
@@ -135,7 +137,10 @@ final class AlarmStore {
         settings.minute = alarm.clockMinute ?? Calendar.current.component(.minute, from: alarm.target)
         settings.ringtoneID = alarm.ringtoneID; settings.typing = alarm.typing; settings.mathCount = alarm.mathCount
         settings.soundLevel = alarm.soundLevel; settings.gradualVolume = alarm.gradualVolume
-        settings.typingCodeLength = alarm.typingCodeLength; settings.typingTimeLimit = alarm.typingTimeLimit; settings.mathTimeLimit = alarm.mathTimeLimit
+        settings.typingCodeLength = alarm.typingCodeLength
+        settings.typingTimeLimit = alarm.typingTimeLimit.map { WakeTestOptions.nearest($0, choices: WakeTestOptions.typingChoices) }
+        settings.mathTimeLimit = alarm.mathTimeLimit.map { WakeTestOptions.nearest($0, choices: WakeTestOptions.mathTimes) }
+        settings.wakeGames = alarm.wakeGames; settings.nativeMathKeyboard = alarm.nativeMathKeyboard; settings.vibrateInApp = alarm.vibrateInApp
         state.settings = settings; message = nil; errorMessage = nil
     }
     func duplicate(_ alarm: AlarmRecord) async {
@@ -268,7 +273,7 @@ final class AlarmStore {
         if sound.previewing { sound.stop(); return }
         do {
             guard let selectedSound else { throw NativeAlarmError.soundUnavailable }
-            try sound.play(filename: selectedSound.filename, preview: true, volume: Float(state.settings.soundLevel ?? 1), gradual: state.settings.gradualVolume == true)
+            try sound.play(filename: selectedSound.filename, preview: true, volume: Float(state.settings.soundLevel ?? 1), gradual: state.settings.gradualVolume == true, vibrate: state.settings.vibrateInApp == true)
         } catch { errorMessage = error.localizedDescription }
     }
     func importSound(_ url: URL) {
@@ -297,7 +302,7 @@ final class AlarmStore {
         }
     }
     func setActive(_ active: Bool, backgrounded: Bool = false) {
-        isActive = active
+        isActive = active; sound.setForeground(active)
         if backgrounded { muteOnReturn = true }
         if active {
             refresh()
@@ -330,6 +335,7 @@ final class AlarmStore {
             if pieces[0] == "stop" || (pieces[0] == "open" && alarm.hasTests) { stoppedIDs.insert(alarm.id) }
         }
         next.alarms = AlarmReconciliation.reconcile(next.alarms, systemIDs: systemIDs, stoppedIDs: stoppedIDs, now: Date(), alertingIDs: alertingIDs)
+        if let owner = next.challengeSession?.owner, !next.alarms.contains(where: { $0.id == owner && $0.hasTests && $0.isEnabled }) { next.challengeSession = nil }
         if next != state, !commit(next) { return }
         UserDefaults.standard.removeObject(forKey: AlarmIntentInbox.key)
         if !isActive {
@@ -353,41 +359,54 @@ final class AlarmStore {
         guard !finishing, alarm.isEnabled, !alarm.requiresSystemMigration else { return }
         sound.stop()
         ringing = alarm
-        challenge = TimedWakeChallenge(typing: alarm.typing, mathCount: alarm.mathCount,
-            codeLength: alarm.typingCodeLength ?? 8, typingTimeLimit: alarm.typingTimeLimit ?? 30,
-            mathTimeLimit: alarm.mathTimeLimit ?? 10)
-        challengeSoundEnabled = !alarm.hasTests
+        var restored = state.challengeSession.flatMap { $0.owner == alarm.id ? $0.challenge : nil }
+            ?? TimedWakeChallenge(typing: alarm.typing, mathCount: alarm.mathCount,
+                codeLength: alarm.typingCodeLength ?? 8, typingTimeLimit: alarm.typingTimeLimit ?? 30,
+                mathTimeLimit: alarm.mathTimeLimit ?? 10, games: alarm.wakeGames ?? .init())
+        let expired = restored.expireIfNeeded()
+        challenge = restored
+        challengeSoundEnabled = !alarm.hasTests || expired
         if alarm.hasTests {
             var next = state
+            next.challengeSession = SavedChallengeSession(owner: alarm.id, challenge: restored)
             if let index = next.alarms.firstIndex(where: { $0.id == alarm.id }) { next.alarms[index].status = .needsChallenge }
             guard commit(next) else { challengeSoundEnabled = true; return }
             // Quiet the current alert, but retain future recovery alerts until
             // iOS confirms their replacement question guards are scheduled.
             do { try stopNativeAlarms(alarm, onlyAlerting: true) }
             catch { errorMessage = "Could not pause the system sound: \(error.localizedDescription)" }
+            if restored.complete { finishCurrent(); return }
             startChallengeTimer()
             armChallengeDeadline()
+            if expired { playChallengeSound(alarm) }
         } else if !nativeAlertIsSounding(alarm) { playChallengeSound(alarm) }
     }
     private func playChallengeSound(_ alarm: AlarmRecord) {
         guard !sound.isPlaying || sound.previewing else { return }
         do { try sound.play(filename: alarm.playbackSoundFilename ?? alarm.soundFilename, preview: false,
-                            volume: Float(alarm.soundLevel ?? 1), gradual: alarm.gradualVolume == true) }
+                            volume: Float(alarm.soundLevel ?? 1), gradual: alarm.gradualVolume == true, vibrate: alarm.vibrateInApp == true) }
         catch { errorMessage = "Alarm audio could not play: \(error.localizedDescription)" }
     }
     func submitCode(_ value: String) -> Bool {
-        let resetCount = challenge?.resetCount
-        let correct = challenge?.submit(code: value) == true
-        if resetCount != challenge?.resetCount { handleChallengeTimeout() }
-        else if challenge?.complete == true { finishCurrent() }
-        else if correct { armChallengeDeadline() }
-        return correct
+        updateChallenge { $0.submit(code: value) ? .correct : .incorrect } == .correct
     }
     func submitMathDigits(_ value: String) -> WakeChallenge.DigitResult {
-        let result = challenge?.submit(digits: value) ?? .incomplete
-        if result == .timedOut { handleChallengeTimeout() }
-        else if challenge?.complete == true { finishCurrent() }
-        else if result == .correct { armChallengeDeadline() }
+        updateChallenge { $0.submit(digits: value) }
+    }
+    func placePiece(_ piece: Int) { _ = updateChallenge { $0.placePiece(piece) } }
+    func mineAction(cell: Int, flag: Bool, chord: Bool) { _ = updateChallenge { $0.mineAction(cell: cell, flag: flag, chord: chord) } }
+    func sudokuAction(cell: Int, digit: Int) { _ = updateChallenge { $0.sudokuAction(cell: cell, digit: digit) } }
+    @discardableResult private func updateChallenge(_ action: (inout TimedWakeChallenge) -> WakeChallenge.DigitResult) -> WakeChallenge.DigitResult {
+        guard var nextChallenge = challenge, let alarm = currentRecord, !finishing else { return .incomplete }
+        let previous = nextChallenge
+        let result = action(&nextChallenge)
+        guard nextChallenge != previous else { return result }
+        var next = state; next.challengeSession = SavedChallengeSession(owner: alarm.id, challenge: nextChallenge)
+        guard commit(next) else { challengeSoundEnabled = true; playChallengeSound(alarm); return .incomplete }
+        challenge = nextChallenge
+        if previous.resetCount != nextChallenge.resetCount { handleChallengeTimeout() }
+        else if nextChallenge.complete { finishCurrent() }
+        else if previous.deadline != nextChallenge.deadline { armChallengeDeadline() }
         return result
     }
     func finishCurrent() {
@@ -403,7 +422,7 @@ final class AlarmStore {
             for task in pending { await task.value }
             do {
                 try stopNativeAlarms(currentRecord ?? alarm, onlyAlerting: false)
-                var next = state
+                var next = state; next.challengeSession = nil
                 if alarm.isTimer { next.alarms.removeAll { $0.id == alarm.id } }
                 else if let index = next.alarms.firstIndex(where: { $0.id == alarm.id }) {
                     next.alarms[index].enabled = false
@@ -459,10 +478,10 @@ final class AlarmStore {
     private func checkChallengeDeadline() {
         // Avoid a mutating inout access to the observable challenge every 250 ms.
         // Only publish a change when a deadline actually expires.
-        guard isActive, !finishing, let deadline = challenge?.deadline, Date() >= deadline,
-              challenge?.expireIfNeeded() == true else { return }
-        handleChallengeTimeout()
+        guard isActive, !finishing, let deadline = challenge?.deadline, Date() >= deadline else { return }
+        _ = updateChallenge { _ = $0.expireIfNeeded(); return .timedOut }
     }
+
     private func handleChallengeTimeout() {
         guard let alarm = currentRecord else { return }
         do { try stopNativeAlarms(alarm, onlyAlerting: true) }

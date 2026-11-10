@@ -32,6 +32,9 @@ public struct AlarmSettings: Codable, Equatable, Sendable {
     public var typingCodeLength: Int?
     public var typingTimeLimit: Int?
     public var mathTimeLimit: Int?
+    public var wakeGames: WakeGameOptions?
+    public var nativeMathKeyboard: Bool?
+    public var vibrateInApp: Bool?
     public init() {}
 }
 
@@ -52,6 +55,9 @@ public struct AlarmRecord: Codable, Identifiable, Equatable, Sendable {
     public var typingCodeLength: Int?
     public var typingTimeLimit: Int?
     public var mathTimeLimit: Int?
+    public var wakeGames: WakeGameOptions?
+    public var nativeMathKeyboard: Bool?
+    public var vibrateInApp: Bool?
     // Decode the removed 1.4 playback preference only to migrate existing records.
     // Every new/edited alarm is scheduled exclusively through AlarmKit.
     public var engine: String?
@@ -81,7 +87,7 @@ public struct AlarmRecord: Codable, Identifiable, Equatable, Sendable {
     public var days: [Int] { repeatDays ?? [] }
     public var challengeAlarmIDs: [UUID]?
     public var nativeAlarmIDs: [UUID] { [id] + (challengeAlarmIDs ?? []) }
-    public var hasTests: Bool { typing || mathCount > 0 }
+    public var hasTests: Bool { typing || mathCount > 0 || wakeGames?.hasTests == true }
     public init(id: UUID = UUID(), target: Date, isTimer: Bool, ringtoneID: String,
                 soundFilename: String, soundName: String, typing: Bool, mathCount: Int,
                 status: Status = .scheduled) {
@@ -96,11 +102,14 @@ public struct SavedState: Codable, Equatable, Sendable {
     public var settings = AlarmSettings()
     public var alarms: [AlarmRecord] = []
     public var importedSounds: [ImportedSound] = []
+    public var challengeSession: SavedChallengeSession?
     public init() {}
 
     public func validated() throws -> SavedState {
         guard version == 1 else { throw AlarmDataError.unsupportedVersion }
         guard Set(alarms.map(\.id)).count == alarms.count,
+              settings.wakeGames?.valid != false, alarms.allSatisfy({ $0.wakeGames?.valid != false }),
+              challengeSession.map({ session in session.challenge.valid && alarms.contains { $0.id == session.owner && $0.hasTests && $0.isEnabled } }) ?? true,
               Set(importedSounds.map(\.id)).count == importedSounds.count,
               (0...8).contains(settings.mathCount), (0...23).contains(settings.hour),
               (0...59).contains(settings.minute),
@@ -180,11 +189,13 @@ public enum RingtoneCatalog {
 public enum WakeTestOptions {
     public static let codeLengths = 4...10
     public static let typingTimes = 15...30
-    public static let mathTimes = 5...12
+    public static let mathTimes = [5, 10, 15]
+    public static let typingChoices = [15, 20, 25, 30]
+    public static func nearest(_ value: Int, choices: [Int]) -> Int { choices.min { abs($0 - value) < abs($1 - value) } ?? value }
     public static func valid(codeLength: Int?, typingTime: Int?, mathTime: Int?) -> Bool {
         (codeLength.map { codeLengths.contains($0) } ?? true) &&
         (typingTime.map { typingTimes.contains($0) } ?? true) &&
-        (mathTime.map { mathTimes.contains($0) } ?? true)
+        (mathTime.map { (5...12).contains($0) || $0 == 15 } ?? true)
     }
 }
 

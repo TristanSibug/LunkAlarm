@@ -1,4 +1,5 @@
 import AVFoundation
+import AudioToolbox
 import Foundation
 import Observation
 
@@ -6,6 +7,9 @@ import Observation
 final class SoundService {
     private var player: AVAudioPlayer?
     private var previewTask: Task<Void, Never>?
+    private var vibrationTask: Task<Void, Never>?
+    private var foreground = true
+    private var vibrationEnabled = false
     private(set) var previewing = false
     var isPlaying: Bool { player?.isPlaying == true }
     static var soundsDirectory: URL {
@@ -16,7 +20,7 @@ final class SoundService {
         if FileManager.default.fileExists(atPath: imported.path) { return imported }
         return Bundle.main.url(forResource: filename, withExtension: nil)
     }
-    func play(filename: String, preview: Bool, volume: Float = 1, gradual: Bool = false) throws {
+    func play(filename: String, preview: Bool, volume: Float = 1, gradual: Bool = false, vibrate: Bool = false) throws {
         stop()
         guard let url = Self.url(filename: filename) else { throw NativeAlarmError.soundUnavailable }
         let session = AVAudioSession.sharedInstance()
@@ -27,7 +31,7 @@ final class SoundService {
             audio.volume = gradual ? 0 : volume
             audio.numberOfLoops = -1
             guard audio.prepareToPlay(), audio.play() else { throw NativeAlarmError.soundUnavailable }
-            player = audio
+            player = audio; vibrationEnabled = vibrate; updateVibration()
             if gradual { audio.setVolume(volume, fadeDuration: AlarmSoundLevel.fadeDuration) }
             previewing = preview
             if preview {
@@ -44,13 +48,30 @@ final class SoundService {
     }
     func stop() {
         previewTask?.cancel(); previewTask = nil
+        vibrationTask?.cancel(); vibrationTask = nil; vibrationEnabled = false
         player?.stop(); player = nil; previewing = false
         try? AVAudioSession.sharedInstance().setActive(false, options: .notifyOthersOnDeactivation)
     }
 
+    // AlarmKit does not expose per-alarm system haptics. This explicit preference
+    // only drives foreground vibration during audible app playback or a preview.
+    func setForeground(_ active: Bool) { foreground = active; updateVibration() }
+    func setVibration(_ enabled: Bool) { vibrationEnabled = enabled; updateVibration() }
+    private func updateVibration() {
+        guard foreground, vibrationEnabled, player?.isPlaying == true else { vibrationTask?.cancel(); vibrationTask = nil; return }
+        guard vibrationTask == nil else { return }
+        vibrationTask = Task { [weak self] in
+            while !Task.isCancelled {
+                guard let self, self.foreground, self.vibrationEnabled, self.player?.isPlaying == true else { return }
+                AudioServicesPlaySystemSound(kSystemSoundID_Vibrate)
+                do { try await Task.sleep(for: .seconds(1)) } catch { return }
+            }
+        }
+    }
+
     func resumeAfterInterruption() {
         guard !previewing, let player, !player.isPlaying else { return }
-        do { try AVAudioSession.sharedInstance().setActive(true); player.play() }
+        do { try AVAudioSession.sharedInstance().setActive(true); player.play(); vibrationTask?.cancel(); vibrationTask = nil; updateVibration() }
         catch { /* A later foreground refresh retries playback and reports failure. */ }
     }
     func updatePreviewVolume(_ level: Double) {

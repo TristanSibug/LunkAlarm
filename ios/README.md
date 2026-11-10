@@ -8,7 +8,7 @@ The website in `web/` remains separately deployable. **Find more ringtones onlin
 
 - A centered large clock on launch, local date/time zone, and 12/24-hour display. Swipe up to view alarms; the floating + opens the editor. Swipe down at the top of the alarm list or use Clock to return. Wheel/control interactions do not dismiss the page. VoiceOver exposes equivalent actions. Reduced Motion disables the transition.
 - Nineteen app-owned themes (the original fourteen, plus Eggshell White, Heritage, Signal Blue, Cobalt & Coral, and Midnight Cherry) that remain independent of the iPhone's light/dark setting.
-- Apple's native heading-free time wheel with unpadded 12-hour hours and AM/PM rollover, duration wheels, and paired looping test controls: 1–8 math problems / 5–12 seconds per question, and 4–10 code characters / 15–30 seconds. Wake-up tests start expanded and collapse with their header arrow. The presets are 5 min, 10 min, 30 min, and 1 hour; trailing choices hide when space is limited.
+- Apple's native heading-free time wheel with unpadded 12-hour hours and AM/PM rollover, plus duration wheels. Wake-up test settings use finite buttons and bounded −/+ controls; wake-up tests start expanded and collapse with their header arrow. Duration presets are 5 min, 10 min, 30 min and 1 hour; trailing choices hide when space is limited.
 - Ten offline PCM ringtones rendered from the existing app's synthesizer recipes; six-second previews.
 - Import from Files: browser-downloadable audio smaller than 2 MB and shorter than 30 seconds, converted to mono PCM WAV in `Library/Sounds`. Each alarm remembers its selected sound and tests; importing a new sound does not change older alarms.
 - AlarmKit authorization requested when the first alarm is added, absolute deadlines, cancellation, queued in-app wake-up tests, and reconciliation with the system alarm list.
@@ -120,3 +120,23 @@ Validation covers scheduling/persistence/recovery, optional names, exact duplica
 Saved alarm cards no longer repeat a weekday summary such as Tue below the time. For a custom repeat schedule, the selected weekday letters have an outlined circle with a subtle tint; other letters remain plain. Choosing all seven days replaces the letters with one Daily label in the card footer. Countdown labels and sound/test icons stay in their existing positions. VoiceOver announces each visible weekday and whether it is selected. Editing the alarm updates the same card's badges immediately after saving.
 
 Five iOS-only palettes bring the theme count to nineteen. Eggshell White is a warm off-white neutral; Heritage uses the reference's stripes 1/3/4 (oxblood, ivory and navy); Signal Blue uses stripes 2/4/5 (crimson, navy and steel blue) with lighter foregrounds for readability. Cobalt & Coral and Midnight Cherry offer blue-dominant and red-dominant alternatives. Existing themes and the two-column picker are retained, with the additions inserted into the existing light/warm/blue color groups. Android and the website are unchanged.
+
+## Version 1.7: five wake-up tests and practice
+
+The iOS app now ports Android 1.2's test selector and settings while retaining the existing clock, alarm editor, themes and AlarmKit delivery. Five icon tiles independently enable Typing, Math, Puzzle, Minesweeper and Sudoku. Enabling opens settings; disabling does not. To reopen an enabled test's settings, toggle it off and on. Other selections remain enabled. Test settings use bounded −/+ controls and finite buttons; the ordinary time/duration wheels retain their current behavior. The Aa glyph has a full-width layout, and Try has a wider horizontal target.
+
+Try opens an isolated full-screen practice session with the same challenge engine and inputs. Keyboard focus cannot dismiss it; × exits explicitly. Completion offers Try again and ×, with no Back to settings button. Practice never schedules/cancels system alarms, starts alarm audio, or writes trial progress to the real session.
+
+| Test | Options | Timer |
+| --- | --- | --- |
+| Typing | 4–10 code characters | 15 / 20 / 25 / 30 seconds |
+| Math | 1–8 problems; custom or native iPhone keypad | 5 / 10 / 15 seconds per question |
+| Puzzle | 6 / 8 / 10 pieces | 15–40 seconds in five-second steps |
+| Minesweeper | Easy 5×5 (4 mines), Medium 7×7 (8 mines), Hard 9×9 (14 mines) | 15–40 seconds in five-second steps |
+| Sudoku | Easy 4×4 easy, Medium 4×4 hard, Hard 6×6 easy, Difficult 6×6 hard | 60 / 120 / 180 / 240 seconds |
+
+Minesweeper starts with a safe opening and uses deduction-solvable boards. Reveal all safe squares and flag all mines. Tap reveals, hold a hidden cell flags it, and hold a revealed number to open its unflagged neighbors when the adjacent flag count matches. Incorrect flags can reveal a mine and restart the whole sequence audibly. The Reveal/Flag button and VoiceOver actions offer alternatives to holding. Sudoku has a unique solution, immutable clues, reversible entries/erase, and conflict indication. Puzzle pieces use randomized interlocking seams, with exactly one board position per piece, no empty-piece outlines, drag/tap placement and a placement-count heading. Typing has a faint answer-field border and placeholder.
+
+Actual games follow typing → math → puzzle → Minesweeper → Sudoku, skipping disabled tests. Each game has one deadline; moves never extend it. Timeouts or mine hits reset all configured tests and restore sound. Alarm definitions snapshot all settings; game boards and progress persist with the active owner across app restarts. Old iOS alarms retain their existing timer snapshots; editing rounds legacy intermediate typing/math timers to the nearest new button choice.
+
+The subtle **In-app vibration** checkbox beside volume is intentionally scoped to audible playback/previews while the app is active. AlarmKit's public API has no per-alarm system/Lock Screen vibration control. The checkbox cannot enable/disable that system behavior, cannot vibrate an app that is suspended/terminated, and may be affected by hardware/system haptic settings. Background alarm delivery and the existing bounded recovery alerts remain with AlarmKit; no silent keepalive or replacement background engine was added. Verify physical vibration and locked-device behavior on an iPhone; simulators cannot prove either.

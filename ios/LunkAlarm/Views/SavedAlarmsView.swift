@@ -60,6 +60,9 @@ struct SavedAlarmsView: View {
                             if alarm.isTimer { Text("Countdown") }
                             Image(systemName: alarm.isTimer ? "timer" : "alarm")
                             if alarm.typing { Image(systemName: "keyboard") }
+                            if alarm.wakeGames?.puzzle == true { Image(systemName: "puzzlepiece") }
+                            if alarm.wakeGames?.mines == true { Image(systemName: "burst") }
+                            if alarm.wakeGames?.sudoku == true { Image(systemName: "square.grid.3x3") }
                             if alarm.mathCount > 0 { Label("\(alarm.mathCount)", systemImage: "plus.forwardslash.minus") }
                         }.font(.system(size: 11)).foregroundStyle(store.theme.muted)
                             .accessibilityIdentifier("alarmMetadata-\(alarm.id)")

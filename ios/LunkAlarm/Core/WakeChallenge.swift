@@ -1,6 +1,6 @@
 import Foundation
 
-public struct WakeChallenge: Sendable {
+public struct WakeChallenge: Codable, Equatable, Sendable {
     public enum DigitResult: Equatable, Sendable { case incomplete, incorrect, correct, timedOut }
     public let code: String
     public private(set) var typingPending: Bool

@@ -80,6 +80,7 @@ struct AlarmEditorView: View {
             }
         }
         .onChange(of: store.state.settings.ringtoneID) { _, _ in if store.sound.previewing { store.sound.stop() } }
+        .onChange(of: store.state.settings.vibrateInApp) { _, enabled in if store.sound.previewing { store.sound.setVibration(enabled == true) } }
         .onChange(of: store.state.settings.soundLevel) { _, level in store.sound.updatePreviewVolume(level ?? 1) }
     }
 
@@ -135,6 +136,15 @@ struct AlarmEditorView: View {
                 Spacer()
                 Text("\(Int(((store.state.settings.soundLevel ?? 1) * 100).rounded()))%")
                     .font(.caption.monospacedDigit()).foregroundStyle(store.theme.muted)
+                Button { store.state.settings.vibrateInApp = store.state.settings.vibrateInApp != true } label: {
+                    HStack(spacing: 5) {
+                        Image(systemName: "iphone.radiowaves.left.and.right")
+                        Text("In-app").font(.system(size: 11))
+                        Image(systemName: store.state.settings.vibrateInApp == true ? "checkmark.square.fill" : "square")
+                    }.foregroundStyle(store.state.settings.vibrateInApp == true ? store.theme.accent2 : store.theme.muted)
+                }.buttonStyle(.plain).accessibilityLabel("In-app vibration").accessibilityValue(store.state.settings.vibrateInApp == true ? "On" : "Off")
+                    .accessibilityHint("Vibrates during audible playback while LunkAlarm is open. System alarm vibration is controlled by iOS.")
+                    .accessibilityIdentifier("inAppVibration")
             }
             Slider(value: Binding(get: { store.state.settings.soundLevel ?? 1 }, set: { store.state.settings.soundLevel = $0 }), in: 0.1...1, step: 0.05)
                 .tint(store.theme.accent).accessibilityLabel("Alarm volume")
@@ -187,35 +197,9 @@ struct AlarmEditorView: View {
                 .accessibilityHint("Double tap to expand or collapse")
                 .accessibilityIdentifier("wakeTestsDisclosure")
             if testsExpanded {
-                testToggle("Typing test", detail: "Retype a random code", isOn: $store.state.settings.typing)
-                if store.state.settings.typing {
-                    HStack(spacing: 12) {
-                        testWheel("Length of code", selection: optionBinding(\.typingCodeLength, default: 8), range: WakeTestOptions.codeLengths, identifier: "typingLengthPicker")
-                        testWheel("Timer · seconds", selection: optionBinding(\.typingTimeLimit, default: 30), range: WakeTestOptions.typingTimes, identifier: "typingTimerPicker")
-                    }
-                }
-                testToggle("Math test", detail: "Solve addition problems", isOn: Binding(
-                    get: { store.state.settings.mathCount > 0 },
-                    set: { store.state.settings.mathCount = $0 ? 3 : 0 }))
-                if store.state.settings.mathCount > 0 {
-                    HStack(spacing: 12) {
-                        testWheel("How many problems?", selection: $store.state.settings.mathCount, range: 1...8, identifier: "mathProblemPicker")
-                        testWheel("Timer per question · seconds", selection: optionBinding(\.mathTimeLimit, default: 10), range: WakeTestOptions.mathTimes, identifier: "mathTimerPicker")
-                    }
-                }
+                WakeTestSelector(settings: $store.state.settings, theme: store.theme, stopPreview: store.sound.stop)
             }
         }
-    }
-    private func optionBinding(_ key: WritableKeyPath<AlarmSettings, Int?>, default fallback: Int) -> Binding<Int> {
-        Binding(get: { store.state.settings[keyPath: key] ?? fallback }, set: { store.state.settings[keyPath: key] = $0 })
-    }
-    private func testWheel(_ title: String, selection: Binding<Int>, range: ClosedRange<Int>, identifier: String) -> some View {
-        VStack(spacing: 2) {
-            Text(title).font(.system(size: 11)).foregroundStyle(store.theme.muted)
-                .multilineTextAlignment(.center).frame(height: 30)
-            LoopingNumberPicker(value: selection, range: range, label: title, identifier: identifier, color: UIColor(store.theme.text))
-                .frame(height: 112).clipped()
-        }.frame(maxWidth: .infinity).clipped()
     }
     private func modeButton(_ title: String, mode: AlarmMode) -> some View {
         Button { store.state.settings.mode = mode } label: {
@@ -256,17 +240,6 @@ struct AlarmEditorView: View {
                 ForEach(values, id: \.self) { value in Text(label == "Hours" ? String(value) : String(format: "%02d", value)).font(.system(size: 28, weight: .light)).tag(value) }
             }.pickerStyle(.wheel).frame(maxWidth: .infinity).frame(height: 120).clipped()
         }.frame(maxWidth: .infinity).clipped()
-    }
-    private func testToggle(_ title: String, detail: String, isOn: Binding<Bool>) -> some View {
-        VStack(spacing: 14) {
-            Divider().overlay(store.theme.border)
-            Toggle(isOn: isOn) {
-                VStack(alignment: .leading, spacing: 5) {
-                    Text(title).font(.system(size: 14, weight: .semibold)).foregroundStyle(store.theme.text)
-                    Text(detail).font(.system(size: 12)).foregroundStyle(store.theme.muted)
-                }
-            }.tint(store.theme.accent2).accessibilityIdentifier(title == "Math test" ? "mathTestToggle" : "typingTestToggle")
-        }
     }
     private var ringtoneSheet: some View {
         SheetShell(title: "Ringtone", theme: store.theme) {
