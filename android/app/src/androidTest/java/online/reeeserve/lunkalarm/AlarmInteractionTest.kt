@@ -209,7 +209,6 @@ class AlarmInteractionTest {
         assertNotNull(field)
         field.click(); field.text = "42"
         device.pressEnter()
-        device.pressBack()
         rule.onNodeWithTag("save-alarm").performClick()
         rule.waitUntil(5000) { repo.state.value.alarms.isNotEmpty() }
         assertEquals(42, repo.state.value.alarms.single().draft.minute)
@@ -218,7 +217,7 @@ class AlarmInteractionTest {
         mission(AlarmDraft(mathCount = 2, mathSeconds = 15, nativeMathKeyboard = true, volume = .2f))
         rule.onNodeWithTag("key-1").assertDoesNotExist()
         rule.onNodeWithTag("native-math-answer").performTextInput("99")
-        rule.onNodeWithTag("native-math-answer").assertTextEquals("")
+        rule.onNodeWithTag("native-math-answer").assert(SemanticsMatcher.expectValue(androidx.compose.ui.semantics.SemanticsProperties.EditableText, androidx.compose.ui.text.AnnotatedString("")))
         repeat(2) {
             val c = repo.state.value.session!!.challenge
             rule.onNodeWithTag("native-math-answer").performTextInput((c.left + c.right).toString())
@@ -248,5 +247,21 @@ class AlarmInteractionTest {
             rule.onNodeWithTag("close-editor").performClick()
             rule.onNodeWithText("Clock", substring = false).performClick()
         }
+    }
+
+    @Test fun n_jigsawDragSnapsThePieceWithoutExtendingTime() {
+        mission(AlarmDraft(puzzle = true, puzzlePieces = 8, puzzleSeconds = 40, volume = .2f))
+        rule.onNodeWithTag("puzzle-piece-0").performScrollTo()
+        val board = rule.onNodeWithTag("jigsaw-board").fetchSemanticsNode().boundsInRoot
+        val tray = rule.onNodeWithTag("puzzle-piece-0").fetchSemanticsNode().boundsInRoot
+        val w = board.width / 4; val h = board.width * .58f / 2
+        val pad = with(rule.density) { androidx.compose.ui.unit.Dp(8f).toPx() }
+        val start = Offset(pad + .43f * w * .74f, pad + .43f * h * .74f)
+        val end = board.topLeft + Offset(w / 2, h / 2) - tray.topLeft
+        val deadline = repo.state.value.session!!.challenge.deadline
+        rule.onNodeWithTag("puzzle-piece-0").performTouchInput { swipe(start, end, durationMillis = 700) }
+        rule.waitUntil(3000) { 0 in repo.state.value.session!!.challenge.placedPieces }
+        assertEquals(deadline, repo.state.value.session!!.challenge.deadline)
+        capture("android-jigsaw-puzzle")
     }
 }

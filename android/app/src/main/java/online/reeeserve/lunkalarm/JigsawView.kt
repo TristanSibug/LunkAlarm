@@ -77,7 +77,7 @@ import kotlin.math.min
                                     .pointerInput(challenge.puzzleSeed, challenge.placedPieces, cellW, cellH) {
                                         if (id !in challenge.placedPieces) detectDragGestures(onDragStart = { point ->
                                             dragged = id; selected = id; dragPosition = trayOrigin + point
-                                            grab = Offset((point.x - 8.dp.toPx()) / scale, (point.y - 8.dp.toPx()) / scale)
+                                            grab = Offset((point.x - 8.dp.toPx()) / scale - cellW * .24f, (point.y - 8.dp.toPx()) / scale - cellH * .24f)
                                             haptic(view)
                                         }, onDrag = { event, delta -> event.consume(); dragPosition += delta }, onDragCancel = { dragged = null }, onDragEnd = {
                                             val target = boardOrigin + Offset(piece.x * cellW, piece.y * cellH)

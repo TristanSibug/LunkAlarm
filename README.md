@@ -14,7 +14,7 @@ LunkAlarm is an alarm clock available as a **website**, a **native Android app**
 
 The Android app uses **Kotlin and Jetpack Compose**. The iOS app uses **SwiftUI and AlarmKit**. Both are native apps with their own system alarm integration. The standalone website runs directly in a browser.
 
-The repository also contains the earlier native C# / WPF Windows implementation, documented below. A native macOS app remains future work.
+The repository also retains the earlier native C# / WPF Windows implementation in `src/`. A native macOS app remains future work.
 
 ## Mobile app features
 
@@ -25,6 +25,8 @@ The repository also contains the earlier native C# / WPF Windows implementation,
 - Nineteen app-owned themes, ten offline ringtones, sound previews, audio-file imports, a volume slider, and optional gradual fade-in.
 - Configurable timed typing and math tests (plus Android jigsaw puzzles), automatic math answer submission, an answering sound switch, and progress resets when a test times out.
 - Native alarm scheduling so a scheduled alarm does not depend on keeping the clock screen open.
+
+Android 1.1 adds readable dark-theme controls, the iOS 1.6 theme/repeat-day updates, keyboard entry for time wheels, an optional native math keypad, and solid-color jigsaw tests with 6–10 randomized pieces. Wake-up test timers use five-second steps: math 5/10/15, typing 15/20/25/30, and puzzle 15/20/25/30/35/40 seconds.
 
 Alarms, themes, and imported sounds are saved locally on each device. There is no account requirement or cross-device synchronization. The website and mobile apps have separate saved data, and some features differ by platform.
 
@@ -57,4 +59,3 @@ The **Native iOS app** workflow builds simulator/device targets, runs core and n
 
 MIT license. The supplied app's icon and original sound recipes are reused.
 
-</details>
