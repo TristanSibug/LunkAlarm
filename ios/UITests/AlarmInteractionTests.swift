@@ -52,10 +52,16 @@ final class AlarmInteractionTests: XCTestCase {
         app.buttons["Clock"].tap()
         XCTAssertTrue(app.descendants(matching: .any)["alarmSwipeHint"].waitForExistence(timeout: 5))
     }
+    // Scroll in the editor gutter, away from the native wheels and sliders.
+    @MainActor private func scrollEditor(_ app: XCUIApplication, up: Bool = true) {
+        let start = app.coordinate(withNormalizedOffset: CGVector(dx: 0.025, dy: up ? 0.76 : 0.28))
+        let end = app.coordinate(withNormalizedOffset: CGVector(dx: 0.025, dy: up ? 0.28 : 0.76))
+        start.press(forDuration: 0.05, thenDragTo: end)
+    }
     @MainActor private func openTest(_ app: XCUIApplication, _ kind: String) {
         let tile = app.buttons["test-tile-" + kind]
         let save = app.buttons["scheduleAlarm"]
-        for _ in 0..<7 where !tile.isHittable || tile.frame.maxY > save.frame.minY - 10 { app.swipeUp(velocity: .slow) }
+        for _ in 0..<8 where !tile.isHittable || tile.frame.maxY > save.frame.minY - 10 { scrollEditor(app) }
         XCTAssertTrue(tile.isHittable)
         tile.tap()
         XCTAssertTrue(app.buttons["try-" + kind].waitForExistence(timeout: 5))
@@ -132,7 +138,7 @@ final class AlarmInteractionTests: XCTestCase {
         XCTAssertEqual(disclosure.value as? String, "Collapsed")
         XCTAssertTrue(app.buttons["scheduleAlarm"].exists)
         let vibration = app.buttons["inAppVibration"]
-        for _ in 0..<5 where !vibration.isHittable { app.swipeDown(velocity: .slow) }
+        for _ in 0..<5 where !vibration.isHittable { scrollEditor(app, up: false) }
         vibration.tap(); XCTAssertEqual(vibration.value as? String, "On")
         app.buttons["Check alarm sound"].tap()
         let preview = app.buttons["previewAlarmSound"], test = app.buttons["testAlarmSound"]
@@ -330,7 +336,7 @@ final class AlarmInteractionTests: XCTestCase {
         for name in ["Eggshell White", "Heritage", "Midnight Cherry", "Cobalt & Coral", "Signal Blue"] {
             app.buttons["Theme"].tap()
             let choice = app.buttons[name]
-            for _ in 0..<8 where !choice.isHittable { app.swipeUp(velocity: .slow) }
+            for _ in 0..<12 where !choice.isHittable { app.scrollViews.firstMatch.swipeUp(velocity: .slow) }
             XCTAssertTrue(choice.isHittable, "Theme must be reachable: \(name)")
             choice.tap()
             XCTAssertTrue(choice.isSelected)
@@ -426,7 +432,7 @@ final class AlarmInteractionTests: XCTestCase {
         app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH 'editAlarm-' ")).firstMatch.tap()
         let tile = app.buttons["test-tile-sudoku"]
         let save = app.buttons["scheduleAlarm"]
-        for _ in 0..<7 where !tile.isHittable || tile.frame.maxY > save.frame.minY - 10 { app.swipeUp(velocity: .slow) }
+        for _ in 0..<8 where !tile.isHittable || tile.frame.maxY > save.frame.minY - 10 { scrollEditor(app) }
         tile.tap(); XCTAssertFalse(tile.isSelected)
         XCTAssertFalse(app.buttons["try-sudoku"].exists)
         tile.tap(); XCTAssertTrue(app.buttons["try-sudoku"].waitForExistence(timeout: 5))

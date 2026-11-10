@@ -120,7 +120,6 @@ private struct WakeTestSettingsView: View {
         }.foregroundStyle(theme.text).background(theme.card).preferredColorScheme(theme.isLight ? .light : .dark)
             .presentationDetents([.height(test == .sudoku ? 590 : test == .mines ? 470 : test == .math ? 430 : 360), .large])
             .presentationDragIndicator(.visible).presentationBackground(theme.card)
-            .accessibilityIdentifier("test-settings-" + test.id)
             .fullScreenCover(item: $practice) { kind in WakePracticeView(test: kind, settings: settings, theme: theme) }
     }
     @ViewBuilder private var controls: some View {
@@ -262,7 +261,7 @@ private struct WakePracticeView: View {
                 }.padding(24).frame(maxWidth: 480).frame(maxWidth: .infinity)
             }.scrollDismissesKeyboard(.interactively)
         }.foregroundStyle(theme.text).background(theme.background).preferredColorScheme(theme.isLight ? .light : .dark)
-            .interactiveDismissDisabled().accessibilityIdentifier("practiceTest")
+            .interactiveDismissDisabled()
             .task { while !Task.isCancelled { try? await Task.sleep(for: .milliseconds(250)); if Task.isCancelled { return }; if let deadline = challenge.deadline, Date() >= deadline { _ = challenge.expireIfNeeded() } } }
     }
 }
