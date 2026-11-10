@@ -23,7 +23,7 @@ The repository also retains the earlier native C# / WPF Windows implementation i
 - Active countdowns alongside saved alarms. Completed countdowns disappear; At a time alarms stay until deleted.
 - Floating Add alarm / Save changes buttons, time and duration wheels, and collapsible wake-up test settings.
 - Nineteen app-owned themes, ten offline ringtones, sound previews, audio-file imports, a volume slider, and optional gradual fade-in.
-- Configurable timed typing and math tests, automatic math answer submission, an answering sound switch, and progress resets when a test times out. Android also includes puzzle, Minesweeper and Sudoku tests, described below.
+- Configurable timed typing and math tests, automatic math answer submission, an answering sound switch, and progress resets when a test times out. Both mobile apps also include puzzle, Minesweeper and Sudoku tests, with platform-specific options described below.
 - Native alarm scheduling so a scheduled alarm does not depend on keeping the clock screen open.
 
 ### Android 1.2.0
@@ -42,7 +42,17 @@ Minesweeper boards have a safe opening and can be solved from their clues withou
 
 Enabled tests run in sequence. A timeout restarts the configured sequence and restores alarm audio; hitting a mine does the same. Practice runs stay separate from saved alarms and live progress. The clock, time/duration pickers, ringtone controls, themes and navigation retain their existing design.
 
-These additions are **Android only**. iOS retains its current typing and math tests. See the [Android guide](android/README.md) for game rules, installation and build instructions. The [verified Android 1.2.0 build](https://github.com/TristanSibug/LunkAlarm/actions/runs/42785336619) passed 27 core tests, 18 emulator UI tests, the denied-permission check, and Android lint.
+This section describes **Android 1.2.0**. See the [Android guide](android/README.md) for game rules, installation and build instructions. The [verified Android 1.2.0 build](https://github.com/TristanSibug/LunkAlarm/actions/runs/42785336619) passed 27 core tests, 18 emulator UI tests, the denied-permission check, and Android lint.
+
+### iOS 1.7.0
+
+The native iPhone app now includes all five wake-up tests, finite settings controls, a wider **Try** button, and full-screen practice that stays open when the typing keyboard appears. Puzzle boards have 6/8/10 pieces and support drag or tap placement.
+
+- **Minesweeper:** Easy 5×5, Medium 7×7, Hard 9×9. Hold a hidden square to flag; hold a revealed number to open adjacent unflagged squares when its flag count matches. Timers remain 15–40 seconds in five-second steps.
+- **Sudoku:** 4×4 easy/hard or 6×6 easy/hard, with **60 / 120 / 180 / 240-second** buttons.
+- **In-app vibration:** a subtle checkbox beside alarm volume controls vibration during audible foreground playback/previews. AlarmKit does not expose per-alarm Lock Screen vibration control.
+
+The existing clock, themes and system alarm delivery are retained. Actual test progress is saved across app restarts; practice stays separate from real alarms. See the [iOS guide](ios/README.md) for behavior and setup.
 
 Alarms, themes, and imported sounds are saved locally on each device. There is no account requirement or cross-device synchronization. The website and mobile apps have separate saved data, and some features differ by platform.
 

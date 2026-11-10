@@ -398,7 +398,18 @@ final class AlarmInteractionTests: XCTestCase {
         let app = launch(); openEditor(app)
         for kind in ["typing", "math", "puzzle", "mines", "sudoku"] {
             openTest(app, kind)
-            if kind == "puzzle" { app.buttons["puzzle-pieces-10"].tap(); capture(app, name: "ios-puzzle-settings") }
+            if kind == "puzzle" {
+                app.buttons["puzzle-pieces-10"].tap(); capture(app, name: "ios-puzzle-settings")
+                app.buttons["puzzle-timer-40"].tap(); app.buttons["try-puzzle"].tap()
+                let piece = app.descendants(matching: .any)["puzzle-piece-0"]
+                XCTAssertTrue(piece.waitForExistence(timeout: 5)); piece.tap()
+                app.buttons["puzzle-slot-1"].tap()
+                XCTAssertEqual(app.staticTexts["puzzleProgress"].label, "0/10 placed")
+                app.buttons["puzzle-slot-0"].tap()
+                XCTAssertEqual(app.staticTexts["puzzleProgress"].label, "1/10 placed")
+                capture(app, name: "ios-puzzle-practice")
+                app.buttons["exitPractice"].tap()
+            }
             if kind == "mines" { app.buttons["mine-difficulty-2"].tap(); capture(app, name: "ios-mines-settings") }
             if kind == "sudoku" {
                 app.buttons["sudoku-difficulty-3"].tap(); app.buttons["sudoku-timer-240"].tap()

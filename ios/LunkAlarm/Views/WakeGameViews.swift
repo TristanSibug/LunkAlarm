@@ -143,9 +143,9 @@ struct JigsawGameView: View {
                 VStack(spacing: 0) { ForEach(0..<2) { row in HStack(spacing: 0) {
                     ForEach(0..<puzzle.columns, id: \.self) { column in
                         let id = row * puzzle.columns + column
-                        Color.clear.contentShape(Rectangle()).onTapGesture { if selected == id { place(id); selected = nil; AlarmHaptics.keypress() } }
-                            .accessibilityLabel("Puzzle position \(id + 1)").accessibilityAddTraits(.isButton)
-                            .accessibilityAction { if selected == id { place(id); selected = nil } }.accessibilityIdentifier("puzzle-slot-\(id)")
+                        Button { if selected == id { place(id); selected = nil; AlarmHaptics.keypress() } } label: {
+                            Rectangle().fill(.clear).contentShape(Rectangle())
+                        }.buttonStyle(.plain).accessibilityLabel("Puzzle position \(id + 1)").accessibilityIdentifier("puzzle-slot-\(id)")
                     }
                 } } }
             }.frame(height: width * 0.58).accessibilityIdentifier("jigsawBoard")
