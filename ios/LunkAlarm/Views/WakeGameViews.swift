@@ -30,8 +30,13 @@ struct MineGameView: View {
             .background(shown ? theme.field : theme.accent2.opacity(0.13), in: RoundedRectangle(cornerRadius: 6))
             .overlay(RoundedRectangle(cornerRadius: 6).stroke(shown ? theme.border : theme.accent2.opacity(0.65)))
             .contentShape(Rectangle())
-            .onTapGesture { if !shown { AlarmHaptics.keypress(); action(cell, flagMode, false) } }
-            .onLongPressGesture(minimumDuration: 0.45) { AlarmHaptics.keypress(); action(cell, !shown, shown) }
+            .gesture(LongPressGesture(minimumDuration: 0.45).exclusively(before: TapGesture()).onEnded { event in
+                AlarmHaptics.keypress()
+                switch event {
+                case .first(_): action(cell, !shown, shown)
+                case .second(_): if !shown { action(cell, flagMode, false) }
+                }
+            })
             .accessibilityElement(children: .ignore)
             .accessibilityLabel("Row \(cell / board.size + 1), column \(cell % board.size + 1)")
             .accessibilityValue(flag ? "Flagged" : shown ? "\(number) adjacent mines" : "Hidden")
