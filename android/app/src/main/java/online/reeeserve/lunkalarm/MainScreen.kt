@@ -216,7 +216,8 @@ import kotlin.math.*
                         "%02d:%02d".format(alarm.draft.hour, alarm.draft.minute).let { _ -> LocalTime.of(alarm.draft.hour, alarm.draft.minute).format(DateTimeFormatter.ofPattern(if (use24) "HH:mm" else "h:mm a")) }
                     Text(label, fontSize = 32.sp, fontWeight = FontWeight.Light, color = if (alarm.enabled) theme.text else theme.muted)
                     val details = listOfNotNull(if (alarm.draft.timer) "Countdown" else null, if (alarm.draft.typing) "Typing" else null,
-                        if (alarm.draft.mathCount > 0) "Math · ${alarm.draft.mathCount}" else null, if (alarm.draft.puzzle) "Puzzle" else null)
+                        if (alarm.draft.mathCount > 0) "Math · ${alarm.draft.mathCount}" else null, if (alarm.draft.puzzle) "Puzzle" else null,
+                        if (alarm.draft.mines) "Minesweeper" else null, if (alarm.draft.sudoku) "Sudoku" else null)
                     if (details.isNotEmpty()) Text(details.joinToString("   "), color = theme.muted, fontSize = 11.sp)
                 }
                 if (!alarm.draft.timer) Switch(checked = alarm.enabled, onCheckedChange = { controller.enable(alarm, it) }, enabled = !alarm.active,

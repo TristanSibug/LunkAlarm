@@ -12,10 +12,10 @@ data class PuzzlePiece(val id: Int, val edges: List<PuzzleEdge>) {
 data class Jigsaw(val columns: Int, val pieces: List<PuzzlePiece>, val order: List<Int>) {
     companion object {
         fun create(count: Int, seed: Long): Jigsaw {
-            require(count in 6..10)
-            val columns = (count + 1) / 2
+            require(count in WakeTimers.pieces)
+            val columns = count / 2
             val cells = List(2) { y -> List(columns) { x ->
-                if (count % 2 == 1 && x == columns - 1) count - 1 else y * (if (count % 2 == 1) columns - 1 else columns) + x
+                y * columns + x
             } }
             fun owner(x: Int, y: Int) = cells.getOrNull(y)?.getOrNull(x)
             val random = Random(seed)

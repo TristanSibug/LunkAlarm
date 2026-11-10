@@ -1,10 +1,26 @@
-# LunkAlarm for Android 1.1.0
+# LunkAlarm for Android 1.2.0 — Wake-up Test Studio
 
-- Fix unreadable black labels throughout dark themes; all 19 palettes use their own foreground colors.
-- Port iOS 1.6 repeat-day badges and Eggshell White, Heritage, Signal Blue, Cobalt & Coral, and Midnight Cherry.
-- Tap the selected At a time hour/minute to enter a value with the keyboard.
-- Add an optional native numeric keyboard beneath the math test settings; automatic answer checking still applies.
-- Add randomized, theme-colored jigsaw wake-up tests: 6–10 interlocking pieces, drag/snap or tap placement, persistent progress, and full sequence restart on timeout.
-- Use five-second timer steps: math 5/10/15; typing 15/20/25/30; puzzle 15/20/25/30/35/40. Legacy intermediate values migrate to the nearest step.
+## Redesigned wake-up tests
 
-This is a development-signed test APK. Existing Android alarm-access requirements and device-level volume/battery behavior still apply. Test locked-phone delivery on your device before relying on it overnight.
+- Choose Typing, Math, Puzzle, Minesweeper and Sudoku using compact icon tiles.
+- Enabling a tile opens its settings; disabling it closes those options while other selected tests stay enabled.
+- Use finite buttons and −/+ steppers instead of looping test-setting wheels.
+- Try beside every test title opens a practice run you can leave anytime, without scheduling an alarm.
+- Remove the tile help text, dismissal captions and extra Android math-keyboard description.
+
+## New games
+
+- **Minesweeper:** 3×3, 4×4 or 5×5 boards, with timers from 15 to 40 seconds in five-second steps. Boards have a safe opening and can be solved without guessing.
+- **Sudoku:** 4×4 easy/hard and 6×6 easy/hard, with **30 / 60 / 90 / 120-second** buttons. Every generated puzzle has one solution.
+- Game moves and progress are saved. Timeouts restart the configured wake-up tests and restore alarm audio; hitting a mine does the same.
+
+## Typing and puzzle refinements
+
+- Add a faint border and placeholder to the typing answer field.
+- Show puzzle placement progress as the heading, with instructions below.
+- Restrict puzzles to **6, 8 or 10 pieces**; each piece has exactly one snap position.
+- Hide empty puzzle outlines so you work out the arrangement from the pieces.
+
+The rest of the app's design is retained. This update is **Android only**.
+
+Download the attached APK to install/update. This is a development-signed test build; device alarm volume, access permissions and battery policies still apply.

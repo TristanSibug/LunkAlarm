@@ -79,6 +79,16 @@ class AlarmController(private val context: Context, val repository: AlarmReposit
                 sound = session.sound || result.result == AnswerResult.TIMED_OUT)) } }) return AnswerResult.INCOMPLETE
         return result.result
     }
+    fun mineAction(cell: Int, flag: Boolean) = gameAction { it.mineAction(cell, flag, SystemClock.elapsedRealtime()) }
+    fun sudokuAction(cell: Int, digit: Int) = gameAction { it.sudokuAction(cell, digit, SystemClock.elapsedRealtime()) }
+    private fun gameAction(action: (WakeChallenge) -> Submission): AnswerResult {
+        val session = repository.state.value.session ?: return AnswerResult.INCOMPLETE
+        if (!session.opened) return AnswerResult.INCOMPLETE
+        val result = action(session.challenge)
+        if (!withError { repository.update { it.copy(session = session.copy(challenge = result.challenge,
+            sound = session.sound || result.challenge.resets != session.challenge.resets)) } }) return AnswerResult.INCOMPLETE
+        return result.result
+    }
     fun tick() {
         val session = repository.state.value.session ?: return
         val expired = session.challenge.expire(SystemClock.elapsedRealtime())

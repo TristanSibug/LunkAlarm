@@ -11,6 +11,9 @@ object WakeTimers {
     val math = listOf(5, 10, 15)
     val typing = listOf(15, 20, 25, 30)
     val puzzle = listOf(15, 20, 25, 30, 35, 40)
+    val pieces = listOf(6, 8, 10)
+    val mines = puzzle
+    val sudoku = listOf(30, 60, 90, 120)
     fun nearest(value: Int, choices: List<Int>): Int {
         require(value in choices.first()..choices.last()) { "Invalid wake-up test timer." }
         return choices.minBy { kotlin.math.abs(it - value) }
@@ -22,13 +25,16 @@ data class AlarmDraft(
     val seconds: Int = 1800, val days: Set<Int> = (1..7).toSet(), val tone: String = "classic-beep",
     val volume: Float = 1f, val gradual: Boolean = false, val typing: Boolean = false,
     val codeLength: Int = 8, val typingSeconds: Int = 30, val mathCount: Int = 0, val mathSeconds: Int = 10,
-    val nativeMathKeyboard: Boolean = false, val puzzle: Boolean = false, val puzzlePieces: Int = 8, val puzzleSeconds: Int = 30
+    val nativeMathKeyboard: Boolean = false, val puzzle: Boolean = false, val puzzlePieces: Int = 8, val puzzleSeconds: Int = 30,
+    val mines: Boolean = false, val mineDifficulty: Int = 0, val mineSeconds: Int = 30,
+    val sudoku: Boolean = false, val sudokuDifficulty: Int = 0, val sudokuSeconds: Int = 60
 ) {
     fun validate() {
         require(hour in 0..23 && minute in 0..59) { "Choose a valid time." }
         require(!timer || seconds in 1..MAX_DURATION_SECONDS) { "Choose a duration from 1 second to 99 hours, 59 minutes, 59 seconds." }
         require(days.all { it in 1..7 } && volume in .1f..1f && mathCount in 0..8)
-        require(puzzlePieces in 6..10 && puzzleSeconds in WakeTimers.puzzle)
+        require(puzzlePieces in WakeTimers.pieces && puzzleSeconds in WakeTimers.puzzle)
+        require(mineDifficulty in 0..2 && mineSeconds in WakeTimers.mines && sudokuDifficulty in 0..3 && sudokuSeconds in WakeTimers.sudoku)
         require(codeLength in 4..10 && typingSeconds in WakeTimers.typing && mathSeconds in WakeTimers.math)
     }
 }
@@ -38,7 +44,7 @@ data class AlarmRecord(
     val target: Long, val elapsedTarget: Long = 0, val boot: Int = -1,
     val enabled: Boolean = true, val active: Boolean = false, val error: String? = null
 ) {
-    val hasTests get() = draft.typing || draft.mathCount > 0 || draft.puzzle
+    val hasTests get() = draft.typing || draft.mathCount > 0 || draft.puzzle || draft.mines || draft.sudoku
     val label get() = draft.name.ifBlank { if (draft.timer) "Timer" else "Alarm" }
     fun remaining(now: Long, elapsed: Long, bootCount: Int): Long =
         ((if (boot == bootCount && elapsedTarget > 0) elapsedTarget - elapsed else target - now)).coerceAtLeast(0)

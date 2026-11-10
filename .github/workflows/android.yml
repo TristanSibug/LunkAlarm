@@ -70,11 +70,11 @@ jobs:
       - name: Package and verify installable APK
         if: success()
         run: |
-          cp android/app/build/outputs/apk/debug/app-debug.apk artifacts/LunkAlarm-Android-1.1.0.apk
-          "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --verbose --print-certs artifacts/LunkAlarm-Android-1.1.0.apk > artifacts/android-signature.txt
+          cp android/app/build/outputs/apk/debug/app-debug.apk artifacts/LunkAlarm-Android-1.2.0.apk
+          "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --verbose --print-certs artifacts/LunkAlarm-Android-1.2.0.apk > artifacts/android-signature.txt
           git archive --format=zip --output=artifacts/LunkAlarm-Android-source.zip HEAD android
           cd artifacts
-          sha256sum LunkAlarm-Android-1.1.0.apk > SHA256SUMS.txt
+          sha256sum LunkAlarm-Android-1.2.0.apk > SHA256SUMS.txt
       - uses: actions/upload-artifact@v5
         if: always()
         with:

@@ -163,22 +163,7 @@ import online.reeeserve.lunkalarm.core.*
                         Icon(if (testsExpanded) Icons.Default.KeyboardArrowDown else Icons.Default.KeyboardArrowRight, null, tint = theme.muted, modifier = Modifier.size(18.dp))
                     }
                     if (testsExpanded) {
-                        WakeToggle("Typing test", "Retype a random code", draft.typing, theme, "typing-enabled") { change(draft.copy(typing = it)) }
-                        if (draft.typing) Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                            TestWheel("Length of code", draft.codeLength, 4..10, theme, "typing-length", Modifier.weight(1f)) { change(draft.copy(codeLength = it)) }
-                            TestWheel("Timer · seconds", draft.typingSeconds, 15..30, theme, "typing-timer", Modifier.weight(1f), WakeTimers.typing) { change(draft.copy(typingSeconds = it)) }
-                        }
-                        WakeToggle("Math test", "Solve addition problems", draft.mathCount > 0, theme, "math-enabled") { change(draft.copy(mathCount = if (it) 3 else 0)) }
-                        if (draft.mathCount > 0) Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                            TestWheel("How many problems?", draft.mathCount, 1..8, theme, "math-count", Modifier.weight(1f)) { change(draft.copy(mathCount = it)) }
-                            TestWheel("Timer per question · seconds", draft.mathSeconds, 5..15, theme, "math-timer", Modifier.weight(1f), WakeTimers.math) { change(draft.copy(mathSeconds = it)) }
-                        }
-                        if (draft.mathCount > 0) WakeToggle("Use native keyboard/keypad", "Use your Android number keyboard for math answers", draft.nativeMathKeyboard, theme, "native-math-keyboard") { change(draft.copy(nativeMathKeyboard = it)) }
-                        WakeToggle("Puzzle test", "Fit the solid-color jigsaw pieces together", draft.puzzle, theme, "puzzle-enabled") { change(draft.copy(puzzle = it)) }
-                        if (draft.puzzle) Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                            TestWheel("How many pieces?", draft.puzzlePieces, 6..10, theme, "puzzle-pieces", Modifier.weight(1f)) { change(draft.copy(puzzlePieces = it)) }
-                            TestWheel("Timer · seconds", draft.puzzleSeconds, 15..40, theme, "puzzle-timer", Modifier.weight(1f), WakeTimers.puzzle) { change(draft.copy(puzzleSeconds = it)) }
-                        }
+                        WakeTestSelector(draft, theme, change) { previewing = false; preview.stop() }
                     }
                 }
             }
@@ -219,7 +204,7 @@ import online.reeeserve.lunkalarm.core.*
                     OutlinedButton(onClick = { previewing = !previewing }, modifier = Modifier.weight(1f).heightIn(min = 60.dp)) { Text(if (previewing) "Stop preview" else "Preview sound", fontSize = 12.sp) }
                     OutlinedButton(onClick = {
                         if (!controller.scheduler.exactAllowed || !controller.scheduler.notificationsAllowed) { sheet = null; permissions() }
-                        else if (controller.save(draft.copy(timer = true, seconds = 5, typing = false, mathCount = 0, puzzle = false, name = ""), rememberDraft = false)) { sheet = null; previewing = false }
+                        else if (controller.save(draft.copy(timer = true, seconds = 5, typing = false, mathCount = 0, puzzle = false, mines = false, sudoku = false, name = ""), rememberDraft = false)) { sheet = null; previewing = false }
                     }, modifier = Modifier.weight(1f).heightIn(min = 60.dp).testTag("test-five-seconds")) { Text("Test a 5-second alarm", fontSize = 12.sp) }
                 }
                 Text("Start the test, then lock your phone to check the sound and gradual increase. Overall loudness uses your Android alarm volume.", color = theme.muted, fontSize = 12.sp)
@@ -243,23 +228,6 @@ import online.reeeserve.lunkalarm.core.*
             Switch(draft.gradual, onCheckedChange = { change(draft.copy(gradual = it)) }, colors = SwitchDefaults.colors(checkedTrackColor = theme.accent2))
         }
         check?.let { TextButton(onClick = it, contentPadding = PaddingValues(0.dp)) { Text("Check alarm sound", color = theme.accent, fontSize = 13.sp) } }
-    }
-}
-@Composable private fun WakeToggle(title: String, description: String, selected: Boolean, theme: LunkTheme, tag: String, change: (Boolean) -> Unit) {
-    HorizontalDivider(color = theme.border)
-    Row(verticalAlignment = Alignment.CenterVertically) {
-        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-            Text(title, fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
-            Text(description, fontSize = 12.sp, color = theme.muted)
-        }
-        Switch(selected, onCheckedChange = change, modifier = Modifier.testTag(tag), colors = SwitchDefaults.colors(checkedTrackColor = theme.accent2))
-    }
-}
-@Composable private fun TestWheel(title: String, value: Int, range: IntRange, theme: LunkTheme, tag: String, modifier: Modifier, choices: List<Int>? = null, change: (Int) -> Unit) {
-    Column(modifier, horizontalAlignment = Alignment.CenterHorizontally) {
-        Text(title, fontSize = 11.sp, color = theme.muted, modifier = Modifier.heightIn(min = 32.dp), textAlign = androidx.compose.ui.text.style.TextAlign.Center)
-        if (choices == null) Wheel(value, range, theme, tag, Modifier.fillMaxWidth(), change = change)
-        else Wheel(choices.indexOf(value).coerceAtLeast(0), choices.indices, theme, tag, Modifier.fillMaxWidth(), choices.map { it.toString() }) { change(choices[it]) }
     }
 }
 @Composable private fun DurationPresets(theme: LunkTheme, choose: (Int) -> Unit) {

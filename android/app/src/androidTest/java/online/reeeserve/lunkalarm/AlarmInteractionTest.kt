@@ -226,12 +226,12 @@ class AlarmInteractionTest {
         rule.waitUntil(8000) { repo.state.value.session == null }
     }
     @Test fun l_puzzleSupportsTapPlacementAndFinishesOnlyAfterAllPieces() {
-        mission(AlarmDraft(puzzle = true, puzzlePieces = 7, puzzleSeconds = 40, volume = .2f))
+        mission(AlarmDraft(puzzle = true, puzzlePieces = 8, puzzleSeconds = 40, volume = .2f))
         rule.onNodeWithTag("challenge-sound").assertIsOff()
         rule.onNodeWithTag("puzzle-piece-0").performScrollTo().performClick()
         rule.onNodeWithTag("puzzle-slot-1").performScrollTo().performClick()
         assertTrue(repo.state.value.session!!.challenge.placedPieces.isEmpty())
-        for (id in 0..6) {
+        for (id in 0..7) {
             rule.onNodeWithTag("puzzle-piece-$id").performScrollTo().performClick()
             rule.onNodeWithTag("puzzle-slot-$id").performScrollTo().performClick()
         }
@@ -265,4 +265,114 @@ class AlarmInteractionTest {
         assertEquals(deadline, repo.state.value.session!!.challenge.deadline)
         capture("android-jigsaw-puzzle")
     }
+    @Test fun o_testTilesKeepOtherTestsAndSettingsUseFiniteButtons() {
+        openEditor()
+        rule.onNodeWithTag("editor-form").performScrollToNode(hasTestTag("wake-tests"))
+        rule.onNodeWithText("Tap off", substring = true).assertDoesNotExist()
+        rule.onNodeWithTag("test-tile-typing").performClick()
+        rule.onNodeWithTag("test-settings-typing").assertExists()
+        rule.onNodeWithText("to dismiss your alarm", substring = true).assertDoesNotExist()
+        repeat(2) { rule.onNodeWithTag("typing-length-plus").performClick() }
+        rule.onNodeWithTag("typing-length-value").assertTextEquals("10")
+        rule.onNodeWithTag("typing-length-plus").assertIsNotEnabled()
+        rule.onNodeWithTag("typing-timer-25").performClick()
+        capture("android-typing-settings")
+        rule.onNodeWithTag("test-settings-done").performClick()
+        rule.onNodeWithTag("test-tile-typing").assertIsOn()
+        rule.onNodeWithTag("test-tile-math").performClick()
+        rule.onNodeWithTag("math-count-plus").performClick()
+        rule.onNodeWithTag("math-timer-15").performClick()
+        rule.onNodeWithText("Use your Android number keyboard for math answers").assertDoesNotExist()
+        capture("android-math-settings")
+        rule.onNodeWithTag("test-settings-done").performClick()
+        rule.onNodeWithTag("test-tile-typing").assertIsOn()
+        rule.onNodeWithTag("test-tile-math").assertIsOn().performClick()
+        rule.onNodeWithTag("test-tile-math").assertIsOff()
+        rule.onNodeWithTag("test-settings-math").assertDoesNotExist()
+        rule.onNodeWithTag("test-tile-puzzle").performClick()
+        rule.onNodeWithTag("puzzle-pieces-7").assertDoesNotExist()
+        rule.onNodeWithTag("puzzle-pieces-10").performClick()
+        capture("android-puzzle-settings")
+        rule.onNodeWithTag("test-settings-done").performClick()
+        rule.onNodeWithTag("test-tile-mines").performClick()
+        rule.onNodeWithTag("mine-difficulty-2").performClick()
+        rule.onNodeWithTag("mine-timer-40").performClick()
+        capture("android-minesweeper-settings")
+        rule.onNodeWithTag("test-settings-done").performClick()
+        rule.onNodeWithTag("test-tile-sudoku").performClick()
+        rule.onNodeWithTag("sudoku-difficulty-3").performClick()
+        rule.onNodeWithTag("sudoku-timer-120").performClick()
+        val tops = listOf(30, 60, 90, 120).map { rule.onNodeWithTag("sudoku-timer-$it").fetchSemanticsNode().boundsInRoot.top }
+        assertTrue(tops.all { kotlin.math.abs(it - tops.first()) < 1f })
+        capture("android-sudoku-settings")
+        rule.onNodeWithTag("test-settings-done").performClick()
+        capture("android-wake-test-tiles")
+        rule.onNodeWithTag("save-alarm").performClick()
+        rule.waitUntil { repo.state.value.alarms.size == 1 }
+        val saved = repo.state.value.alarms.single().draft
+        assertTrue(saved.typing && saved.puzzle && saved.mines && saved.sudoku)
+        assertEquals(0, saved.mathCount); assertEquals(10, saved.codeLength); assertEquals(25, saved.typingSeconds)
+        assertEquals(10, saved.puzzlePieces); assertEquals(2, saved.mineDifficulty); assertEquals(3, saved.sudokuDifficulty); assertEquals(120, saved.sudokuSeconds)
+    }
+    @Test fun p_everyTryCanBeExitedWithoutSchedulingOrMutatingAnAlarm() {
+        openEditor()
+        rule.onNodeWithTag("editor-form").performScrollToNode(hasTestTag("wake-tests"))
+        for (test in WakeTest.entries) {
+            val tag = test.name.lowercase()
+            rule.onNodeWithTag("test-tile-$tag").performClick()
+            rule.onNodeWithTag("try-$tag").performClick()
+            rule.onNodeWithTag("practice-test").assertExists()
+            assertTrue(repo.state.value.alarms.isEmpty()); assertNull(repo.state.value.session); assertFalse(AlarmService.isPlaying)
+            capture("android-practice-$tag")
+            if (test == WakeTest.SUDOKU) device.pressBack() else rule.onNodeWithTag("exit-practice").performClick()
+            rule.onNodeWithTag("test-settings-$tag").assertExists()
+            rule.onNodeWithTag("test-settings-done").performClick()
+        }
+        rule.onNodeWithTag("save-alarm").performClick()
+        rule.waitUntil { repo.state.value.alarms.size == 1 }
+        assertTrue(repo.state.value.alarms.single().draft.let { it.typing && it.mathCount > 0 && it.puzzle && it.mines && it.sudoku })
+        assertNull(repo.state.value.session)
+    }
+    @Test fun q_minesweeperAndSudokuShareTheRealAlarmCompletionPath() {
+        mission(AlarmDraft(mines = true, mineSeconds = 40, sudoku = true, sudokuSeconds = 120, volume = .2f))
+        rule.onNodeWithTag("mine-board").assertExists()
+        val mine = repo.state.value.session!!.challenge.mineBoard!!
+        rule.onNodeWithTag("mine-mode").performClick()
+        mine.mines.forEach { rule.onNodeWithTag("mine-cell-$it").performScrollTo().performClick() }
+        if (repo.state.value.session!!.challenge.minesPending) {
+            rule.onNodeWithTag("mine-mode").performClick()
+            mine.cells.filterNot { it in mine.mines || it in mine.revealed }.forEach { rule.onNodeWithTag("mine-cell-$it").performScrollTo().performClick() }
+        }
+        rule.onNodeWithTag("sudoku-board").assertExists()
+        val sudoku = repo.state.value.session!!.challenge.sudokuBoard!!
+        val first = sudoku.givens.indexOfFirst { it == 0 }
+        rule.onNodeWithTag("sudoku-cell-$first").performScrollTo().performClick()
+        rule.onNodeWithTag("sudoku-digit-${sudoku.solution[first]}").performScrollTo().performClick()
+        assertEquals(1, repo.state.value.session!!.challenge.sudokuBoard!!.filled)
+        rule.onNodeWithTag("sudoku-erase").performScrollTo().performClick()
+        assertEquals(0, repo.state.value.session!!.challenge.sudokuBoard!!.filled)
+        capture("android-sudoku-game")
+        for (cell in sudoku.givens.indices.filter { sudoku.givens[it] == 0 }) {
+            rule.onNodeWithTag("sudoku-cell-$cell").performScrollTo().performClick()
+            rule.onNodeWithTag("sudoku-digit-${sudoku.solution[cell]}").performScrollTo().performClick()
+        }
+        rule.waitUntil(8000) { repo.state.value.session == null }
+        assertTrue(repo.state.value.alarms.isEmpty())
+    }
+    @Test fun r_gameTimeoutAndMineHitRestartSoundAndPersistedProgress() {
+        mission(AlarmDraft(mines = true, mineSeconds = 15, sudoku = true, volume = .2f))
+        val session = repo.state.value.session!!
+        rule.runOnUiThread {
+            repo.update { it.copy(session = session.copy(challenge = session.challenge.copy(deadline = SystemClock.elapsedRealtime() - 1))) }
+            controller.tick()
+        }
+        rule.waitUntil(5000) { repo.state.value.session?.challenge?.resets == 1 && AlarmService.isPlaying }
+        assertTrue(repo.state.value.session!!.sound)
+        rule.onNodeWithTag("challenge-sound").performClick()
+        val mine = repo.state.value.session!!.challenge.mineBoard!!.mines.first()
+        rule.onNodeWithTag("mine-cell-$mine").performScrollTo().performClick()
+        rule.waitUntil(5000) { repo.state.value.session?.challenge?.resets == 2 && AlarmService.isPlaying }
+        assertTrue(repo.state.value.session!!.sound)
+    }
+
 }

@@ -101,7 +101,7 @@ class AlarmCoreTest {
     }
 
     @Test fun puzzleCountsAreExactAndEveryInteriorSeamHasAComplement() {
-        for (count in 6..10) for (seed in 0L..100L) {
+        for (count in WakeTimers.pieces) for (seed in 0L..100L) {
             val p = Jigsaw.create(count, seed)
             assertEquals(count, p.pieces.size)
             assertEquals((0 until count).toSet(), p.order.toSet())
@@ -120,19 +120,19 @@ class AlarmCoreTest {
         }
     }
     @Test fun puzzleFollowsTypingAndMathAndKeepsOneDeadline() {
-        var c = WakeChallenge.create(AlarmDraft(typing = true, mathCount = 1, puzzle = true, puzzlePieces = 7, puzzleSeconds = 20)).start(1000)
+        var c = WakeChallenge.create(AlarmDraft(typing = true, mathCount = 1, puzzle = true, puzzlePieces = 8, puzzleSeconds = 20)).start(1000)
         assertEquals(AnswerResult.INCOMPLETE, c.placePiece(0, 1500).result)
         c = c.submitCode(c.code, 2000).challenge
         assertEquals(AnswerResult.INCOMPLETE, c.placePiece(0, 2500).result)
         c = c.submitDigits((c.left + c.right).toString(), 3000).challenge
         assertEquals(23000L, c.deadline)
-        for (id in 0..5) {
+        for (id in 0..6) {
             c = c.placePiece(id, 4000L + id).challenge
             assertEquals(23000L, c.deadline); assertFalse(c.complete)
         }
         assertEquals(AnswerResult.INCOMPLETE, c.placePiece(0, 5000).result)
         assertEquals(AnswerResult.INCOMPLETE, c.placePiece(8, 5000).result)
-        c = c.placePiece(6, 6000).challenge
+        c = c.placePiece(7, 6000).challenge
         assertTrue(c.complete); assertEquals(0L, c.deadline)
     }
     @Test fun puzzleTimeoutResetsWholeSequenceAndGeneratesNewShapes() {

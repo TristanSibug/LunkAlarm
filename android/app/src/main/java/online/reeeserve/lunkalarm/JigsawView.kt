@@ -42,8 +42,8 @@ import kotlin.math.min
     val cellW = boardWidth / puzzle.columns; val cellH = boardWidth * .58f / 2
     val paths = remember(puzzle, cellW, cellH) { puzzle.pieces.map { piecePath(it, cellW, cellH) } }
     Column(verticalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.fillMaxWidth()) {
-        Text("Fit the pieces", fontSize = 20.sp)
-        Text("${challenge.placedPieces.size} / ${challenge.puzzlePieces} placed · Drag pieces into the outline, or tap a piece then its space.", color = theme.muted, fontSize = 12.sp)
+        Text("${challenge.placedPieces.size}/${challenge.puzzlePieces} placed", fontSize = 20.sp, modifier = Modifier.testTag("puzzle-progress"))
+        Text("Drag pieces onto the board, or tap a piece then its position.", color = theme.muted, fontSize = 12.sp)
         Box(Modifier.fillMaxWidth().onGloballyPositioned { origin = it.positionInRoot() }) {
             Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
                 Box(Modifier.fillMaxWidth().aspectRatio(1f / .58f).background(theme.field, RoundedCornerShape(12.dp))
@@ -51,7 +51,7 @@ import kotlin.math.min
                     Canvas(Modifier.matchParentSize()) {
                         puzzle.pieces.forEach { piece ->
                             if (piece.id in challenge.placedPieces) drawPath(paths[piece.id], theme.accent)
-                            drawPath(paths[piece.id], theme.text.copy(alpha = .55f), style = Stroke(1.5.dp.toPx()))
+                            // Hidden pieces have no outlines or extra targets.
                         }
                     }
                     // Equivalent tap controls also support TalkBack and switch access.
