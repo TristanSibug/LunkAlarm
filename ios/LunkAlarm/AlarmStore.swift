@@ -310,6 +310,7 @@ final class AlarmStore {
             muteOnReturn = false
         }
         else if sound.previewing { sound.stop() }
+        sound.setAlarmVibration(active && challengeSoundEnabled && ringing?.vibrateInApp == true)
         // Real, audible wake-up-test playback can continue in the background.
         // Scheduled alerts remain owned by AlarmKit; there is no idle keepalive.
     }
@@ -380,6 +381,7 @@ final class AlarmStore {
             armChallengeDeadline()
             if expired { playChallengeSound(alarm) }
         } else if !nativeAlertIsSounding(alarm) { playChallengeSound(alarm) }
+        sound.setAlarmVibration(isActive && challengeSoundEnabled && alarm.vibrateInApp == true)
     }
     private func playChallengeSound(_ alarm: AlarmRecord) {
         guard !sound.isPlaying || sound.previewing else { return }
@@ -458,6 +460,7 @@ final class AlarmStore {
     func setChallengeSound(_ enabled: Bool) {
         guard let alarm = currentRecord else { return }
         challengeSoundEnabled = enabled
+        sound.setAlarmVibration(isActive && enabled && alarm.vibrateInApp == true)
         if enabled {
             if !nativeAlertIsSounding(alarm) { playChallengeSound(alarm) }
         } else {
@@ -487,6 +490,7 @@ final class AlarmStore {
         do { try stopNativeAlarms(alarm, onlyAlerting: true) }
         catch { errorMessage = error.localizedDescription }
         challengeSoundEnabled = true
+        sound.setAlarmVibration(isActive && alarm.vibrateInApp == true)
         playChallengeSound(alarm)
         armChallengeDeadline()
     }

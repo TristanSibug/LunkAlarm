@@ -10,6 +10,7 @@ final class SoundService {
     private var vibrationTask: Task<Void, Never>?
     private var foreground = true
     private var vibrationEnabled = false
+    private var alarmVibrationEnabled = false
     private(set) var previewing = false
     var isPlaying: Bool { player?.isPlaying == true }
     static var soundsDirectory: URL {
@@ -21,7 +22,7 @@ final class SoundService {
         return Bundle.main.url(forResource: filename, withExtension: nil)
     }
     func play(filename: String, preview: Bool, volume: Float = 1, gradual: Bool = false, vibrate: Bool = false) throws {
-        stop()
+        stop(preserveAlarmVibration: true)
         guard let url = Self.url(filename: filename) else { throw NativeAlarmError.soundUnavailable }
         let session = AVAudioSession.sharedInstance()
         try session.setCategory(.playback, mode: .default, options: [.duckOthers])
@@ -46,9 +47,10 @@ final class SoundService {
             throw error
         }
     }
-    func stop() {
+    func stop(preserveAlarmVibration: Bool = false) {
         previewTask?.cancel(); previewTask = nil
         vibrationTask?.cancel(); vibrationTask = nil; vibrationEnabled = false
+        if !preserveAlarmVibration { alarmVibrationEnabled = false }
         player?.stop(); player = nil; previewing = false
         try? AVAudioSession.sharedInstance().setActive(false, options: .notifyOthersOnDeactivation)
     }
@@ -57,12 +59,14 @@ final class SoundService {
     // only drives foreground vibration during audible app playback or a preview.
     func setForeground(_ active: Bool) { foreground = active; updateVibration() }
     func setVibration(_ enabled: Bool) { vibrationEnabled = enabled; updateVibration() }
+    func setAlarmVibration(_ enabled: Bool) { alarmVibrationEnabled = enabled; updateVibration() }
+    private var shouldVibrate: Bool { foreground && (alarmVibrationEnabled || (vibrationEnabled && player?.isPlaying == true)) }
     private func updateVibration() {
-        guard foreground, vibrationEnabled, player?.isPlaying == true else { vibrationTask?.cancel(); vibrationTask = nil; return }
+        guard shouldVibrate else { vibrationTask?.cancel(); vibrationTask = nil; return }
         guard vibrationTask == nil else { return }
         vibrationTask = Task { [weak self] in
             while !Task.isCancelled {
-                guard let self, self.foreground, self.vibrationEnabled, self.player?.isPlaying == true else { return }
+                guard let self, self.shouldVibrate else { return }
                 AudioServicesPlaySystemSound(kSystemSoundID_Vibrate)
                 do { try await Task.sleep(for: .seconds(1)) } catch { return }
             }

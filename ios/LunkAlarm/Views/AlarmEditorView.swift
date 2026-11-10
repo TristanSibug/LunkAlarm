@@ -197,7 +197,7 @@ struct AlarmEditorView: View {
                 .accessibilityHint("Double tap to expand or collapse")
                 .accessibilityIdentifier("wakeTestsDisclosure")
             if testsExpanded {
-                WakeTestSelector(settings: $store.state.settings, theme: store.theme, stopPreview: store.sound.stop)
+                WakeTestSelector(settings: $store.state.settings, theme: store.theme, stopPreview: { store.sound.stop() })
             }
         }
     }
