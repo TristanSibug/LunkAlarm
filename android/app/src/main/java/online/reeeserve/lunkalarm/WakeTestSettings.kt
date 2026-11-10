@@ -69,7 +69,9 @@ enum class WakeTest(val title: String, val short: String) {
     }
     settings?.let { test ->
         ModalBottomSheet(onDismissRequest = { settings = null }, containerColor = theme.card,
-            sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)) {
+            dragHandle = { Box(Modifier.fillMaxWidth().padding(vertical = 12.dp), contentAlignment = Alignment.Center) {
+                Box(Modifier.size(32.dp, 4.dp).clip(RoundedCornerShape(50)).background(theme.muted.copy(alpha = .7f)))
+            } }, sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)) {
             Column(Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).padding(horizontal = 22.dp).padding(bottom = 24.dp)
                 .testTag("test-settings-${test.name.lowercase()}"), verticalArrangement = Arrangement.spacedBy(22.dp)) {
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {

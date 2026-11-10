@@ -40,6 +40,9 @@ class AlarmInteractionTest {
         }
     }
     private fun capture(name: String) {
+        rule.waitForIdle()
+        SystemClock.sleep(250) // Let the rendered surface catch up with sheet/state transitions.
+        rule.waitForIdle()
         val folder = File(context.getExternalFilesDir(null), "previews").apply { mkdirs() }
         device.takeScreenshot(File(folder, "$name.png"))
     }
