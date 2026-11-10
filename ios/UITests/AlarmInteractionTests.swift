@@ -396,6 +396,21 @@ final class AlarmInteractionTests: XCTestCase {
         app.buttons["closeAlarmEditor"].tap()
         XCTAssertTrue(app.staticTexts["No alarms yet. Tap + to add one."].exists)
     }
+    @MainActor private func assertSquareBoard(_ app: XCUIApplication, prefix: String, size: Int) {
+        let first = app.descendants(matching: .any)[prefix + "0"].frame
+        let last = app.descendants(matching: .any)[prefix + "\(size - 1)"].frame
+        XCTAssertEqual(first.width, first.height, accuracy: 1, "Empty and numbered cells must be square")
+        XCTAssertGreaterThan(last.maxX - first.minX, app.frame.width * 0.75, "The board should fill the available width")
+        for row in 1..<size {
+            let left = app.descendants(matching: .any)[prefix + "\(row * size)"].frame
+            let right = app.descendants(matching: .any)[prefix + "\(row * size + size - 1)"].frame
+            XCTAssertEqual(left.minX, first.minX, accuracy: 1)
+            XCTAssertEqual(right.maxX, last.maxX, accuracy: 1)
+            XCTAssertEqual(left.width, first.width, accuracy: 1)
+            XCTAssertEqual(left.height, first.height, accuracy: 1)
+            XCTAssertEqual(right.minY, left.minY, accuracy: 1)
+        }
+    }
     @MainActor func testMinesweeperSizesAndHoldNumberKeepPracticeOpen() {
         let app = launch(); openEditor(app); openTest(app, "mines")
         for level in 0..<3 {
@@ -405,6 +420,7 @@ final class AlarmInteractionTests: XCTestCase {
             XCTAssertTrue(app.buttons["exitPractice"].waitForExistence(timeout: 5))
             let cells = app.descendants(matching: .any).matching(NSPredicate(format: "identifier BEGINSWITH 'mine-cell-'"))
             XCTAssertEqual(cells.count, [25, 49, 81][level])
+            assertSquareBoard(app, prefix: "mine-cell-", size: [5, 7, 9][level])
             let number = cells.matching(NSPredicate(format: "value CONTAINS 'adjacent mines' AND NOT value BEGINSWITH '0 '")).firstMatch
             XCTAssertTrue(number.exists)
             number.press(forDuration: 0.6)
@@ -454,6 +470,7 @@ final class AlarmInteractionTests: XCTestCase {
         XCTAssertTrue(app.buttons["sudoku-timer-240"].isSelected)
         app.buttons["try-sudoku"].tap()
         XCTAssertTrue(app.buttons["exitPractice"].waitForExistence(timeout: 5))
+        assertSquareBoard(app, prefix: "sudoku-cell-", size: 6)
         let empty = app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH 'sudoku-cell-' AND value CONTAINS 'Empty'")).firstMatch
         XCTAssertTrue(empty.exists); empty.tap()
         app.buttons["sudoku-digit-1"].tap()

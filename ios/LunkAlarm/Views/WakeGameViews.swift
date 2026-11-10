@@ -1,5 +1,27 @@
 import SwiftUI
 
+// Empty and numbered cells must receive the same finite size. Text's intrinsic
+// size inside an unconstrained ScrollView would otherwise make ragged rows.
+private struct SquareGameGrid<Cell: View>: View {
+    let size: Int
+    var spacing: CGFloat = 0
+    @ViewBuilder var cell: (Int) -> Cell
+    var body: some View {
+        GeometryReader { geometry in
+            let side = max(1, (geometry.size.width - spacing * CGFloat(size - 1)) / CGFloat(size))
+            VStack(spacing: spacing) {
+                ForEach(0..<size, id: \.self) { row in
+                    HStack(spacing: spacing) {
+                        ForEach(0..<size, id: \.self) { column in
+                            cell(row * size + column).frame(width: side, height: side)
+                        }
+                    }
+                }
+            }
+        }.aspectRatio(1, contentMode: .fit)
+    }
+}
+
 struct MineGameView: View {
     let board: MineBoard
     let theme: AlarmTheme
@@ -15,18 +37,14 @@ struct MineGameView: View {
                 Spacer()
                 Button(flagMode ? "⚑ Flag" : "Reveal") { flagMode.toggle() }.buttonStyle(ChipStyle(theme: theme)).accessibilityIdentifier("mineMode")
             }
-            VStack(spacing: board.size == 9 ? 3 : 5) {
-                ForEach(0..<board.size, id: \.self) { row in HStack(spacing: board.size == 9 ? 3 : 5) {
-                    ForEach(0..<board.size, id: \.self) { column in mineCell(row * board.size + column) }
-                } }
-            }
+            SquareGameGrid(size: board.size, spacing: board.size == 9 ? 3 : 5) { mineCell($0) }
         }.frame(maxWidth: 400)
     }
     private func mineCell(_ cell: Int) -> some View {
         let shown = board.revealed.contains(cell), flag = board.flags.contains(cell), number = board.number(cell)
         return Text(flag ? "⚑" : shown && number > 0 ? "\(number)" : "")
             .font(.system(size: board.size == 9 ? 16 : 21, weight: .semibold)).foregroundStyle(flag ? theme.accent2 : theme.text)
-            .frame(maxWidth: .infinity).aspectRatio(1, contentMode: .fit)
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
             .background(shown ? theme.field : theme.accent2.opacity(0.13), in: RoundedRectangle(cornerRadius: 6))
             .overlay(RoundedRectangle(cornerRadius: 6).stroke(shown ? theme.border : theme.accent2.opacity(0.65)))
             .contentShape(Rectangle())
@@ -61,11 +79,8 @@ struct SudokuGameView: View {
             Text("Sudoku").font(.system(size: 20, weight: .semibold))
             Text("Use 1–\(board.size) once in each row, column and box.").font(.system(size: 12)).foregroundStyle(theme.muted).multilineTextAlignment(.center)
             Text("\(board.filled)/\(board.blanks) filled").font(.system(size: 13)).foregroundStyle(theme.muted).accessibilityIdentifier("sudokuProgress")
-            VStack(spacing: 0) {
-                ForEach(0..<board.size, id: \.self) { row in HStack(spacing: 0) {
-                    ForEach(0..<board.size, id: \.self) { column in sudokuCell(row * board.size + column) }
-                } }
-            }.overlay(Rectangle().stroke(theme.text.opacity(0.6), lineWidth: 1.5))
+            SquareGameGrid(size: board.size) { sudokuCell($0) }
+                .overlay(Rectangle().stroke(theme.text.opacity(0.6), lineWidth: 1.5))
             HStack(spacing: 6) {
                 ForEach(1...board.size, id: \.self) { digit in Button { AlarmHaptics.keypress(); action(selected, digit) } label: {
                     Text("\(digit)").font(.system(size: 22)).frame(maxWidth: .infinity, minHeight: 48)
@@ -80,7 +95,7 @@ struct SudokuGameView: View {
         return Button { selected = cell; AlarmHaptics.keypress() } label: {
             Text(board.values[cell] == 0 ? "" : "\(board.values[cell])").font(.system(size: board.size == 6 ? 20 : 24, weight: given ? .semibold : .regular))
                 .foregroundStyle(board.conflict(cell) ? theme.accent2 : given ? theme.text : theme.accent)
-                .frame(maxWidth: .infinity).aspectRatio(1, contentMode: .fit)
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
                 .background(selected == cell ? theme.accent2.opacity(0.2) : given ? theme.text.opacity(0.05) : theme.field)
                 .overlay(alignment: .top) { Rectangle().fill(theme.text.opacity(0.45)).frame(height: row % 2 == 0 ? 1.5 : 0.5) }
                 .overlay(alignment: .leading) { Rectangle().fill(theme.text.opacity(0.45)).frame(width: col % (board.size / 2) == 0 ? 1.5 : 0.5) }
