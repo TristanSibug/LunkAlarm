@@ -1,5 +1,6 @@
 package online.reeeserve.lunkalarm
 
+import android.app.KeyguardManager
 import android.content.Intent
 import android.os.SystemClock
 import android.view.KeyEvent
@@ -8,6 +9,8 @@ import androidx.compose.ui.test.*
 import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.test.platform.app.InstrumentationRegistry
+import androidx.test.runner.lifecycle.ActivityLifecycleMonitorRegistry
+import androidx.test.runner.lifecycle.Stage
 import androidx.test.uiautomator.UiDevice
 import online.reeeserve.lunkalarm.core.*
 import org.junit.*
@@ -26,6 +29,7 @@ class AlarmInteractionTest {
         device.executeShellCommand("dumpsys deviceidle unforce")
         device.wakeUp(); device.executeShellCommand("wm dismiss-keyguard")
         rule.runOnIdle {
+            finishRingingActivities()
             repo.state.value.alarms.forEach { controller.scheduler.cancel(it.id) }
             context.stopService(Intent(context, AlarmService::class.java)); repo.resetForTests(context)
         }
@@ -35,9 +39,17 @@ class AlarmInteractionTest {
         device.executeShellCommand("dumpsys deviceidle unforce"); device.executeShellCommand("dumpsys battery reset")
         device.wakeUp(); device.executeShellCommand("wm dismiss-keyguard")
         rule.runOnUiThread {
+            finishRingingActivities()
             repo.state.value.alarms.forEach { controller.scheduler.cancel(it.id) }
             context.stopService(Intent(context, AlarmService::class.java)); repo.resetForTests(context)
         }
+    }
+    // Clearing a session also finishes its UI asynchronously. Finish it explicitly before
+    // the next test creates a different owner, especially after failed secure unlock.
+    private fun finishRingingActivities() {
+        val monitor = ActivityLifecycleMonitorRegistry.getInstance()
+        listOf(Stage.CREATED, Stage.STARTED, Stage.RESUMED, Stage.PAUSED, Stage.STOPPED)
+            .flatMap { monitor.getActivitiesInStage(it) }.filterIsInstance<RingingActivity>().distinct().forEach { it.finish() }
     }
     private fun capture(name: String) {
         rule.waitForIdle()
@@ -51,6 +63,8 @@ class AlarmInteractionTest {
         rule.onNodeWithTag("alarm-editor").assertExists()
     }
     private fun mission(draft: AlarmDraft) {
+        device.wakeUp(); device.executeShellCommand("wm dismiss-keyguard")
+        rule.waitUntil(10000) { !context.getSystemService(KeyguardManager::class.java).isKeyguardLocked }
         rule.runOnIdle {
             assertTrue(controller.save(draft.copy(timer = true, seconds = 120)))
             val record = repo.state.value.alarms.single()
