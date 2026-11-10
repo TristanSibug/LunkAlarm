@@ -54,6 +54,8 @@ The native iPhone app now includes all five wake-up tests, finite settings contr
 
 The existing clock, themes and system alarm delivery are retained. Actual test progress is saved across app restarts; practice stays separate from real alarms. See the [iOS guide](ios/README.md) for behavior and setup.
 
+The [verified iOS 1.7.0 build](https://github.com/TristanSibug/LunkAlarm/actions/runs/42816334325) passed **31 core tests and 18 simulator UI tests**, including typing with the keyboard open, game-board alignment, theme navigation and full-swipe deletion. Its **LunkAlarm-iOS** artifact contains `LunkAlarm-iOS-unsigned.ipa`; signing/provisioning is required before installation. This release updates iOS; Android remains at 1.2.0.
+
 Alarms, themes, and imported sounds are saved locally on each device. There is no account requirement or cross-device synchronization. The website and mobile apps have separate saved data, and some features differ by platform.
 
 ## Install the mobile apps
