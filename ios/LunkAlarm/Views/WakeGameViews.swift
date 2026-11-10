@@ -19,7 +19,7 @@ struct MineGameView: View {
                 ForEach(0..<board.size, id: \.self) { row in HStack(spacing: board.size == 9 ? 3 : 5) {
                     ForEach(0..<board.size, id: \.self) { column in mineCell(row * board.size + column) }
                 } }
-            }.accessibilityIdentifier("mineBoard")
+            }
         }.frame(maxWidth: 400)
     }
     private func mineCell(_ cell: Int) -> some View {
@@ -65,7 +65,7 @@ struct SudokuGameView: View {
                 ForEach(0..<board.size, id: \.self) { row in HStack(spacing: 0) {
                     ForEach(0..<board.size, id: \.self) { column in sudokuCell(row * board.size + column) }
                 } }
-            }.overlay(Rectangle().stroke(theme.text.opacity(0.6), lineWidth: 1.5)).accessibilityIdentifier("sudokuBoard")
+            }.overlay(Rectangle().stroke(theme.text.opacity(0.6), lineWidth: 1.5))
             HStack(spacing: 6) {
                 ForEach(1...board.size, id: \.self) { digit in Button { AlarmHaptics.keypress(); action(selected, digit) } label: {
                     Text("\(digit)").font(.system(size: 22)).frame(maxWidth: .infinity, minHeight: 48)
@@ -153,7 +153,7 @@ struct JigsawGameView: View {
                         }.buttonStyle(.plain).accessibilityLabel("Puzzle position \(id + 1)").accessibilityIdentifier("puzzle-slot-\(id)")
                     }
                 } } }
-            }.frame(height: width * 0.58).accessibilityIdentifier("jigsawBoard")
+            }.frame(height: width * 0.58)
             VStack(spacing: 8) {
                 ForEach(0..<2) { row in HStack(spacing: 6) {
                     ForEach(0..<5) { column in
