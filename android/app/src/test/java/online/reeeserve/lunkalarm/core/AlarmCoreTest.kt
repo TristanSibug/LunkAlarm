@@ -99,4 +99,75 @@ class AlarmCoreTest {
         val unsafe = AppState(sounds = listOf(ImportedSound("x", "bad", "../alarms.json")))
         assertThrows(Exception::class.java) { AlarmJson.decode(AlarmJson.encode(unsafe)) }
     }
+
+    @Test fun puzzleCountsAreExactAndEveryInteriorSeamHasAComplement() {
+        for (count in 6..10) for (seed in 0L..100L) {
+            val p = Jigsaw.create(count, seed)
+            assertEquals(count, p.pieces.size)
+            assertEquals((0 until count).toSet(), p.order.toSet())
+            val edges = p.pieces.flatMap { it.edges }
+            p.pieces.forEach { piece ->
+                assertEquals(piece.edges.first().from, piece.edges.last().to)
+                piece.edges.zipWithNext().forEach { (a, b) -> assertEquals(a.to, b.from) }
+            }
+            edges.filter { it.tab != 0f }.forEach { edge ->
+                val opposite = edges.single { it.from == edge.to && it.to == edge.from }
+                assertEquals(-edge.tab, opposite.tab, .00001f)
+                assertEquals(1f - edge.center, opposite.center, .00001f)
+            }
+            assertEquals(p, Jigsaw.create(count, seed))
+            assertNotEquals(p, Jigsaw.create(count, seed + 1))
+        }
+    }
+    @Test fun puzzleFollowsTypingAndMathAndKeepsOneDeadline() {
+        var c = WakeChallenge.create(AlarmDraft(typing = true, mathCount = 1, puzzle = true, puzzlePieces = 7, puzzleSeconds = 20)).start(1000)
+        assertEquals(AnswerResult.INCOMPLETE, c.placePiece(0, 1500).result)
+        c = c.submitCode(c.code, 2000).challenge
+        assertEquals(AnswerResult.INCOMPLETE, c.placePiece(0, 2500).result)
+        c = c.submitDigits((c.left + c.right).toString(), 3000).challenge
+        assertEquals(23000L, c.deadline)
+        for (id in 0..5) {
+            c = c.placePiece(id, 4000L + id).challenge
+            assertEquals(23000L, c.deadline); assertFalse(c.complete)
+        }
+        assertEquals(AnswerResult.INCOMPLETE, c.placePiece(0, 5000).result)
+        assertEquals(AnswerResult.INCOMPLETE, c.placePiece(8, 5000).result)
+        c = c.placePiece(6, 6000).challenge
+        assertTrue(c.complete); assertEquals(0L, c.deadline)
+    }
+    @Test fun puzzleTimeoutResetsWholeSequenceAndGeneratesNewShapes() {
+        var c = WakeChallenge.create(AlarmDraft(typing = true, mathCount = 1, puzzle = true, puzzleSeconds = 15)).start(1000)
+        c = c.submitCode(c.code, 2000).challenge
+        c = c.submitDigits((c.left + c.right).toString(), 3000).challenge
+        c = c.placePiece(0, 4000).challenge
+        val expired = c.placePiece(1, 18000)
+        assertEquals(AnswerResult.TIMED_OUT, expired.result)
+        assertTrue(expired.challenge.typingPending)
+        assertEquals(1, expired.challenge.remaining)
+        assertTrue(expired.challenge.placedPieces.isEmpty())
+        assertNotEquals(c.puzzleSeed, expired.challenge.puzzleSeed)
+    }
+    @Test fun puzzleAndKeyboardPersistWithProgressAndOldSavesGetDefaults() {
+        val draft = AlarmDraft(puzzle = true, puzzlePieces = 10, puzzleSeconds = 40, nativeMathKeyboard = true)
+        val record = AlarmRecord.create(draft, 100000, 50000, 1).copy(active = true)
+        val c = WakeChallenge.create(draft).start(1000).placePiece(3, 2000).challenge
+        val state = AppState(draft = draft, alarms = listOf(record), session = AlarmSession(record.id, c, opened = true))
+        assertEquals(state, AlarmJson.decode(AlarmJson.encode(state)))
+        val old = org.json.JSONObject(AlarmJson.encode(AppState()))
+        old.getJSONObject("draft").apply { listOf("puzzle", "puzzlePieces", "puzzleSeconds", "nativeMathKeyboard").forEach { remove(it) } }
+        assertEquals(AlarmDraft(), AlarmJson.decode(old.toString()).draft)
+        assertThrows(IllegalArgumentException::class.java) { AlarmDraft(puzzlePieces = 5).validate() }
+        assertThrows(IllegalArgumentException::class.java) { AlarmDraft(puzzleSeconds = 41).validate() }
+    }
+
+    @Test fun legacyTimersMoveToFiveSecondStepsWithoutLosingSavedAlarms() {
+        val json = org.json.JSONObject(AlarmJson.encode(AppState()))
+        json.getJSONObject("draft").put("mathSeconds", 12).put("typingSeconds", 23).put("puzzleSeconds", 37)
+        val d = AlarmJson.decode(json.toString()).draft
+        assertEquals(10, d.mathSeconds); assertEquals(25, d.typingSeconds); assertEquals(35, d.puzzleSeconds)
+        for (seconds in WakeTimers.math) AlarmDraft(mathSeconds = seconds).validate()
+        for (seconds in WakeTimers.typing) AlarmDraft(typingSeconds = seconds).validate()
+        for (seconds in WakeTimers.puzzle) AlarmDraft(puzzleSeconds = seconds).validate()
+        assertThrows(IllegalArgumentException::class.java) { AlarmDraft(mathSeconds = 12).validate() }
+    }
 }

@@ -215,15 +215,26 @@ import kotlin.math.*
                     val label = if (alarm.draft.timer) AlarmTime.duration(alarm.remaining(now, SystemClock.elapsedRealtime(), controller.scheduler.boot)) else
                         "%02d:%02d".format(alarm.draft.hour, alarm.draft.minute).let { _ -> LocalTime.of(alarm.draft.hour, alarm.draft.minute).format(DateTimeFormatter.ofPattern(if (use24) "HH:mm" else "h:mm a")) }
                     Text(label, fontSize = 32.sp, fontWeight = FontWeight.Light, color = if (alarm.enabled) theme.text else theme.muted)
-                    Text((if (alarm.draft.timer) "Countdown" else AlarmTime.daysLabel(alarm.draft.days)) + (if (alarm.draft.typing) "   Typing" else "") + (if (alarm.draft.mathCount > 0) "   Math · ${alarm.draft.mathCount}" else ""), color = theme.muted, fontSize = 11.sp)
+                    val details = listOfNotNull(if (alarm.draft.timer) "Countdown" else null, if (alarm.draft.typing) "Typing" else null,
+                        if (alarm.draft.mathCount > 0) "Math · ${alarm.draft.mathCount}" else null, if (alarm.draft.puzzle) "Puzzle" else null)
+                    if (details.isNotEmpty()) Text(details.joinToString("   "), color = theme.muted, fontSize = 11.sp)
                 }
                 if (!alarm.draft.timer) Switch(checked = alarm.enabled, onCheckedChange = { controller.enable(alarm, it) }, enabled = !alarm.active,
                     colors = SwitchDefaults.colors(checkedTrackColor = theme.accent2, checkedThumbColor = androidx.compose.ui.graphics.Color.White), modifier = Modifier.testTag("enabled-${alarm.id}"))
             }
             Row(verticalAlignment = Alignment.CenterVertically) {
                 if (alarm.draft.timer) Text("Rings at " + Instant.ofEpochMilli(alarm.target).atZone(ZoneId.systemDefault()).format(DateTimeFormatter.ofPattern(if (use24) "HH:mm" else "h:mm a")), color = theme.muted, fontSize = 11.sp, modifier = Modifier.weight(1f))
-                else Row(Modifier.weight(1f)) { (1..7).forEach { day -> Text(listOf("S", "M", "T", "W", "T", "F", "S")[day - 1], fontSize = 11.sp,
-                    color = if (day in alarm.draft.days) theme.accent else theme.muted, modifier = Modifier.weight(1f)) } }
+                else if (alarm.draft.days.size == 7) Text("Daily", color = theme.muted, fontSize = 11.sp, modifier = Modifier.weight(1f).testTag("daily-${alarm.id}"))
+                else Row(Modifier.weight(1f), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                    (1..7).forEach { day ->
+                        val selected = day in alarm.draft.days
+                        Box(Modifier.size(26.dp).then(if (selected) Modifier.background(theme.accent.copy(alpha = .1f), CircleShape)
+                            .border(1.dp, theme.accent.copy(alpha = .65f), CircleShape) else Modifier)
+                            .clearAndSetSemantics { contentDescription = listOf("Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday")[day - 1] + if (selected) ", selected" else ", not selected" }, contentAlignment = Alignment.Center) {
+                            Text(listOf("S", "M", "T", "W", "T", "F", "S")[day - 1], fontSize = 11.sp, color = if (selected) theme.accent else theme.muted)
+                        }
+                    }
+                }
                 Box {
                     IconButton(onClick = { menu = true }, enabled = !alarm.active, modifier = Modifier.size(40.dp, 32.dp).testTag("options-${alarm.id}")) { Icon(Icons.Default.MoreVert, "Options for ${alarm.label}", tint = theme.text) }
                     DropdownMenu(expanded = menu, onDismissRequest = { menu = false }) {

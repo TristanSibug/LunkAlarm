@@ -10,6 +10,11 @@ import android.widget.EditText
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.*
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -47,7 +52,7 @@ import online.reeeserve.lunkalarm.core.*
     val view = LocalView.current
     LaunchedEffect(Unit) { while (true) { now = android.os.SystemClock.elapsedRealtime(); delay(250) } }
     LunkStyle(theme) {
-        Column(Modifier.fillMaxSize().background(theme.background).windowInsetsPadding(WindowInsets.safeDrawing).testTag("ringing-screen")) {
+        Column(Modifier.fillMaxSize().background(theme.background).windowInsetsPadding(WindowInsets.safeDrawing).imePadding().testTag("ringing-screen")) {
             if (alarm.hasTests && !activity.locked) Row(Modifier.fillMaxWidth().padding(horizontal = 24.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
                 Text("${challenge.secondsLeft(now)}s", fontSize = 16.sp, fontWeight = FontWeight.SemiBold, color = theme.muted, modifier = Modifier.testTag("challenge-countdown"))
                 Spacer(Modifier.weight(1f)); Text("Sound", fontSize = 13.sp, color = theme.text)
@@ -77,31 +82,36 @@ import online.reeeserve.lunkalarm.core.*
                 } else if (challenge.remaining > 0) {
                     Text("${challenge.answered} / ${challenge.total} answered", fontSize = 17.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.testTag("math-progress"))
                     Text("${challenge.left} + ${challenge.right}", fontSize = 48.sp, fontWeight = FontWeight.Light, modifier = Modifier.testTag("math-problem"))
-                    Box(Modifier.fillMaxWidth().clip(RoundedCornerShape(14.dp)).background(theme.field).padding(14.dp), contentAlignment = Alignment.Center) {
-                        Text(answer.ifEmpty { "Your answer" }, fontSize = 26.sp, color = if (answer.isEmpty()) theme.muted else theme.text, modifier = Modifier.testTag("math-answer"))
-                    }
-                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                        listOf(listOf("1", "2", "3"), listOf("4", "5", "6"), listOf("7", "8", "9"), listOf("", "0", "⌫")).forEach { row ->
-                            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) { row.forEach { key ->
-                                if (key.isEmpty()) Spacer(Modifier.weight(1f).height(56.dp)) else Box(Modifier.weight(1f).height(56.dp).clip(RoundedCornerShape(14.dp)).background(theme.card)
-                                    .clickable {
-                                        haptic(view)
-                                        if (key == "⌫") answer = answer.dropLast(1)
-                                        else {
-                                            val value = answer + key
-                                            when (controller.submit(value, false)) {
-                                                AnswerResult.INCOMPLETE -> answer = value
-                                                AnswerResult.CORRECT -> { answer = ""; hint = "" }
-                                                AnswerResult.INCORRECT -> { answer = ""; hint = "Try that one again."; haptic(view, true) }
-                                                AnswerResult.TIMED_OUT -> { answer = ""; hint = "Time’s up. Tests restarted." }
-                                            }
-                                        }
-                                    }.testTag("key-$key"), contentAlignment = Alignment.Center) {
-                                    Text(key, fontSize = 24.sp, fontWeight = FontWeight.Medium)
-                                }
-                            } }
+                    fun enter(value: String) {
+                        if (value.length < answer.length) { answer = value; return }
+                        when (controller.submit(value, false)) {
+                            AnswerResult.INCOMPLETE -> answer = value
+                            AnswerResult.CORRECT -> { answer = ""; hint = "" }
+                            AnswerResult.INCORRECT -> { answer = ""; hint = "Try that one again."; haptic(view, true) }
+                            AnswerResult.TIMED_OUT -> { answer = ""; hint = "Time’s up. Tests restarted." }
                         }
                     }
+                    if (alarm.draft.nativeMathKeyboard) NativeMathField(answer, theme) { enter(it) }
+                    else {
+                        Box(Modifier.fillMaxWidth().clip(RoundedCornerShape(14.dp)).background(theme.field).padding(14.dp), contentAlignment = Alignment.Center) {
+                            Text(answer.ifEmpty { "Your answer" }, fontSize = 26.sp, color = if (answer.isEmpty()) theme.muted else theme.text, modifier = Modifier.testTag("math-answer"))
+                        }
+                        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                            listOf(listOf("1", "2", "3"), listOf("4", "5", "6"), listOf("7", "8", "9"), listOf("", "0", "⌫")).forEach { row ->
+                                Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) { row.forEach { key ->
+                                    if (key.isEmpty()) Spacer(Modifier.weight(1f).height(56.dp)) else Box(Modifier.weight(1f).height(56.dp).clip(RoundedCornerShape(14.dp)).background(theme.card)
+                                        .clickable {
+                                            haptic(view)
+                                            enter(if (key == "⌫") answer.dropLast(1) else answer + key)
+                                        }.testTag("key-$key"), contentAlignment = Alignment.Center) {
+                                        Text(key, fontSize = 24.sp, fontWeight = FontWeight.Medium)
+                                    }
+                                } }
+                            }
+                        }
+                    }
+                } else if (challenge.puzzlePending) {
+                    JigsawView(challenge, theme) { controller.placePiece(it) }
                 } else if (!alarm.hasTests) {
                     Spacer(Modifier.height(32.dp))
                     AccentButton("Stop alarm", theme, Modifier.testTag("stop-alarm")) { controller.finish() }
@@ -119,6 +129,8 @@ private class NoPasteEditText(context: Context) : EditText(context) {
     override fun isSuggestionsEnabled() = false
 }
 @Composable private fun CodeField(text: String, maximum: Int, theme: LunkTheme, change: (String) -> Unit) {
+    val keyboard = LocalSoftwareKeyboardController.current
+    DisposableEffect(Unit) { onDispose { keyboard?.hide() } }
     val latest by rememberUpdatedState(change)
     AndroidView(modifier = Modifier.fillMaxWidth().height(56.dp).clip(RoundedCornerShape(14.dp)).background(theme.field).testTag("wake-code"), factory = { context ->
         NoPasteEditText(context).apply {
@@ -146,4 +158,17 @@ private class NoPasteEditText(context: Context) : EditText(context) {
         field.filters = arrayOf(InputFilter { source, start, end, _, _, _ -> if (end - start > 1) "" else null }, InputFilter.LengthFilter(maximum))
         if (field.text.toString() != text) { field.suppress = true; field.setText(text); field.setSelection(text.length); field.suppress = false }
     })
+}
+
+@Composable private fun NativeMathField(answer: String, theme: LunkTheme, change: (String) -> Unit) {
+    val focus = remember { FocusRequester() }
+    val keyboard = LocalSoftwareKeyboardController.current
+    LaunchedEffect(Unit) { focus.requestFocus(); keyboard?.show() }
+    DisposableEffect(Unit) { onDispose { keyboard?.hide() } }
+    OutlinedTextField(value = answer, onValueChange = { value ->
+        if (value.all { it in '0'..'9' } && value.length <= 2) change(value)
+    }, singleLine = true, placeholder = { Text("Your answer", color = theme.muted) },
+        textStyle = androidx.compose.ui.text.TextStyle(color = theme.text, fontSize = 26.sp),
+        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.NumberPassword, imeAction = ImeAction.Done),
+        modifier = Modifier.fillMaxWidth().focusRequester(focus).testTag("native-math-answer"))
 }

@@ -59,21 +59,27 @@ object AlarmJson {
         put("days", JSONArray(d.days.sorted())); put("tone", d.tone); put("volume", d.volume.toDouble()); put("gradual", d.gradual)
         put("typing", d.typing); put("codeLength", d.codeLength); put("typingSeconds", d.typingSeconds)
         put("mathCount", d.mathCount); put("mathSeconds", d.mathSeconds)
+        put("nativeMathKeyboard", d.nativeMathKeyboard); put("puzzle", d.puzzle); put("puzzlePieces", d.puzzlePieces); put("puzzleSeconds", d.puzzleSeconds)
     }
     private fun draft(j: JSONObject): AlarmDraft = AlarmDraft(j.getBoolean("timer"), j.getString("name"), j.getInt("hour"), j.getInt("minute"),
         j.getInt("seconds"), j.getJSONArray("days").let { a -> (0 until a.length()).map { a.getInt(it) }.toSet() },
         j.getString("tone"), j.getDouble("volume").toFloat(), j.getBoolean("gradual"), j.getBoolean("typing"),
-        j.getInt("codeLength"), j.getInt("typingSeconds"), j.getInt("mathCount"), j.getInt("mathSeconds")).also { it.validate() }
+        j.getInt("codeLength"), WakeTimers.nearest(j.getInt("typingSeconds"), WakeTimers.typing), j.getInt("mathCount"), WakeTimers.nearest(j.getInt("mathSeconds"), WakeTimers.math), j.optBoolean("nativeMathKeyboard", false),
+        j.optBoolean("puzzle", false), j.optInt("puzzlePieces", 8), WakeTimers.nearest(j.optInt("puzzleSeconds", 30), WakeTimers.puzzle)).also { it.validate() }
     private fun challenge(c: WakeChallenge) = JSONObject().apply {
         put("typing", c.typing); put("total", c.total); put("codeLength", c.codeLength); put("typingSeconds", c.typingSeconds); put("mathSeconds", c.mathSeconds)
         put("code", c.code); put("typingPending", c.typingPending); put("remaining", c.remaining); put("left", c.left); put("right", c.right)
         put("deadline", c.deadline); put("resets", c.resets)
+        put("puzzle", c.puzzle); put("puzzlePieces", c.puzzlePieces); put("puzzleSeconds", c.puzzleSeconds); put("puzzleSeed", c.puzzleSeed)
+        put("placedPieces", JSONArray(c.placedPieces.sorted()))
     }
-    private fun challenge(j: JSONObject) = WakeChallenge(j.getBoolean("typing"), j.getInt("total"), j.getInt("codeLength"), j.getInt("typingSeconds"),
-        j.getInt("mathSeconds"), j.getString("code"), j.getBoolean("typingPending"), j.getInt("remaining"), j.getInt("left"), j.getInt("right"),
-        j.getLong("deadline"), j.getInt("resets")).also {
+    private fun challenge(j: JSONObject) = WakeChallenge(j.getBoolean("typing"), j.getInt("total"), j.getInt("codeLength"), WakeTimers.nearest(j.getInt("typingSeconds"), WakeTimers.typing),
+        WakeTimers.nearest(j.getInt("mathSeconds"), WakeTimers.math), j.getString("code"), j.getBoolean("typingPending"), j.getInt("remaining"), j.getInt("left"), j.getInt("right"),
+        j.getLong("deadline"), j.getInt("resets"), j.optBoolean("puzzle", false), j.optInt("puzzlePieces", 8),
+        WakeTimers.nearest(j.optInt("puzzleSeconds", 30), WakeTimers.puzzle), j.optLong("puzzleSeed", 0), j.optJSONArray("placedPieces")?.let { a -> (0 until a.length()).map { a.getInt(it) }.toSet() } ?: emptySet()).also {
+        require(it.puzzlePieces in 6..10 && it.puzzleSeconds in 15..40 && it.placedPieces.all { id -> id in 0 until it.puzzlePieces })
         require(it.total in 0..8 && it.remaining in 0..it.total && it.codeLength in 4..10 && it.code.length == it.codeLength)
-        require(it.typingSeconds in 15..30 && it.mathSeconds in 5..12 && it.left in 1..20 && it.right in 1..20)
+        require(it.typingSeconds in WakeTimers.typing && it.mathSeconds in WakeTimers.math && it.left in 1..20 && it.right in 1..20)
     }
     fun encode(state: AppState): String = JSONObject().apply {
         put("version", 1); put("theme", state.theme); put("use24Hour", state.use24Hour); put("draft", draft(state.draft))

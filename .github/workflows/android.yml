@@ -70,30 +70,11 @@ jobs:
       - name: Package and verify installable APK
         if: success()
         run: |
-          cp android/app/build/outputs/apk/debug/app-debug.apk artifacts/LunkAlarm-Android-1.0.0.apk
-          "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --verbose --print-certs artifacts/LunkAlarm-Android-1.0.0.apk > artifacts/android-signature.txt
+          cp android/app/build/outputs/apk/debug/app-debug.apk artifacts/LunkAlarm-Android-1.1.0.apk
+          "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --verbose --print-certs artifacts/LunkAlarm-Android-1.1.0.apk > artifacts/android-signature.txt
           git archive --format=zip --output=artifacts/LunkAlarm-Android-source.zip HEAD android
           cd artifacts
-          sha256sum LunkAlarm-Android-1.0.0.apk > SHA256SUMS.txt
-      - name: Publish Android test APK on GitHub Releases
-        id: release
-        if: success() && github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          tag=android-v1.0.0
-          if gh release view "$tag" >/dev/null 2>&1; then
-            target=$(gh release view "$tag" --json targetCommitish -q .targetCommitish)
-            if [ "$target" != "$GITHUB_SHA" ]; then
-              echo 'This Android version is already published. Bump the version before replacing it.' >&2
-              exit 1
-            fi
-            gh release upload "$tag" artifacts/LunkAlarm-Android-1.0.0.apk artifacts/SHA256SUMS.txt artifacts/LunkAlarm-Android-source.zip --clobber
-          else
-            gh release create "$tag" --target "$GITHUB_SHA" --title 'LunkAlarm for Android 1.0.0' \
-              --notes-file android/RELEASE_NOTES.md --prerelease --latest=false \
-              artifacts/LunkAlarm-Android-1.0.0.apk artifacts/SHA256SUMS.txt artifacts/LunkAlarm-Android-source.zip
-          fi
+          sha256sum LunkAlarm-Android-1.1.0.apk > SHA256SUMS.txt
       - uses: actions/upload-artifact@v5
         if: always()
         with:
@@ -112,7 +93,7 @@ jobs:
           BUILD_STATUS: ${{ job.status }}
           APK_STATUS: ${{ steps.apk.outcome }}
           EMULATOR_STATUS: ${{ steps.emulator.outcome }}
-          RELEASE_STATUS: ${{ steps.release.outcome }}
+          RELEASE_STATUS: manual
         run: |
           report_dir="$RUNNER_TEMP/lunkalarm-android-report"
           if git ls-remote --exit-code --heads origin android-build-reports >/dev/null; then

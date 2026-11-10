@@ -7,17 +7,29 @@ import kotlin.math.ceil
 
 const val MAX_DURATION_SECONDS = 99 * 3600 + 59 * 60 + 59
 
+object WakeTimers {
+    val math = listOf(5, 10, 15)
+    val typing = listOf(15, 20, 25, 30)
+    val puzzle = listOf(15, 20, 25, 30, 35, 40)
+    fun nearest(value: Int, choices: List<Int>): Int {
+        require(value in choices.first()..choices.last()) { "Invalid wake-up test timer." }
+        return choices.minBy { kotlin.math.abs(it - value) }
+    }
+}
+
 data class AlarmDraft(
     val timer: Boolean = false, val name: String = "", val hour: Int = 7, val minute: Int = 0,
     val seconds: Int = 1800, val days: Set<Int> = (1..7).toSet(), val tone: String = "classic-beep",
     val volume: Float = 1f, val gradual: Boolean = false, val typing: Boolean = false,
-    val codeLength: Int = 8, val typingSeconds: Int = 30, val mathCount: Int = 0, val mathSeconds: Int = 10
+    val codeLength: Int = 8, val typingSeconds: Int = 30, val mathCount: Int = 0, val mathSeconds: Int = 10,
+    val nativeMathKeyboard: Boolean = false, val puzzle: Boolean = false, val puzzlePieces: Int = 8, val puzzleSeconds: Int = 30
 ) {
     fun validate() {
         require(hour in 0..23 && minute in 0..59) { "Choose a valid time." }
         require(!timer || seconds in 1..MAX_DURATION_SECONDS) { "Choose a duration from 1 second to 99 hours, 59 minutes, 59 seconds." }
         require(days.all { it in 1..7 } && volume in .1f..1f && mathCount in 0..8)
-        require(codeLength in 4..10 && typingSeconds in 15..30 && mathSeconds in 5..12)
+        require(puzzlePieces in 6..10 && puzzleSeconds in WakeTimers.puzzle)
+        require(codeLength in 4..10 && typingSeconds in WakeTimers.typing && mathSeconds in WakeTimers.math)
     }
 }
 
@@ -26,7 +38,7 @@ data class AlarmRecord(
     val target: Long, val elapsedTarget: Long = 0, val boot: Int = -1,
     val enabled: Boolean = true, val active: Boolean = false, val error: String? = null
 ) {
-    val hasTests get() = draft.typing || draft.mathCount > 0
+    val hasTests get() = draft.typing || draft.mathCount > 0 || draft.puzzle
     val label get() = draft.name.ifBlank { if (draft.timer) "Timer" else "Alarm" }
     fun remaining(now: Long, elapsed: Long, bootCount: Int): Long =
         ((if (boot == bootCount && elapsedTarget > 0) elapsedTarget - elapsed else target - now)).coerceAtLeast(0)

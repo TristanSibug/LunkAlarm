@@ -71,6 +71,14 @@ class AlarmController(private val context: Context, val repository: AlarmReposit
                 sound = session.sound || result.result == AnswerResult.TIMED_OUT)) } }) return AnswerResult.INCOMPLETE
         return result.result
     }
+    fun placePiece(piece: Int): AnswerResult {
+        val session = repository.state.value.session ?: return AnswerResult.INCOMPLETE
+        if (!session.opened) return AnswerResult.INCOMPLETE
+        val result = session.challenge.placePiece(piece, SystemClock.elapsedRealtime())
+        if (!withError { repository.update { it.copy(session = session.copy(challenge = result.challenge,
+                sound = session.sound || result.result == AnswerResult.TIMED_OUT)) } }) return AnswerResult.INCOMPLETE
+        return result.result
+    }
     fun tick() {
         val session = repository.state.value.session ?: return
         val expired = session.challenge.expire(SystemClock.elapsedRealtime())

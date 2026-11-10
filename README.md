@@ -9,7 +9,7 @@ LunkAlarm is an alarm clock available as a **website**, a **native Android app**
 | Platform | Get started | Requirements | Source and setup |
 | --- | --- | --- | --- |
 | Website | [alarm.reeeserve.online](https://alarm.reeeserve.online) | A modern browser | [`web/`](web/) · [Deployment guide](docs/WEBSITE-DEPLOYMENT.md) |
-| Android | [Download the APK](https://github.com/TristanSibug/LunkAlarm/releases/tag/android-v1.0.0) | Android 8.0 or later | [`android/`](android/) · [Android guide](android/README.md) |
+| Android | [Download the APK](https://github.com/TristanSibug/LunkAlarm/releases) | Android 8.0 or later | [`android/`](android/) · [Android guide](android/README.md) |
 | iOS | [Releases](https://github.com/TristanSibug/LunkAlarm/releases) · [IPA builds](https://github.com/TristanSibug/LunkAlarm/actions/workflows/ios.yml) | iOS 26 or later; Apple signing/provisioning | [`ios/`](ios/) · [iOS guide](ios/README.md) |
 
 The Android app uses **Kotlin and Jetpack Compose**. The iOS app uses **SwiftUI and AlarmKit**. Both are native apps with their own system alarm integration. The standalone website runs directly in a browser.
@@ -22,8 +22,8 @@ The repository also contains the earlier native C# / WPF Windows implementation,
 - Saved alarms with optional names, daily or selected-weekday repeats, editing, duplication, and swipe-to-delete with haptic feedback.
 - Active countdowns alongside saved alarms. Completed countdowns disappear; At a time alarms stay until deleted.
 - Floating Add alarm / Save changes buttons, looping time controls, and collapsible wake-up test settings.
-- Fourteen app-owned themes, ten offline ringtones, sound previews, audio-file imports, a volume slider, and optional gradual fade-in.
-- Configurable timed typing and math tests, automatic math answer submission, an answering sound switch, and progress resets when a test times out.
+- Nineteen app-owned themes, ten offline ringtones, sound previews, audio-file imports, a volume slider, and optional gradual fade-in.
+- Configurable timed typing and math tests (plus Android jigsaw puzzles), automatic math answer submission, an answering sound switch, and progress resets when a test times out.
 - Native alarm scheduling so a scheduled alarm does not depend on keeping the clock screen open.
 
 Alarms, themes, and imported sounds are saved locally on each device. There is no account requirement or cross-device synchronization. The website and mobile apps have separate saved data, and some features differ by platform.
@@ -53,7 +53,7 @@ To deploy your own copy with Vercel, use **Root Directory `web`** and **Framewor
 | [`src/Wake.Windows/`](src/Wake.Windows/) | Earlier native WPF Windows app |
 | [`docs/`](docs/) | Deployment and Windows documentation |
 
-The **Native iOS app** workflow builds simulator/device targets, runs core and native UI tests, and uploads an unsigned IPA. The **Native Android app** workflow builds a signed development APK, runs core tests, Android lint, and emulator checks, and publishes successful test builds to GitHub Releases. Each platform guide includes local build commands and installation details.
+The **Native iOS app** workflow builds simulator/device targets, runs core and native UI tests, and uploads an unsigned IPA. The **Native Android app** workflow builds a signed development APK, runs core tests, Android lint, and emulator checks, and packages successful builds in its **LunkAlarm-Android** Actions artifact. GitHub Releases are uploaded manually by the maintainer. Each platform guide includes local build commands and installation details.
 
 MIT license. The supplied app's icon and original sound recipes are reused.
 

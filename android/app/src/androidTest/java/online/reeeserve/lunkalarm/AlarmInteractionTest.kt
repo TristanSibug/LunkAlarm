@@ -122,7 +122,7 @@ class AlarmInteractionTest {
         rule.onNodeWithTag("big-clock").assertExists()
     }
     @Test fun d_mathAutoSubmissionAndWrongDigitsClear() {
-        mission(AlarmDraft(mathCount = 2, mathSeconds = 12, volume = .2f))
+        mission(AlarmDraft(mathCount = 2, mathSeconds = 15, volume = .2f))
         rule.onNodeWithTag("challenge-sound").assertIsOff()
         rule.onNodeWithText("OK").assertDoesNotExist()
         val expectedLength = (repo.state.value.session!!.challenge.left + repo.state.value.session!!.challenge.right).toString().length
@@ -174,10 +174,10 @@ class AlarmInteractionTest {
         assertEquals(0L, repo.state.value.session!!.challenge.deadline)
     }
     @Test fun h_queuedAlarmStartsItsTestsWithoutReopeningActivity() {
-        mission(AlarmDraft(mathCount = 1, mathSeconds = 12, volume = .2f))
+        mission(AlarmDraft(mathCount = 1, mathSeconds = 15, volume = .2f))
         var second = ""
         rule.runOnUiThread {
-            assertTrue(controller.save(AlarmDraft(timer = true, seconds = 120, mathCount = 1, mathSeconds = 12, tone = "soft-chime", volume = .2f)))
+            assertTrue(controller.save(AlarmDraft(timer = true, seconds = 120, mathCount = 1, mathSeconds = 15, tone = "soft-chime", volume = .2f)))
             second = repo.state.value.alarms.first { !it.active }.id
             controller.scheduler.cancel(second); controller.trigger(second)
         }
@@ -201,4 +201,52 @@ class AlarmInteractionTest {
         rule.onNodeWithText("Preview", substring = false).assertExists()
     }
 
+
+    @Test fun j_timeWheelCanOpenKeyboardAndCommitTypedMinutes() {
+        openEditor()
+        rule.onNodeWithTag("editor-form").performScrollToNode(hasTestTag("time-minute"))
+        val field = device.findObject(androidx.test.uiautomator.By.clazz("android.widget.EditText").text("00"))
+        assertNotNull(field)
+        field.click(); field.text = "42"
+        device.pressEnter()
+        device.pressBack()
+        rule.onNodeWithTag("save-alarm").performClick()
+        rule.waitUntil(5000) { repo.state.value.alarms.isNotEmpty() }
+        assertEquals(42, repo.state.value.alarms.single().draft.minute)
+    }
+    @Test fun k_nativeMathKeyboardUsesTheSameAutomaticAnswerRules() {
+        mission(AlarmDraft(mathCount = 2, mathSeconds = 15, nativeMathKeyboard = true, volume = .2f))
+        rule.onNodeWithTag("key-1").assertDoesNotExist()
+        rule.onNodeWithTag("native-math-answer").performTextInput("99")
+        rule.onNodeWithTag("native-math-answer").assertTextEquals("")
+        repeat(2) {
+            val c = repo.state.value.session!!.challenge
+            rule.onNodeWithTag("native-math-answer").performTextInput((c.left + c.right).toString())
+        }
+        rule.waitUntil(8000) { repo.state.value.session == null }
+    }
+    @Test fun l_puzzleSupportsTapPlacementAndFinishesOnlyAfterAllPieces() {
+        mission(AlarmDraft(puzzle = true, puzzlePieces = 7, puzzleSeconds = 40, volume = .2f))
+        rule.onNodeWithTag("challenge-sound").assertIsOff()
+        rule.onNodeWithTag("puzzle-piece-0").performScrollTo().performClick()
+        rule.onNodeWithTag("puzzle-slot-1").performScrollTo().performClick()
+        assertTrue(repo.state.value.session!!.challenge.placedPieces.isEmpty())
+        for (id in 0..6) {
+            rule.onNodeWithTag("puzzle-piece-$id").performScrollTo().performClick()
+            rule.onNodeWithTag("puzzle-slot-$id").performScrollTo().performClick()
+        }
+        rule.waitUntil(8000) { repo.state.value.session == null }
+    }
+    @Test fun m_allThemesKeepInheritedLabelsReadable() {
+        for (theme in Themes.all) {
+            rule.runOnIdle { repo.update { it.copy(theme = theme.id) } }
+            openEditor()
+            rule.onNodeWithTag("editor-form").performScrollToNode(hasTestTag("mode-timer"))
+            rule.onNodeWithTag("mode-timer").performClick()
+            rule.onNodeWithText("5 min").assertExists()
+            capture("android-theme-${theme.id}")
+            rule.onNodeWithTag("close-editor").performClick()
+            rule.onNodeWithText("Clock", substring = false).performClick()
+        }
+    }
 }

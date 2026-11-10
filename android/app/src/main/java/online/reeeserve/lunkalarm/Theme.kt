@@ -36,16 +36,21 @@ private fun palette(id: String, name: String, bg: Long, card: Long, text: Long, 
 object Themes {
     val all = listOf(
         palette("light", "Light", 0xf3f2fa, 0xffffff, 0x1c1b2e, 0x5b5c76, 0xc4520a, 0xd6336c, true, true),
+        palette("eggshell-white", "Eggshell White", 0xf7f3e8, 0xfffefa, 0x28343c, 0x636b70, 0x566a78, 0x6d6252, true),
         palette("linen", "Linen", 0xf5efe5, 0xfffcf6, 0x302921, 0x766858, 0x986020, 0xb34938, true),
         palette("sea-glass", "Sea Glass", 0xeaf3ef, 0xf9fffc, 0x173c37, 0x526d67, 0x237268, 0x346d8e, true),
+        palette("heritage", "Heritage", 0xf9efd4, 0xfff8e8, 0x032d3f, 0x52626b, 0x7d0500, 0x032d3f, true),
         palette("oled", "OLED Black", 0x000000, 0x0c0c0e, 0xf2f2f5, 0x9a9aa3, 0xffa94d, 0xff6b7a),
         palette("dark", "Dark", 0x17181c, 0x212329, 0xececf1, 0x9a9ba6, 0xffa94d, 0xff6b7a),
         palette("sunrise", "Sunrise", 0x0a0c16, 0x171923, 0xf4f2ff, 0x9a9bb8, 0xffa94d, 0xff6b7a, glow = true),
         palette("ember", "Ember", 0x1b1110, 0x2b1d1a, 0xffeee3, 0xc3a49a, 0xffbb74, 0xef876d),
+        palette("midnight-cherry", "Midnight Cherry", 0x260f19, 0x3d1c2a, 0xfff2f6, 0xcaa6b5, 0x9ecbf5, 0xff8d87),
         palette("forest", "Forest", 0x0b1714, 0x142720, 0xe4f2e9, 0x9bb5a4, 0x9dcc88, 0x59c7a5),
         palette("nord", "Nord", 0x2e3440, 0x3b4252, 0xeceff4, 0xa4b1c4, 0x88c0d0, 0x81a1c1),
         palette("deep-ocean", "Deep Ocean", 0x081a24, 0x102b38, 0xe1f5fb, 0x99b9c6, 0x79d2de, 0x82b0f7),
         palette("vscode-blue", "VS Code Blue", 0x002451, 0x082e59, 0xe8f0ff, 0xa2bcdb, 0x5db0ff, 0x3a86ff),
+        palette("cobalt-coral", "Cobalt & Coral", 0x101c3d, 0x1d3057, 0xf2f6ff, 0xa8b8d6, 0x92bdff, 0xff8a85),
+        palette("signal-blue", "Signal Blue", 0x032d3f, 0xbe0d1f, 0xf1f7fa, 0xe8d7e1, 0xd2e7f2, 0x699db8),
         palette("tokyo-night", "Tokyo Night", 0x1a1b26, 0x24283b, 0xc0caf5, 0x8c93bf, 0x7aa2f7, 0xbb9af7),
         palette("amethyst", "Amethyst", 0x171123, 0x251d36, 0xf1eaff, 0xb3a3cb, 0xc5a2ff, 0xf0a4ce),
         palette("dracula", "Dracula", 0x282a36, 0x303241, 0xf8f8f2, 0xa7a5bd, 0xbd93f9, 0xff79c6))
@@ -55,7 +60,10 @@ object Themes {
     val colors = if (theme.light) lightColorScheme() else darkColorScheme()
     MaterialTheme(colorScheme = colors.copy(primary = theme.accent, onPrimary = theme.onAccent, secondary = theme.accent2,
         background = theme.background, surface = theme.card, onBackground = theme.text, onSurface = theme.text,
-        onSurfaceVariant = theme.muted, outline = theme.border, surfaceVariant = theme.field), content = content)
+        onSurfaceVariant = theme.muted, outline = theme.border, surfaceVariant = theme.field)) {
+        // MaterialTheme alone does not provide a content color to custom Box/Row controls.
+        CompositionLocalProvider(LocalContentColor provides theme.text, content = content)
+    }
 }
 fun haptic(view: View, strong: Boolean = false) {
     view.performHapticFeedback(if (strong) HapticFeedbackConstants.LONG_PRESS else HapticFeedbackConstants.KEYBOARD_TAP)
@@ -73,23 +81,53 @@ fun haptic(view: View, strong: Boolean = false) {
 }
 @Composable fun SectionLabel(text: String, theme: LunkTheme) { Text(text.uppercase(), color = theme.muted, fontSize = 11.sp, letterSpacing = .7.sp) }
 @Composable fun Wheel(value: Int, range: IntRange, theme: LunkTheme, tag: String, modifier: Modifier = Modifier,
-    labels: List<String>? = null, change: (Int) -> Unit) {
+    labels: List<String>? = null, editable: Boolean = false, change: (Int) -> Unit) {
     val latest by rememberUpdatedState(change)
     AndroidView(modifier = modifier.height(116.dp).clip(RoundedCornerShape(12.dp)).testTag(tag), factory = { context ->
         NumberPicker(ContextThemeWrapper(context, if (theme.light) android.R.style.Theme_Material_Light else android.R.style.Theme_Material)).apply {
             minValue = range.first; maxValue = range.last; wrapSelectorWheel = true
-            descendantFocusability = NumberPicker.FOCUS_BLOCK_DESCENDANTS
+            descendantFocusability = if (editable) NumberPicker.FOCUS_AFTER_DESCENDANTS else NumberPicker.FOCUS_BLOCK_DESCENDANTS
             setOnValueChangedListener { _, _, selected -> latest(selected) }
+            if (editable) for (index in 0 until childCount) (getChildAt(index) as? EditText)?.let { field ->
+                field.addTextChangedListener(object : android.text.TextWatcher {
+                    override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
+                    override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {}
+                    override fun afterTextChanged(value: android.text.Editable?) {
+                        // Update the draft while typing, including when Save is tapped before Done.
+                        if (field.hasFocus()) value.toString().toIntOrNull()?.takeIf { it in range }?.let { latest(it) }
+                    }
+                })
+            }
         }
     }, update = { picker ->
         picker.setOnValueChangedListener(null)
-        picker.displayedValues = null; picker.minValue = range.first; picker.maxValue = range.last
-        picker.displayedValues = labels?.toTypedArray(); picker.wrapSelectorWheel = range.count() > 2
-        picker.value = value.coerceIn(range)
+        val entering = editable && (0 until picker.childCount).any { (picker.getChildAt(it) as? EditText)?.hasFocus() == true }
+        if (!entering) {
+            picker.displayedValues = null; picker.minValue = range.first; picker.maxValue = range.last
+            picker.displayedValues = labels?.toTypedArray(); picker.wrapSelectorWheel = range.count() > 2
+            picker.value = value.coerceIn(range)
+        }
         if (Build.VERSION.SDK_INT >= 29) { picker.textColor = theme.text.toArgb(); picker.textSize = 28f * picker.resources.displayMetrics.scaledDensity; picker.selectionDividerHeight = 0 }
         for (index in 0 until picker.childCount) (picker.getChildAt(index) as? EditText)?.apply {
             setTextColor(theme.text.toArgb()); textSize = 28f; typeface = Typeface.create("sans-serif-light", Typeface.NORMAL)
-            isCursorVisible = false; isFocusable = false; isLongClickable = false; setBackgroundColor(android.graphics.Color.TRANSPARENT)
+            isCursorVisible = editable; isFocusable = editable; isFocusableInTouchMode = editable; isLongClickable = false
+            setBackgroundColor(android.graphics.Color.TRANSPARENT)
+            if (editable) {
+                inputType = android.text.InputType.TYPE_CLASS_NUMBER
+                imeOptions = android.view.inputmethod.EditorInfo.IME_ACTION_DONE or android.view.inputmethod.EditorInfo.IME_FLAG_NO_EXTRACT_UI
+                setOnClickListener {
+                    requestFocus(); selectAll()
+                    (context.getSystemService(android.content.Context.INPUT_METHOD_SERVICE) as android.view.inputmethod.InputMethodManager).showSoftInput(this, android.view.inputmethod.InputMethodManager.SHOW_IMPLICIT)
+                }
+                setOnEditorActionListener { _, action, event ->
+                    if (action == android.view.inputmethod.EditorInfo.IME_ACTION_DONE || event?.keyCode == android.view.KeyEvent.KEYCODE_ENTER) {
+                        clearFocus() // NumberPicker validates/commits through its own focus listener.
+                        latest(picker.value)
+                        (context.getSystemService(android.content.Context.INPUT_METHOD_SERVICE) as android.view.inputmethod.InputMethodManager).hideSoftInputFromWindow(windowToken, 0)
+                        true
+                    } else false
+                }
+            }
         }
         picker.contentDescription = "$tag: ${labels?.getOrNull(value - range.first) ?: value}"
         picker.setOnValueChangedListener { _, _, selected -> latest(selected) }
