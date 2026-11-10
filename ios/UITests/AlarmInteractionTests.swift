@@ -182,7 +182,17 @@ final class AlarmInteractionTests: XCTestCase {
         let save = app.buttons["scheduleAlarm"]
         for _ in 0..<9 where !save.isHittable { app.swipeUp(velocity: .slow) }
         save.tap()
+        // The list already exists behind the editor. Wait for modal dismissal,
+        // otherwise the next tap can land on the outgoing editor's backdrop.
+        let closed = XCTNSPredicateExpectation(predicate: NSPredicate(format: "exists == false"), object: app.buttons["closeAlarmEditor"])
+        wait(for: [closed], timeout: 5)
         XCTAssertTrue(app.staticTexts["savedAlarmsTitle"].waitForExistence(timeout: 5))
+    }
+    @MainActor private func returnToClock(_ app: XCUIApplication) {
+        app.buttons["Clock"].tap()
+        let finished = XCTNSPredicateExpectation(predicate: NSPredicate(format: "exists == false"), object: app.staticTexts["savedAlarmsTitle"])
+        wait(for: [finished], timeout: 5)
+        XCTAssertTrue(app.descendants(matching: .any)["alarmSwipeHint"].waitForExistence(timeout: 5))
     }
     @MainActor func testBlankNameEditInPlaceAndExactDuplicate() {
         let app = launch()
@@ -332,21 +342,25 @@ final class AlarmInteractionTests: XCTestCase {
         for _ in 0..<5 where !daily.isHittable { app.swipeUp(velocity: .slow) }
         daily.tap() // The previous custom days are remembered; select all for this alarm.
         saveEditor(app)
-        app.buttons["Clock"].tap()
+        returnToClock(app)
         for name in ["Eggshell White", "Heritage", "Midnight Cherry", "Cobalt & Coral", "Signal Blue"] {
             app.buttons["Theme"].tap()
+            XCTAssertTrue(app.navigationBars["Theme"].waitForExistence(timeout: 5))
+            XCTAssertTrue(app.scrollViews.firstMatch.waitForExistence(timeout: 5))
             let choice = app.buttons[name]
             for _ in 0..<12 where !choice.isHittable { app.scrollViews.firstMatch.swipeUp(velocity: .slow) }
             XCTAssertTrue(choice.isHittable, "Theme must be reachable: \(name)")
             choice.tap()
             XCTAssertTrue(choice.isSelected)
             app.buttons["Done"].tap()
+            let dismissed = XCTNSPredicateExpectation(predicate: NSPredicate(format: "exists == false"), object: app.navigationBars["Theme"])
+            wait(for: [dismissed], timeout: 5)
             XCTAssertTrue(app.descendants(matching: .any)["alarmSwipeHint"].waitForExistence(timeout: 5))
             capture(app, name: "ios-theme-\(name)-clock")
             app.swipeUp(velocity: .fast)
             XCTAssertTrue(app.staticTexts["savedAlarmsTitle"].waitForExistence(timeout: 5))
             capture(app, name: "ios-theme-\(name)-alarms")
-            app.buttons["Clock"].tap()
+            returnToClock(app)
         }
     }
 
