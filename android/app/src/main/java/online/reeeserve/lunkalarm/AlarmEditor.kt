@@ -12,6 +12,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.*
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.*
@@ -30,6 +31,8 @@ import online.reeeserve.lunkalarm.core.*
     change: (AlarmDraft) -> Unit, close: () -> Unit, permissions: () -> Unit) {
     val repo = activity.graph.repository; val controller = activity.graph.controller
     var sheet by remember { mutableStateOf<String?>(null) }
+    var testSettings by rememberSaveable { mutableStateOf<WakeTest?>(null) }
+    var testPractice by rememberSaveable { mutableStateOf<WakeTest?>(null) }
     var previewing by remember { mutableStateOf(false) }
     var importing by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
@@ -146,7 +149,7 @@ import online.reeeserve.lunkalarm.core.*
             item {
                 Column(Modifier.testTag("wake-tests"), verticalArrangement = Arrangement.spacedBy(16.dp)) {
                     SectionLabel("Wake-up tests", theme)
-                    WakeTestSelector(draft, theme, change) { previewing = false; preview.stop() }
+                    WakeTestSelector(draft, theme) { testSettings = it }
                 }
             }
         }
@@ -155,6 +158,8 @@ import online.reeeserve.lunkalarm.core.*
             else if (controller.save(draft, editingId)) close()
         }
     }
+    WakeTestSheets(draft, theme, change, { previewing = false; preview.stop() }, testSettings, testPractice,
+        { testSettings = it }, { testPractice = it })
     if (sheet != null) ModalBottomSheet(onDismissRequest = { sheet = null; previewing = false }, containerColor = theme.card,
         sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)) {
         when (sheet) {

@@ -37,17 +37,14 @@ enum class WakeTest(val title: String, val short: String) {
         puzzle = this == PUZZLE, mines = this == MINES, sudoku = this == SUDOKU)
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable fun WakeTestSelector(draft: AlarmDraft, theme: LunkTheme, change: (AlarmDraft) -> Unit, beforePractice: () -> Unit) {
-    var settings by rememberSaveable { mutableStateOf<WakeTest?>(null) }
-    var practice by rememberSaveable { mutableStateOf<WakeTest?>(null) }
+@Composable fun WakeTestSelector(draft: AlarmDraft, theme: LunkTheme, open: (WakeTest) -> Unit) {
     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(7.dp)) {
         WakeTest.entries.forEach { test ->
             val enabled = test.enabled(draft)
             Box(Modifier.weight(1f).clip(RoundedCornerShape(12.dp))
                 .background(if (enabled) theme.accent2.copy(alpha = .1f) else theme.field)
                 .border(if (enabled) 1.5.dp else 1.dp, if (enabled) theme.accent2 else theme.border, RoundedCornerShape(12.dp))
-                .clickable(role = Role.Button) { settings = test }
+                .clickable(role = Role.Button) { open(test) }
                 .semantics { contentDescription = test.title; selected = enabled }.testTag("test-tile-${test.name.lowercase()}")) {
                 Column(Modifier.fillMaxWidth().padding(top = 18.dp, bottom = 12.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(9.dp)) {
                     TestGlyph(test, if (enabled) theme.accent2 else theme.muted, Modifier.size(if (test == WakeTest.TYPING) 36.dp else 25.dp, 25.dp))
@@ -57,8 +54,15 @@ enum class WakeTest(val title: String, val short: String) {
             }
         }
     }
+}
+
+// Host modal windows outside the editor's lazy rows. Opening an IME can remove a
+// row from composition; it must not destroy an active practice session or sheet.
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable fun WakeTestSheets(draft: AlarmDraft, theme: LunkTheme, change: (AlarmDraft) -> Unit, beforePractice: () -> Unit,
+    settings: WakeTest?, practice: WakeTest?, setSettings: (WakeTest?) -> Unit, setPractice: (WakeTest?) -> Unit) {
     settings?.let { test ->
-        ModalBottomSheet(onDismissRequest = { settings = null }, containerColor = theme.card,
+        ModalBottomSheet(onDismissRequest = { setSettings(null) }, containerColor = theme.card,
             dragHandle = { Box(Modifier.fillMaxWidth().padding(vertical = 12.dp), contentAlignment = Alignment.Center) {
                 Box(Modifier.size(32.dp, 4.dp).clip(RoundedCornerShape(50)).background(theme.muted.copy(alpha = .7f)))
             } }, sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)) {
@@ -67,13 +71,13 @@ enum class WakeTest(val title: String, val short: String) {
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     Row(Modifier.weight(1f), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     Text(test.title, color = theme.text, fontSize = 19.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f, fill = false))
-                    OutlinedButton(onClick = { beforePractice(); practice = test }, contentPadding = PaddingValues(horizontal = 18.dp, vertical = 6.dp),
+                    OutlinedButton(onClick = { beforePractice(); setPractice(test) }, contentPadding = PaddingValues(horizontal = 18.dp, vertical = 6.dp),
                         border = BorderStroke(1.dp, theme.accent2), modifier = Modifier.widthIn(min = 96.dp).testTag("try-${test.name.lowercase()}")) {
                         Icon(Icons.Default.PlayArrow, null, Modifier.size(17.dp), tint = theme.accent2)
                         Text("Try", color = theme.text, fontSize = 12.sp)
                     }
                     }
-                    IconButton(onClick = { settings = null }, modifier = Modifier.size(36.dp).testTag("close-test-settings")) { Icon(Icons.Default.Close, "Close test settings", tint = theme.muted) }
+                    IconButton(onClick = { setSettings(null) }, modifier = Modifier.size(36.dp).testTag("close-test-settings")) { Icon(Icons.Default.Close, "Close test settings", tint = theme.muted) }
                 }
                 when (test) {
                     WakeTest.TYPING -> Row(Modifier.height(IntrinsicSize.Min), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -137,12 +141,12 @@ enum class WakeTest(val title: String, val short: String) {
                         WakeTest.PUZZLE -> draft.copy(puzzle = enable)
                         WakeTest.MINES -> draft.copy(mines = enable)
                         WakeTest.SUDOKU -> draft.copy(sudoku = enable)
-                    }); settings = null
+                    }); setSettings(null)
                 }
             }
         }
     }
-    practice?.let { test -> PracticeTest(test, draft, theme) { practice = null } }
+    practice?.let { test -> PracticeTest(test, draft, theme) { setPractice(null) } }
 }
 
 @Composable private fun SettingBox(modifier: Modifier, theme: LunkTheme, content: @Composable ColumnScope.() -> Unit) {
