@@ -9,7 +9,7 @@ struct AlarmEditorView: View {
     @State private var onlineOpen = false
     @State private var importing = false
     @State private var soundCheckOpen = false
-    @State private var testsExpanded = true
+    @State private var soundChecker = false
     @State private var ringtoneAction: RingtoneAction?
     private enum RingtoneAction { case file, online }
     var body: some View {
@@ -17,18 +17,14 @@ struct AlarmEditorView: View {
         ScrollView {
         AlarmCard(theme: store.theme) {
             if onAdded == nil { Text("New alarm").font(.system(size: 14, weight: .medium)).foregroundStyle(store.theme.muted) }
-            if store.state.settings.mode == .time {
+            if true {
                 VStack(alignment: .leading, spacing: 10) {
-                    sectionLabel("Alarm name")
-                    TextField("Alarm name (optional)", text: Binding(get: { store.state.settings.alarmName ?? "" }, set: { store.state.settings.alarmName = $0 }))
+                    sectionLabel(store.state.settings.mode == .timer ? "Timer name" : "Alarm name")
+                    TextField(store.state.settings.mode == .timer ? "Timer name (optional)" : "Alarm name (optional)", text: Binding(get: { store.state.settings.alarmName ?? "" }, set: { store.state.settings.alarmName = $0 }))
                         .padding(12).background(store.theme.field, in: RoundedRectangle(cornerRadius: 12))
                         .accessibilityIdentifier("alarmNameField")
                 }
             }
-            HStack(spacing: 4) {
-                modeButton("At a time", mode: .time)
-                modeButton("In how long", mode: .timer)
-            }.padding(4).background(store.theme.field, in: RoundedRectangle(cornerRadius: 16))
             VStack(alignment: .leading, spacing: 12) {
                 sectionLabel(store.state.settings.mode == .time ? "Ring at" : "Ring in")
                 if store.state.settings.mode == .time { timeWheels } else { durationWheels }
@@ -46,8 +42,6 @@ struct AlarmEditorView: View {
                             .background(store.theme.field, in: RoundedRectangle(cornerRadius: 12))
                             .overlay(RoundedRectangle(cornerRadius: 12).stroke(store.theme.border))
                     }.buttonStyle(.plain)
-                    Button(store.sound.previewing ? "Stop" : "Preview") { store.preview() }
-                        .buttonStyle(ChipStyle(theme: store.theme))
                 }
             }.font(.system(size: 13)).foregroundStyle(store.theme.accent)
             soundLevelControls()
@@ -62,6 +56,7 @@ struct AlarmEditorView: View {
                 }
         }
         .sheet(isPresented: $ringtoneOpen, onDismiss: {
+            store.sound.stop()
             switch ringtoneAction {
             case .file: importing = true
             case .online: onlineOpen = true
@@ -79,7 +74,7 @@ struct AlarmEditorView: View {
             case .failure(let error): store.errorMessage = error.localizedDescription
             }
         }
-        .onChange(of: store.state.settings.ringtoneID) { _, _ in if store.sound.previewing { store.sound.stop() } }
+
         .onChange(of: store.state.settings.vibrateInApp) { _, enabled in if store.sound.previewing { store.sound.setVibration(enabled == true) } }
         .onChange(of: store.state.settings.soundLevel) { _, level in store.sound.updatePreviewVolume(level ?? 1) }
     }
@@ -90,7 +85,7 @@ struct AlarmEditorView: View {
         } label: {
             HStack {
                 if store.saving { ProgressView() }
-                Text(store.saving ? "Saving…" : editingID == nil ? "Add alarm" : "Save changes")
+                Text(store.saving ? "Saving…" : editingID == nil ? (store.state.settings.mode == .timer ? "Add timer" : "Add alarm") : "Save changes")
             }
         }.buttonStyle(AccentButtonStyle(theme: store.theme)).disabled(store.saving || store.readOnly)
             .accessibilityIdentifier("scheduleAlarm")
@@ -183,31 +178,9 @@ struct AlarmEditorView: View {
     }
     private var wakeUpTests: some View {
         VStack(alignment: .leading, spacing: 16) {
-            Button {
-                withAnimation(.easeInOut(duration: 0.22)) { testsExpanded.toggle() }
-            } label: {
-                HStack {
-                    sectionLabel("Wake-up tests")
-                    Spacer()
-                    Image(systemName: "chevron.right").font(.system(size: 12, weight: .semibold))
-                        .rotationEffect(.degrees(testsExpanded ? 90 : 0)).foregroundStyle(store.theme.muted)
-                }.padding(.vertical, 6).contentShape(Rectangle())
-            }.buttonStyle(.plain).accessibilityLabel("Wake-up tests")
-                .accessibilityValue(testsExpanded ? "Expanded" : "Collapsed")
-                .accessibilityHint("Double tap to expand or collapse")
-                .accessibilityIdentifier("wakeTestsDisclosure")
-            if testsExpanded {
-                WakeTestSelector(settings: $store.state.settings, theme: store.theme, stopPreview: { store.sound.stop() })
-            }
+            sectionLabel("Wake-up tests")
+            WakeTestSelector(settings: $store.state.settings, theme: store.theme, stopPreview: { store.sound.stop() })
         }
-    }
-    private func modeButton(_ title: String, mode: AlarmMode) -> some View {
-        Button { store.state.settings.mode = mode } label: {
-            Text(title).font(.system(size: 14, weight: .semibold)).frame(maxWidth: .infinity).padding(.vertical, 12)
-                .foregroundStyle(store.state.settings.mode == mode ? store.theme.text : store.theme.muted)
-                .background(store.state.settings.mode == mode ? store.theme.text.opacity(0.13) : .clear, in: RoundedRectangle(cornerRadius: 12))
-        }.buttonStyle(.plain).accessibilityAddTraits(store.state.settings.mode == mode ? .isSelected : [])
-            .disabled(editingID != nil && mode != (store.state.alarms.first(where: { $0.id == editingID })?.isTimer == true ? .timer : .time))
     }
     private var timeWheels: some View {
         NativeTimePicker(hour: $store.state.settings.hour, minute: $store.state.settings.minute,
@@ -246,6 +219,13 @@ struct AlarmEditorView: View {
             VStack(spacing: 8) {
                 ringtoneActionRow("Use my own file", symbol: "folder", action: .file)
                 ringtoneActionRow("Find more ringtones online", symbol: "globe", action: .online)
+                Button {
+                    soundChecker.toggle()
+                    if soundChecker { store.preview() } else { store.sound.stop() }
+                } label: {
+                    HStack { Text("Sound checker"); Spacer(); Image(systemName: soundChecker ? "checkmark.square.fill" : "square") }
+                        .padding(16).foregroundStyle(store.theme.accent)
+                }.buttonStyle(.plain).accessibilityValue(soundChecker ? "On" : "Off").accessibilityIdentifier("ringtoneSoundChecker")
                 Divider().overlay(store.theme.border).padding(.vertical, 8)
                 ForEach(RingtoneCatalog.tones) { tone in soundRow(id: tone.id, name: tone.name) }
                 ForEach(store.state.importedSounds) { sound in soundRow(id: sound.id, name: sound.name) }
@@ -265,7 +245,8 @@ struct AlarmEditorView: View {
     }
     private func soundRow(id: String, name: String) -> some View {
         Button {
-            store.sound.stop(); store.state.settings.ringtoneID = id; ringtoneOpen = false
+            store.sound.stop(); store.state.settings.ringtoneID = id
+            if soundChecker { store.preview() }
         } label: {
             HStack {
                 Text(name).font(.system(size: 14))

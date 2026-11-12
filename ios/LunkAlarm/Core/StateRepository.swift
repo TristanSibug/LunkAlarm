@@ -9,6 +9,7 @@ public struct StateRepository: Sendable {
         var state = try JSONDecoder().decode(SavedState.self, from: Data(contentsOf: url)).validated()
         if let value = state.settings.mathTimeLimit { state.settings.mathTimeLimit = WakeTestOptions.nearest(value, choices: WakeTestOptions.mathTimes) }
         if let value = state.settings.typingTimeLimit { state.settings.typingTimeLimit = WakeTestOptions.nearest(value, choices: WakeTestOptions.typingChoices) }
+        if state.settings.themeID == "vscode-blue" { state.settings.themeID = "deep-ocean" }
         return state
     }
     public func save(_ state: SavedState) throws {

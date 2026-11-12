@@ -116,8 +116,8 @@ final class AlarmStore {
                 typing: soundCheck ? false : settings.typing, mathCount: soundCheck ? 0 : settings.mathCount)
             record.durationSeconds = record.isTimer ? (soundCheck ? 5 : settings.durationSeconds) : nil
             record.enabled = original?.isEnabled ?? true
+            record.name = soundCheck ? nil : (settings.alarmName ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
             if !record.isTimer {
-                record.name = (settings.alarmName ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
                 record.repeatDays = settings.repeatDays ?? Array(1...7)
                 record.clockHour = settings.hour; record.clockMinute = settings.minute
             }

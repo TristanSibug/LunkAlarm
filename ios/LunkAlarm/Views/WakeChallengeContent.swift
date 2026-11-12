@@ -42,10 +42,10 @@ struct WakeChallengeContent: View {
     private var math: some View {
         Group {
             Text("\(challenge.answered) / \(challenge.answered + challenge.remaining) answered").font(.headline).accessibilityIdentifier("mathProgress")
-            Text("\(challenge.left) + \(challenge.right)").font(.system(size: 48, weight: .light)).monospacedDigit().accessibilityIdentifier("mathProblem")
+            Text("\(challenge.left) \(challenge.operation.symbol) \(challenge.right)").font(.system(size: 48, weight: .light)).monospacedDigit().accessibilityIdentifier("mathProblem")
             if nativeMath {
                 TextField("Your answer", text: Binding(get: { answer }, set: { value in
-                    let clean = String(value.filter { $0.isNumber }.prefix(2))
+                    let clean = String(value.filter { $0.isNumber }.prefix(3))
                     if clean.count < answer.count { answer = clean } else { enter(clean) }
                 })).keyboardType(.numberPad).font(.system(size: 28, weight: .light)).multilineTextAlignment(.center)
                     .padding(16).background(theme.field, in: RoundedRectangle(cornerRadius: 14)).overlay(RoundedRectangle(cornerRadius: 14).stroke(theme.border))

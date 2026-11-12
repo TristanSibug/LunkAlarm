@@ -13,6 +13,7 @@ final class AlarmInteractionTests: XCTestCase {
         app.swipeUp(velocity: .fast)
         XCTAssertTrue(app.staticTexts["savedAlarmsTitle"].waitForExistence(timeout: 5))
         app.buttons["newAlarmButton"].tap()
+        app.buttons["Alarm"].tap()
         XCTAssertTrue(app.staticTexts["New alarm"].waitForExistence(timeout: 5))
     }
     @MainActor private func capture(_ app: XCUIApplication, name: String) {
@@ -68,7 +69,7 @@ final class AlarmInteractionTests: XCTestCase {
     }
     @MainActor func testBoundedProblemButtonsAndFourPresets() {
         let app = launch(); openEditor(app)
-        app.buttons["In how long"].tap()
+        XCTAssertFalse(app.buttons["In how long"].exists)
         XCTAssertFalse(app.buttons["8 hours"].exists)
         openTest(app, "math")
         XCTAssertFalse(app.pickers["mathProblemPicker"].exists)
@@ -105,7 +106,7 @@ final class AlarmInteractionTests: XCTestCase {
         app.swipeUp(velocity: .fast)
         XCTAssertTrue(app.staticTexts["savedAlarmsTitle"].waitForExistence(timeout: 5))
         XCTAssertFalse(app.buttons["Edit Timer"].exists)
-        XCTAssertTrue(app.staticTexts["No alarms yet. Tap + to add one."].exists)
+        XCTAssertTrue(app.staticTexts["No alarms or timers yet. Tap + to add one."].exists)
     }
     @MainActor func testMathTimeoutResetsProgressAndEnablesSound() {
         let app = launch(mathAlarm: true)
@@ -132,10 +133,8 @@ final class AlarmInteractionTests: XCTestCase {
         XCTAssertGreaterThanOrEqual(app.buttons["try-typing"].frame.width, 88)
         capture(app, name: "ios-typing-buttons")
         app.buttons["testSettingsDone"].tap()
-        let disclosure = app.buttons["wakeTestsDisclosure"]
-        disclosure.tap()
-        XCTAssertFalse(app.buttons["test-tile-typing"].exists)
-        XCTAssertEqual(disclosure.value as? String, "Collapsed")
+        XCTAssertFalse(app.buttons["wakeTestsDisclosure"].exists)
+        XCTAssertTrue(app.buttons["test-tile-typing"].isSelected)
         XCTAssertTrue(app.buttons["scheduleAlarm"].exists)
         let vibration = app.buttons["inAppVibration"]
         for _ in 0..<5 where !vibration.isHittable { scrollEditor(app, up: false) }
@@ -186,7 +185,7 @@ final class AlarmInteractionTests: XCTestCase {
         // otherwise the next tap can land on the outgoing editor's backdrop.
         let closed = XCTNSPredicateExpectation(predicate: NSPredicate(format: "exists == false"), object: app.buttons["closeAlarmEditor"])
         wait(for: [closed], timeout: 5)
-        XCTAssertTrue(app.staticTexts["savedAlarmsTitle"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["savedAlarmsTitle"].exists || app.staticTexts["timersTitle"].exists)
     }
     @MainActor private func returnToClock(_ app: XCUIApplication) {
         app.buttons["Clock"].tap()
@@ -217,15 +216,19 @@ final class AlarmInteractionTests: XCTestCase {
     @MainActor func testCountdownIsInYourAlarmsAndCanBeEdited() {
         let app = launch()
         openEditor(app)
-        app.buttons["In how long"].tap()
+        app.buttons["closeAlarmEditor"].tap()
+        app.buttons["newAlarmButton"].tap(); app.buttons["Timer"].tap()
+        XCTAssertTrue(app.navigationBars["New timer"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.textFields["alarmNameField"].exists)
+        XCTAssertEqual(app.buttons["scheduleAlarm"].label, "Add timer")
         saveEditor(app)
         XCTAssertEqual(app.buttons.matching(NSPredicate(format: "label == %@", "Edit Timer")).count, 1)
         let card = app.buttons["Edit Timer"]
         card.tap()
-        XCTAssertTrue(app.navigationBars["Edit alarm"].waitForExistence(timeout: 5))
-        XCTAssertFalse(app.textFields["alarmNameField"].exists)
-        XCTAssertFalse(app.buttons["At a time"].isEnabled)
-        XCTAssertTrue(app.buttons["In how long"].isEnabled)
+        XCTAssertTrue(app.navigationBars["Edit timer"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.textFields["alarmNameField"].exists)
+        XCTAssertFalse(app.buttons["At a time"].exists)
+        XCTAssertFalse(app.buttons["In how long"].exists)
         XCTAssertEqual(app.buttons["scheduleAlarm"].label, "Save changes")
         XCTAssertTrue(app.buttons["scheduleAlarm"].isHittable)
         capture(app, name: "ios-floating-save-timer")
@@ -242,6 +245,7 @@ final class AlarmInteractionTests: XCTestCase {
         let emptyClockX = app.buttons["Clock"].frame.minX
         capture(app, name: "ios-aligned-empty-list")
         app.buttons["newAlarmButton"].tap()
+        app.buttons["Alarm"].tap()
         let save = app.buttons["scheduleAlarm"]
         XCTAssertTrue(save.waitForExistence(timeout: 5)); XCTAssertTrue(save.isHittable)
         let initialY = save.frame.midY
@@ -262,6 +266,7 @@ final class AlarmInteractionTests: XCTestCase {
         app.swipeUp(velocity: .fast)
         let timer = app.buttons["Edit Timer"]
         XCTAssertTrue(timer.waitForExistence(timeout: 5))
+        XCTAssertLessThan(app.staticTexts["timersTitle"].frame.minY, app.staticTexts["savedAlarmsTitle"].frame.minY)
         let start = timer.coordinate(withNormalizedOffset: CGVector(dx: 0.85, dy: 0.5))
         let partial = timer.coordinate(withNormalizedOffset: CGVector(dx: 0.55, dy: 0.5))
         start.press(forDuration: 0.1, thenDragTo: partial)
@@ -284,7 +289,7 @@ final class AlarmInteractionTests: XCTestCase {
         let gone = XCTNSPredicateExpectation(predicate: NSPredicate(format: "exists == false"), object: routine)
         wait(for: [gone], timeout: 5)
         capture(app, name: "ios-full-swipe-delete")
-        XCTAssertTrue(app.staticTexts["No alarms yet. Tap + to add one."].exists)
+        XCTAssertTrue(app.staticTexts["No alarms or timers yet. Tap + to add one."].exists)
         XCTAssertFalse(app.navigationBars["Edit alarm"].exists)
     }
     @MainActor func testTypingKeyboardAcceptsOneCharacterAndBackspace() {
@@ -344,6 +349,7 @@ final class AlarmInteractionTests: XCTestCase {
         chooseCustomRepeatDays(app)
         saveEditor(app)
         app.buttons["newAlarmButton"].tap()
+        app.buttons["Alarm"].tap()
         let daily = app.buttons["dailyRepeat"]
         for _ in 0..<5 where !daily.isHittable { app.swipeUp(velocity: .slow) }
         daily.tap() // The previous custom days are remembered; select all for this alarm.
@@ -357,8 +363,6 @@ final class AlarmInteractionTests: XCTestCase {
             for _ in 0..<12 where !choice.isHittable { app.scrollViews.firstMatch.swipeUp(velocity: .slow) }
             XCTAssertTrue(choice.isHittable, "Theme must be reachable: \(name)")
             choice.tap()
-            XCTAssertTrue(choice.isSelected)
-            app.buttons["Done"].tap()
             let dismissed = XCTNSPredicateExpectation(predicate: NSPredicate(format: "exists == false"), object: app.navigationBars["Theme"])
             wait(for: [dismissed], timeout: 5)
             XCTAssertTrue(app.descendants(matching: .any)["alarmSwipeHint"].waitForExistence(timeout: 5))
@@ -400,7 +404,7 @@ final class AlarmInteractionTests: XCTestCase {
         XCTAssertTrue(app.staticTexts["mathProblem"].exists)
         app.buttons["exitPractice"].tap(); app.buttons["testSettingsDone"].tap()
         app.buttons["closeAlarmEditor"].tap()
-        XCTAssertTrue(app.staticTexts["No alarms yet. Tap + to add one."].exists)
+        XCTAssertTrue(app.staticTexts["No alarms or timers yet. Tap + to add one."].exists)
     }
     @MainActor private func assertSquareBoard(_ app: XCUIApplication, prefix: String, size: Int) {
         let first = app.descendants(matching: .any)[prefix + "0"].frame
@@ -469,8 +473,12 @@ final class AlarmInteractionTests: XCTestCase {
         let tile = app.buttons["test-tile-sudoku"]
         let save = app.buttons["scheduleAlarm"]
         for _ in 0..<8 where !tile.isHittable || tile.frame.maxY > save.frame.minY - 10 { scrollEditor(app) }
-        tile.tap(); XCTAssertFalse(tile.isSelected)
-        XCTAssertFalse(app.buttons["try-sudoku"].exists)
+        tile.tap(); XCTAssertTrue(app.buttons["try-sudoku"].waitForExistence(timeout: 5))
+        XCTAssertEqual(app.buttons["testSettingsDone"].label, "Unset")
+        app.buttons["closeTestSettings"].tap()
+        XCTAssertTrue(tile.isSelected)
+        tile.tap(); app.buttons["testSettingsDone"].tap()
+        XCTAssertFalse(tile.isSelected)
         tile.tap(); XCTAssertTrue(app.buttons["try-sudoku"].waitForExistence(timeout: 5))
         XCTAssertTrue(app.buttons["sudoku-difficulty-3"].isSelected)
         XCTAssertTrue(app.buttons["sudoku-timer-240"].isSelected)
@@ -483,6 +491,53 @@ final class AlarmInteractionTests: XCTestCase {
         app.buttons["sudokuErase"].tap()
         capture(app, name: "ios-sudoku-practice")
         app.buttons["exitPractice"].tap()
+    }
+
+    @MainActor func testMinesHoldChordsAndDoneRequiresExactFlagCount() {
+        let app = XCUIApplication(); app.launchArguments = ["--ui-testing", "--ui-mine-chord"]; app.launch()
+        openEditor(app); openTest(app, "mines")
+        app.buttons["mine-timer-40"].tap(); app.buttons["try-mines"].tap()
+        let cells = app.descendants(matching: .any)
+        XCTAssertTrue(cells["mine-cell-17"].waitForExistence(timeout: 5))
+        XCTAssertEqual(cells["mine-cell-22"].value as? String, "Hidden")
+        cells["mine-cell-17"].press(forDuration: 0.6)
+        XCTAssertEqual(cells["mine-cell-17"].value as? String, "Flagged")
+        cells["mine-cell-16"].press(forDuration: 0.6)
+        XCTAssertNotEqual(cells["mine-cell-22"].value as? String, "Hidden")
+        XCTAssertFalse(app.buttons["mineDone"].isEnabled)
+        for id in [14, 18, 19] { cells["mine-cell-\(id)"].press(forDuration: 0.6) }
+        XCTAssertTrue(app.buttons["mineDone"].isEnabled)
+        capture(app, name: "ios-mines-confirm-flags")
+        app.buttons["mineDone"].tap()
+        XCTAssertTrue(app.buttons["retryPractice"].waitForExistence(timeout: 5))
+    }
+    @MainActor func testMathOperationsAndSetStateAreExplicit() {
+        let app = launch(); openEditor(app); openTest(app, "math")
+        XCTAssertEqual(app.buttons["testSettingsDone"].label, "Set")
+        for op in ["subtraction", "multiplication", "division"] { app.buttons["math-operation-" + op].tap() }
+        app.buttons["closeTestSettings"].tap()
+        XCTAssertFalse(app.buttons["test-tile-math"].isSelected)
+        openTest(app, "math")
+        for op in ["addition", "subtraction", "multiplication", "division"] { XCTAssertTrue(app.buttons["math-operation-" + op].isSelected) }
+        app.buttons["testSettingsDone"].tap()
+        XCTAssertTrue(app.buttons["test-tile-math"].isSelected)
+        openTest(app, "math"); XCTAssertEqual(app.buttons["testSettingsDone"].label, "Unset")
+        capture(app, name: "ios-math-four-operations")
+    }
+
+    @MainActor func testRingtoneSelectionStaysOpenWithInternalSoundChecker() {
+        let app = launch(); openEditor(app)
+        let tone = app.buttons.containing(.staticText, identifier: "Classic Beep").firstMatch
+        for _ in 0..<5 where !tone.isHittable { scrollEditor(app) }
+        XCTAssertFalse(app.buttons["Preview"].exists)
+        tone.tap()
+        XCTAssertTrue(app.buttons["ringtoneSoundChecker"].waitForExistence(timeout: 5))
+        app.buttons["ringtoneSoundChecker"].tap()
+        app.buttons["Digital Watch"].tap()
+        XCTAssertTrue(app.navigationBars["Ringtone"].exists)
+        XCTAssertTrue(app.buttons["Digital Watch"].isSelected)
+        capture(app, name: "ios-ringtone-internal-preview")
+        app.buttons["ringtoneSoundChecker"].tap()
     }
 
 }

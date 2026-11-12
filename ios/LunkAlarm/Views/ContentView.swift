@@ -19,8 +19,8 @@ struct ContentView: View {
                     toolbar.padding(.horizontal, 20).padding(.top, 12).padding(.bottom, 8)
                     ZStack {
                     if pickerOpen {
-                        SavedAlarmsView(store: store, returnToClock: { pickerOpen = false }, add: {
-                            editingID = nil; store.state.settings.alarmName = ""; store.state.settings.mode = .time; editorOpen = true
+                        SavedAlarmsView(store: store, returnToClock: { pickerOpen = false }, add: { mode in
+                            editingID = nil; store.state.settings.alarmName = ""; store.state.settings.mode = mode; editorOpen = true
                         }, edit: { alarm in
                             store.loadEditor(alarm); editingID = alarm.id; editorOpen = true
                         })
@@ -48,7 +48,7 @@ struct ContentView: View {
         }
         .sheet(isPresented: $themeOpen) { themeSheet }
         .sheet(isPresented: $editorOpen) {
-            SheetShell(title: editingID == nil ? "New alarm" : "Edit alarm", theme: store.theme, scrolls: false, showsDone: false) {
+            SheetShell(title: editingID == nil ? (store.state.settings.mode == .timer ? "New timer" : "New alarm") : (store.state.settings.mode == .timer ? "Edit timer" : "Edit alarm"), theme: store.theme, scrolls: false, showsDone: false) {
                 AlarmEditorView(store: store, editingID: editingID, onAdded: { editorOpen = false })
             }
         }
@@ -106,10 +106,10 @@ struct ContentView: View {
         SheetShell(title: "Theme", theme: store.theme) {
             LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 12) {
                 ForEach(AlarmTheme.arranged) { theme in
-                    Button { store.state.settings.themeID = theme.id } label: {
+                    Button { store.state.settings.themeID = theme.id; themeOpen = false } label: {
                         VStack(alignment: .leading, spacing: 14) {
                             HStack {
-                                Circle().fill(theme.accent).frame(width: 16, height: 16)
+                                Circle().fill(theme.id == "signal-blue" ? theme.card : theme.accent).frame(width: 16, height: 16)
                                 Circle().fill(theme.accent2).frame(width: 16, height: 16)
                                 Spacer()
                                 if store.state.settings.themeID == theme.id { Image(systemName: "checkmark.circle.fill").foregroundStyle(theme.accent) }

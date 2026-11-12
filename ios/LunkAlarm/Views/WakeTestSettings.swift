@@ -12,7 +12,7 @@ enum WakeTest: String, Identifiable, CaseIterable {
         var games = s.wakeGames ?? .init()
         games.puzzle = self == .puzzle; games.mines = self == .mines; games.sudoku = self == .sudoku
         return TimedWakeChallenge(typing: self == .typing, mathCount: self == .math ? max(1, s.mathCount) : 0,
-            codeLength: s.typingCodeLength ?? 8, typingTimeLimit: s.typingTimeLimit ?? 30, mathTimeLimit: s.mathTimeLimit ?? 10, games: games)
+            codeLength: s.typingCodeLength ?? 8, typingTimeLimit: s.typingTimeLimit ?? 30, mathTimeLimit: s.mathTimeLimit ?? 10, games: games, seed: self == .mines && ProcessInfo.processInfo.arguments.contains("--ui-mine-chord") && ProcessInfo.processInfo.arguments.contains("--ui-testing") ? 123 : nil)
     }
 }
 
@@ -21,12 +21,11 @@ struct WakeTestSelector: View {
     let theme: AlarmTheme
     var stopPreview: () -> Void
     @State private var selected: WakeTest?
-    @State private var lastMathCount = 3
-    var body: some View {
+        var body: some View {
         HStack(spacing: 6) {
             ForEach(WakeTest.allCases) { test in
                 let on = test.enabled(settings)
-                Button { toggle(test, on: !on) } label: {
+                Button { selected = test } label: {
                     VStack(spacing: 10) {
                         WakeTestGlyph(test: test).frame(width: 36, height: 29)
                         Text(test.name).font(.system(size: test == .mines ? 9 : 10, weight: .medium)).lineLimit(1).minimumScaleFactor(0.85)
@@ -42,20 +41,7 @@ struct WakeTestSelector: View {
         }
         .sheet(item: $selected) { test in WakeTestSettingsView(test: test, settings: $settings, theme: theme, stopPreview: stopPreview) }
     }
-    private func toggle(_ test: WakeTest, on: Bool) {
-        var games = settings.wakeGames ?? .init()
-        switch test {
-        case .typing: settings.typing = on
-        case .math:
-            if !on { lastMathCount = settings.mathCount }
-            settings.mathCount = on ? max(1, lastMathCount) : 0
-        case .puzzle: games.puzzle = on
-        case .mines: games.mines = on
-        case .sudoku: games.sudoku = on
-        }
-        settings.wakeGames = games
-        selected = on ? test : nil
-    }
+
 }
 
 struct WakeTestGlyph: View {
@@ -99,6 +85,7 @@ private struct WakeTestSettingsView: View {
     var stopPreview: () -> Void
     @Environment(\.dismiss) private var dismiss
     @State private var practice: WakeTest?
+    @State private var mathProblems = 3
     private var games: WakeGameOptions { settings.wakeGames ?? .init() }
     var body: some View {
         VStack(spacing: 0) {
@@ -116,12 +103,26 @@ private struct WakeTestSettingsView: View {
                 VStack(alignment: .leading, spacing: 22) { controls }
                     .padding(.horizontal, 20).padding(.bottom, 20)
             }.scrollBounceBehavior(.basedOnSize)
-            Button("Done") { dismiss() }.buttonStyle(AccentButtonStyle(theme: theme)).padding(20).accessibilityIdentifier("testSettingsDone")
+            Button(test.enabled(settings) ? "Unset" : "Set") {
+                let on = !test.enabled(settings)
+                var g = games
+                switch test {
+                case .typing: settings.typing = on
+                case .math: settings.mathCount = on ? mathProblems : 0
+                case .puzzle: g.puzzle = on
+                case .mines: g.mines = on
+                case .sudoku: g.sudoku = on
+                }
+                settings.wakeGames = g; dismiss()
+            }.buttonStyle(AccentButtonStyle(theme: theme)).padding(20).accessibilityIdentifier("testSettingsDone")
         }.foregroundStyle(theme.text).background(theme.card).preferredColorScheme(theme.isLight ? .light : .dark)
-            .presentationDetents([.height(test == .sudoku ? 590 : test == .mines ? 470 : test == .math ? 430 : 360), .large])
+            .presentationDetents([.height(test == .sudoku ? 590 : test == .mines ? 470 : test == .math ? 540 : 360), .large])
             .presentationDragIndicator(.visible).presentationBackground(theme.card)
-            .fullScreenCover(item: $practice) { kind in WakePracticeView(test: kind, settings: settings, theme: theme) }
+            .fullScreenCover(item: $practice) { kind in WakePracticeView(test: kind, settings: practiceSettings, theme: theme) }
+            .onChange(of: mathProblems) { _, value in var g = games; g.mathProblemCount = value; settings.wakeGames = g }
+            .onAppear { mathProblems = max(1, settings.mathCount == 0 ? (games.mathProblemCount ?? 3) : settings.mathCount) }
     }
+    private var practiceSettings: AlarmSettings { var s = settings; s.mathCount = mathProblems; return s }
     @ViewBuilder private var controls: some View {
         switch test {
         case .typing:
@@ -131,8 +132,25 @@ private struct WakeTestSettingsView: View {
             }
         case .math:
             HStack(alignment: .top, spacing: 12) {
-                optionCard { WakeCountSetting(title: "Problems", value: $settings.mathCount, range: 1...8, footer: "1–8 problems", id: "math-count", theme: theme) }.frame(maxWidth: .infinity)
+                optionCard { WakeCountSetting(title: "Problems", value: $mathProblems, range: 1...8, footer: "1–8 problems", id: "math-count", theme: theme) }.frame(maxWidth: .infinity)
                 optionCard { WakeChoiceSetting(title: "Time per question", value: option(\.mathTimeLimit, 10), choices: WakeTestOptions.mathTimes, id: "math-timer", theme: theme) }.frame(maxWidth: .infinity)
+            }
+            VStack(alignment: .leading, spacing: 10) {
+                settingTitle("Operations")
+                HStack(spacing: 8) {
+                    ForEach(MathOperation.allCases, id: \.self) { op in
+                        let selected = (games.mathOperations ?? [.addition]).contains(op)
+                        Button {
+                            var g = games; var ops = g.mathOperations ?? [.addition]
+                            if selected { if ops.count > 1 { ops.removeAll { $0 == op } } } else { ops.append(op) }
+                            g.mathOperations = ops; settings.wakeGames = g
+                        } label: {
+                            Text(op.symbol).font(.system(size: 24)).frame(maxWidth: .infinity, minHeight: 44)
+                                .background(selected ? theme.accent2.opacity(0.18) : theme.field, in: RoundedRectangle(cornerRadius: 12))
+                                .overlay(RoundedRectangle(cornerRadius: 12).stroke(selected ? theme.accent2 : theme.border))
+                        }.buttonStyle(.plain).accessibilityLabel(op.rawValue).accessibilityAddTraits(selected ? .isSelected : []).accessibilityIdentifier("math-operation-" + op.rawValue)
+                    }
+                }
             }
             Divider().overlay(theme.border)
             Toggle("Use native keyboard/keypad", isOn: Binding(get: { settings.nativeMathKeyboard == true }, set: { settings.nativeMathKeyboard = $0 }))

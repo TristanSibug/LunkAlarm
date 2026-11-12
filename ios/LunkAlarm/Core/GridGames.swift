@@ -12,6 +12,8 @@ public struct GameRandom: RandomNumberGenerator, Sendable {
 }
 
 public struct WakeGameOptions: Codable, Equatable, Sendable {
+    public var mathProblemCount: Int?
+    public var mathOperations: [MathOperation]?
     public var puzzle = false
     public var puzzlePieces = 8
     public var puzzleSeconds = 30
@@ -24,7 +26,7 @@ public struct WakeGameOptions: Codable, Equatable, Sendable {
     public var hasTests: Bool { puzzle || mines || sudoku }
     public init() {}
     public var valid: Bool {
-        [6, 8, 10].contains(puzzlePieces) && Self.gameTimes.contains(puzzleSeconds) &&
+        (mathProblemCount == nil || (1...8).contains(mathProblemCount!)) && (mathOperations == nil || !(mathOperations?.isEmpty ?? true)) && [6, 8, 10].contains(puzzlePieces) && Self.gameTimes.contains(puzzleSeconds) &&
         (0...2).contains(mineDifficulty) && Self.gameTimes.contains(mineSeconds) &&
         (0...3).contains(sudokuDifficulty) && Self.sudokuTimes.contains(sudokuSeconds)
     }

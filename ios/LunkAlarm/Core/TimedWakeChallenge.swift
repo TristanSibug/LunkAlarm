@@ -21,8 +21,10 @@ public struct TimedWakeChallenge: Codable, Equatable, Sendable {
     public var remaining: Int { challenge.remaining }
     public var left: Int { challenge.left }
     public var right: Int { challenge.right }
+    public var operation: MathOperation { challenge.operation ?? .addition }
     public var puzzlePending: Bool { games.puzzle && placedPieces.count < games.puzzlePieces }
-    public var minesPending: Bool { games.mines && mineBoard?.complete != true }
+    private var minesConfirmed: Bool?
+    public var minesPending: Bool { games.mines && (mineBoard?.complete != true || minesConfirmed == false) }
     public var sudokuPending: Bool { games.sudoku && sudokuBoard?.complete != true }
     public var phase: WakePhase {
         if typingPending { return .typing }; if remaining > 0 { return .math }; if puzzlePending { return .puzzle }
@@ -32,7 +34,7 @@ public struct TimedWakeChallenge: Codable, Equatable, Sendable {
     public var answered: Int { mathCount - remaining }
     public var valid: Bool {
         games.valid && (4...10).contains(codeLength) && code.count == codeLength && (0...8).contains(mathCount) &&
-        (0...mathCount).contains(remaining) && (1...20).contains(left) && (1...20).contains(right) &&
+        (0...mathCount).contains(remaining) && (0...144).contains(left) && (1...20).contains(right) &&
         WakeTestOptions.valid(codeLength: codeLength, typingTime: typingTimeLimit, mathTime: mathTimeLimit) &&
         placedPieces.allSatisfy({ (0..<games.puzzlePieces).contains($0) }) &&
         (!games.mines || (mineBoard?.valid == true && mineBoard?.size == [5, 7, 9][games.mineDifficulty])) &&
@@ -42,17 +44,19 @@ public struct TimedWakeChallenge: Codable, Equatable, Sendable {
         self.codeLength = min(10, max(4, codeLength)); self.typingTimeLimit = min(30, max(15, typingTimeLimit))
         self.mathTimeLimit = min(15, max(5, mathTimeLimit)); self.typing = typing; self.mathCount = min(8, max(0, mathCount))
         self.games = games.valid ? games : .init()
-        challenge = WakeChallenge(typing: typing, mathCount: mathCount, codeLength: self.codeLength)
+        challenge = WakeChallenge(typing: typing, mathCount: mathCount, codeLength: self.codeLength, operations: self.games.mathOperations ?? [.addition])
         puzzleSeed = seed ?? .random(in: .min ... .max)
         mineBoard = self.games.mines ? MineBoard.create(difficulty: self.games.mineDifficulty, seed: seed ?? .random(in: .min ... .max)) : nil
         sudokuBoard = self.games.sudoku ? SudokuBoard.create(difficulty: self.games.sudokuDifficulty, seed: seed.map { $0 &+ 1 } ?? .random(in: .min ... .max)) : nil
+        minesConfirmed = false
         renewDeadline(now: now)
     }
     public func secondsRemaining(now: Date = Date()) -> Int {
         guard let deadline else { return 0 }; return max(0, Int(ceil(deadline.timeIntervalSince(now))))
     }
     private mutating func restart(now: Date) {
-        challenge = WakeChallenge(typing: typing, mathCount: mathCount, codeLength: codeLength)
+        challenge = WakeChallenge(typing: typing, mathCount: mathCount, codeLength: codeLength, operations: games.mathOperations ?? [.addition])
+        minesConfirmed = false
         placedPieces = []; puzzleSeed = .random(in: .min ... .max)
         mineBoard = games.mines ? MineBoard.create(difficulty: games.mineDifficulty) : nil
         sudokuBoard = games.sudoku ? SudokuBoard.create(difficulty: games.sudokuDifficulty) : nil
@@ -78,6 +82,12 @@ public struct TimedWakeChallenge: Codable, Equatable, Sendable {
     }
     public mutating func mineAction(cell: Int, flag: Bool = false, chord: Bool = false, now: Date = Date()) -> WakeChallenge.DigitResult {
         if expireIfNeeded(now: now) { return .timedOut }
+        if phase == .mines, cell == -1, var board = mineBoard {
+            guard board.flags.count == board.mines.count else { return .incomplete }
+            guard board.flags == board.mines else { restart(now: now); return .incorrect }
+            for safe in board.cells where !board.mines.contains(safe) { board.reveal(safe) }
+            mineBoard = board; minesConfirmed = true; renewDeadline(now: now); return .correct
+        }
         guard phase == .mines, var board = mineBoard, board.cells.contains(cell) else { return .incomplete }
         if chord {
             let targets = board.chordTargets(cell)
@@ -88,7 +98,7 @@ public struct TimedWakeChallenge: Codable, Equatable, Sendable {
             if board.mines.contains(cell) { restart(now: now); return .incorrect }; board.reveal(cell)
         }
         mineBoard = board
-        if board.complete { renewDeadline(now: now) }; return .correct
+        return .correct
     }
     public mutating func sudokuAction(cell: Int, digit: Int, now: Date = Date()) -> WakeChallenge.DigitResult {
         if expireIfNeeded(now: now) { return .timedOut }

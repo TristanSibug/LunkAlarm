@@ -87,6 +87,8 @@ final class WakeGameTests: XCTestCase {
             _ = c.mineAction(cell: cell, flag: board.mines.contains(cell), now: start.addingTimeInterval(4))
             if c.minesPending { XCTAssertEqual(c.deadline, mineDeadline) }
         }
+        XCTAssertEqual(c.phase, .mines)
+        _ = c.mineAction(cell: -1, now: start.addingTimeInterval(4))
         XCTAssertEqual(c.phase, .sudoku); XCTAssertEqual(c.deadline, start.addingTimeInterval(244))
         let board = c.sudokuBoard!
         for cell in board.givens.indices where board.givens[cell] == 0 { _ = c.sudokuAction(cell: cell, digit: board.solution[cell], now: start.addingTimeInterval(5)) }
@@ -122,4 +124,39 @@ final class WakeGameTests: XCTestCase {
         g = .init(); g.sudokuSeconds = 30; XCTAssertFalse(g.valid)
         XCTAssertFalse(MineBoard(size: 5, mines: [99], revealed: []).valid)
     }
+    func testEveryMathOperationUsesValidIntegerAnswersAndSurvivesSaving() throws {
+        for op in MathOperation.allCases {
+            for _ in 0..<40 {
+                var challenge = WakeChallenge(typing: false, mathCount: 8, operations: [op])
+                while !challenge.complete {
+                    XCTAssertEqual(challenge.operation, op)
+                    XCTAssertGreaterThanOrEqual(challenge.answer, 0)
+                    if op == .division { XCTAssertEqual(challenge.left % challenge.right, 0) }
+                    let restored = try JSONDecoder().decode(WakeChallenge.self, from: JSONEncoder().encode(challenge))
+                    XCTAssertEqual(restored, challenge)
+                    XCTAssertEqual(challenge.submit(digits: String(challenge.answer)), .correct)
+                }
+            }
+        }
+    }
+    func testMinesRequireExplicitConfirmationAndWrongFlagsReset() {
+        var games = WakeGameOptions(); games.mines = true
+        let now = Date()
+        var c = TimedWakeChallenge(typing: false, mathCount: 0, games: games, now: now)
+        let mines = c.mineBoard!.mines
+        for cell in mines { _ = c.mineAction(cell: cell, flag: true, now: now) }
+        XCTAssertFalse(c.complete)
+        XCTAssertEqual(c.mineAction(cell: -1, now: now), .correct)
+        XCTAssertTrue(c.complete)
+        var wrong = TimedWakeChallenge(typing: false, mathCount: 0, games: games, now: now)
+        let b = wrong.mineBoard!
+        let hiddenSafe = b.cells.first { !b.mines.contains($0) && !b.revealed.contains($0) }
+        if let safe = hiddenSafe {
+            for cell in b.mines.dropFirst() { _ = wrong.mineAction(cell: cell, flag: true, now: now) }
+            _ = wrong.mineAction(cell: safe, flag: true, now: now)
+            XCTAssertEqual(wrong.mineAction(cell: -1, now: now), .incorrect)
+            XCTAssertEqual(wrong.resetCount, 1)
+        }
+    }
+
 }

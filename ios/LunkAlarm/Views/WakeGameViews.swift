@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit
 
 // Empty and numbered cells must receive the same finite size. Text's intrinsic
 // size inside an unconstrained ScrollView would otherwise make ragged rows.
@@ -30,7 +31,7 @@ struct MineGameView: View {
     var body: some View {
         VStack(spacing: 14) {
             Text("Minesweeper").font(.system(size: 20, weight: .semibold))
-            Text("Reveal safe squares and flag all mines.\nTap to reveal · Hold a hidden square to flag.\nHold a number to reveal adjacent squares.")
+            Text("Reveal safe squares and flag all mines.\nTap to reveal · Hold a hidden square to flag.\nHold a number with matching adjacent flags to reveal squares.")
                 .font(.system(size: 12)).foregroundStyle(theme.muted).multilineTextAlignment(.center)
             HStack {
                 Text("\(board.flags.count)/\(board.mines.count) flags").font(.system(size: 13)).foregroundStyle(theme.muted).accessibilityIdentifier("mineProgress")
@@ -38,6 +39,9 @@ struct MineGameView: View {
                 Button(flagMode ? "⚑ Flag" : "Reveal") { flagMode.toggle() }.buttonStyle(ChipStyle(theme: theme)).accessibilityIdentifier("mineMode")
             }
             SquareGameGrid(size: board.size, spacing: board.size == 9 ? 3 : 5) { mineCell($0) }
+            Button("I'm done") { action(-1, false, false) }
+                .buttonStyle(AccentButtonStyle(theme: theme)).disabled(board.flags.count != board.mines.count)
+                .accessibilityIdentifier("mineDone")
         }.frame(maxWidth: 400)
     }
     private func mineCell(_ cell: Int) -> some View {
@@ -48,12 +52,9 @@ struct MineGameView: View {
             .background(shown ? theme.field : theme.accent2.opacity(0.13), in: RoundedRectangle(cornerRadius: 6))
             .overlay(RoundedRectangle(cornerRadius: 6).stroke(shown ? theme.border : theme.accent2.opacity(0.65)))
             .contentShape(Rectangle())
-            .gesture(LongPressGesture(minimumDuration: 0.45).exclusively(before: TapGesture()).onEnded { event in
-                AlarmHaptics.keypress()
-                switch event {
-                case .first(_): action(cell, !shown, shown)
-                case .second(_): if !shown { action(cell, flagMode, false) }
-                }
+            .onTapGesture { if !shown { AlarmHaptics.keypress(); action(cell, flagMode, false) } }
+            .gesture(MineHoldGesture {
+                AlarmHaptics.keypress(); action(cell, !shown, shown)
             })
             .accessibilityElement(children: .ignore)
             .accessibilityLabel("Row \(cell / board.size + 1), column \(cell % board.size + 1)")
@@ -67,11 +68,12 @@ struct MineGameView: View {
 
 struct SudokuGameView: View {
     let board: SudokuBoard
-    let theme: AlarmTheme
+    let palette: AlarmTheme
+    private var theme: AlarmTheme { palette.alarmCardTheme }
     var action: (Int, Int) -> Void
     @State private var selected: Int
     init(board: SudokuBoard, theme: AlarmTheme, action: @escaping (Int, Int) -> Void) {
-        self.board = board; self.theme = theme; self.action = action
+        self.board = board; self.palette = theme; self.action = action
         _selected = State(initialValue: board.givens.firstIndex(of: 0) ?? 0)
     }
     var body: some View {
@@ -88,7 +90,7 @@ struct SudokuGameView: View {
                 }.buttonStyle(.plain).accessibilityLabel("Enter \(digit)").accessibilityIdentifier("sudoku-digit-\(digit)") }
             }
             Button("Erase") { AlarmHaptics.keypress(); action(selected, 0) }.buttonStyle(ChipStyle(theme: theme)).accessibilityIdentifier("sudokuErase")
-        }.frame(maxWidth: 400)
+        }.padding(12).background(theme.card, in: RoundedRectangle(cornerRadius: 16)).foregroundStyle(theme.text).frame(maxWidth: 400)
     }
     private func sudokuCell(_ cell: Int) -> some View {
         let given = board.givens[cell] != 0, row = cell / board.size, col = cell % board.size
@@ -96,7 +98,7 @@ struct SudokuGameView: View {
             Text(board.values[cell] == 0 ? "" : "\(board.values[cell])").font(.system(size: board.size == 6 ? 20 : 24, weight: given ? .semibold : .regular))
                 .foregroundStyle(board.conflict(cell) ? theme.accent2 : given ? theme.text : theme.accent)
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
-                .background(selected == cell ? theme.accent2.opacity(0.2) : given ? theme.text.opacity(0.05) : theme.field)
+                .background(selected == cell ? theme.accent2.opacity(0.24) : theme.field)
                 .overlay(alignment: .top) { Rectangle().fill(theme.text.opacity(0.45)).frame(height: row % 2 == 0 ? 1.5 : 0.5) }
                 .overlay(alignment: .leading) { Rectangle().fill(theme.text.opacity(0.45)).frame(width: col % (board.size / 2) == 0 ? 1.5 : 0.5) }
         }.buttonStyle(.plain).disabled(given).accessibilityLabel("Row \(row + 1), column \(col + 1)")
@@ -210,5 +212,23 @@ struct JigsawGameView: View {
             })
             .accessibilityElement(children: .ignore).accessibilityLabel(placed ? "Placed piece" : "Puzzle piece \(piece.id + 1)")
             .accessibilityAddTraits(.isButton).accessibilityAction { if !placed { selected = piece.id } }.accessibilityIdentifier("puzzle-piece-\(piece.id)")
+    }
+}
+
+// Recognize at touch-down duration rather than relying on a SwiftUI gesture
+// ending inside a scrolling board. Hidden cells flag; revealed cells chord.
+private struct MineHoldGesture: UIGestureRecognizerRepresentable {
+    var action: () -> Void
+    func makeCoordinator(converter: CoordinateSpaceConverter) -> Coordinator { Coordinator() }
+    func makeUIGestureRecognizer(context: Context) -> UILongPressGestureRecognizer {
+        let hold = UILongPressGestureRecognizer(); hold.minimumPressDuration = 0.4
+        hold.cancelsTouchesInView = true; hold.delegate = context.coordinator; return hold
+    }
+    func updateUIGestureRecognizer(_ recognizer: UILongPressGestureRecognizer, context: Context) {}
+    func handleUIGestureRecognizerAction(_ recognizer: UILongPressGestureRecognizer, context: Context) {
+        if recognizer.state == .began { action() }
+    }
+    final class Coordinator: NSObject, UIGestureRecognizerDelegate {
+        func gestureRecognizer(_ gestureRecognizer: UIGestureRecognizer, shouldRecognizeSimultaneouslyWith other: UIGestureRecognizer) -> Bool { other.view is UIScrollView }
     }
 }
