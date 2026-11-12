@@ -120,7 +120,7 @@ struct SavedAlarmsView: View {
                 Menu {
                     Button("Delete", role: .destructive) { store.remove(alarm) }
                     Button("Duplicate") { Task { await store.duplicate(alarm) } }
-                } label: { Image(systemName: "ellipsis").frame(width: 44, height: 30) }
+                } label: { Image(systemName: "ellipsis").foregroundStyle(theme.text).frame(width: 44, height: 30) }
                     .menuOrder(.fixed)
                     .disabled(store.saving || store.readOnly || store.ringing?.id == alarm.id)
                     .accessibilityLabel("Options for \(alarm.accessibleName)")

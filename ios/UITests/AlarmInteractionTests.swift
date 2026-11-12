@@ -540,4 +540,16 @@ final class AlarmInteractionTests: XCTestCase {
         app.buttons["ringtoneSoundChecker"].tap()
     }
 
+    @MainActor func testMidnightCherrySudokuContrast() {
+        let app = launch(); app.buttons["Theme"].tap()
+        XCTAssertTrue(app.navigationBars["Theme"].waitForExistence(timeout: 5))
+        let choice = app.buttons["Midnight Cherry"]
+        for _ in 0..<8 where !choice.isHittable { app.scrollViews.firstMatch.swipeUp(velocity: .slow) }
+        choice.tap()
+        openEditor(app); openTest(app, "sudoku")
+        app.buttons["sudoku-timer-240"].tap(); app.buttons["try-sudoku"].tap()
+        XCTAssertTrue(app.buttons["sudoku-cell-0"].waitForExistence(timeout: 5))
+        capture(app, name: "ios-midnight-cherry-sudoku-contrast")
+    }
+
 }
