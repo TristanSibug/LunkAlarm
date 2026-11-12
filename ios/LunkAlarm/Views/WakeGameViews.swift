@@ -40,7 +40,7 @@ struct MineGameView: View {
             }
             SquareGameGrid(size: board.size, spacing: board.size == 9 ? 3 : 5) { mineCell($0) }
             Button("I'm done") { action(-1, false, false) }
-                .buttonStyle(AccentButtonStyle(theme: theme)).disabled(board.flags.count != board.mines.count)
+                .buttonStyle(AccentButtonStyle(theme: theme)).disabled(board.flags.count != board.mines.count).opacity(board.flags.count == board.mines.count ? 1 : 0.4)
                 .accessibilityIdentifier("mineDone")
         }.frame(maxWidth: 400)
     }

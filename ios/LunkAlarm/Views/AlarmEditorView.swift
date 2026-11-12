@@ -253,7 +253,7 @@ struct AlarmEditorView: View {
                 Spacer()
                 if store.state.settings.ringtoneID == id { Image(systemName: "checkmark").foregroundStyle(store.theme.accent) }
             }.padding(16).background(store.theme.card, in: RoundedRectangle(cornerRadius: 14)).foregroundStyle(store.theme.text)
-        }.buttonStyle(.plain).accessibilityAddTraits(store.state.settings.ringtoneID == id ? .isSelected : [])
+        }.buttonStyle(.plain).accessibilityAddTraits(store.state.settings.ringtoneID == id ? .isSelected : []).accessibilityIdentifier("ringtone-" + id)
     }
     private var onlineSheet: some View {
         SheetShell(title: "Find more ringtones", theme: store.theme) {

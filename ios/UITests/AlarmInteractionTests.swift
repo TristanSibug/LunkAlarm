@@ -533,9 +533,9 @@ final class AlarmInteractionTests: XCTestCase {
         tone.tap()
         XCTAssertTrue(app.buttons["ringtoneSoundChecker"].waitForExistence(timeout: 5))
         app.buttons["ringtoneSoundChecker"].tap()
-        app.buttons["Digital Watch"].tap()
+        app.buttons["ringtone-digital-watch"].tap()
         XCTAssertTrue(app.navigationBars["Ringtone"].exists)
-        XCTAssertTrue(app.buttons["Digital Watch"].isSelected)
+        XCTAssertTrue(app.buttons["ringtone-digital-watch"].isSelected)
         capture(app, name: "ios-ringtone-internal-preview")
         app.buttons["ringtoneSoundChecker"].tap()
     }
