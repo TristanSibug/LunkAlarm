@@ -95,6 +95,7 @@ object AlarmJson {
     private fun JSONObject.ints(key: String): List<Int> = getJSONArray(key).let { a -> (0 until a.length()).map { a.getInt(it) } }
     private fun challenge(j: JSONObject): WakeChallenge {
         val originalCount = j.optInt("puzzlePieces", 8)
+        val mineBoard = j.optJSONObject("mineBoard")?.let { MineBoard(it.getInt("size"), it.ints("mines").toSet(), it.ints("revealed").toSet(), it.ints("flags").toSet()) }
         return WakeChallenge(typing = j.getBoolean("typing"), total = j.getInt("total"), codeLength = j.getInt("codeLength"),
             typingSeconds = WakeTimers.nearest(j.getInt("typingSeconds"), WakeTimers.typing), mathSeconds = WakeTimers.nearest(j.getInt("mathSeconds"), WakeTimers.math),
             code = j.getString("code"), typingPending = j.getBoolean("typingPending"), remaining = j.getInt("remaining"), left = j.getInt("left"), right = j.getInt("right"),
@@ -103,10 +104,10 @@ object AlarmJson {
             puzzleSeed = j.optLong("puzzleSeed", 0), placedPieces = if (originalCount !in WakeTimers.pieces) emptySet()
                 else j.optJSONArray("placedPieces")?.let { a -> (0 until a.length()).map { a.getInt(it) }.toSet() } ?: emptySet(),
             mines = j.optBoolean("mines", false), mineDifficulty = j.optInt("mineDifficulty", 0), mineSeconds = j.optInt("mineSeconds", 30),
-            mineBoard = j.optJSONObject("mineBoard")?.let { MineBoard(it.getInt("size"), it.ints("mines").toSet(), it.ints("revealed").toSet(), it.ints("flags").toSet()) },
+            mineBoard = mineBoard,
             sudoku = j.optBoolean("sudoku", false), sudokuDifficulty = j.optInt("sudokuDifficulty", 0), sudokuSeconds = sudokuTime(j.optInt("sudokuSeconds", 60)),
             mathOperations = operations(j), operation = MathOperation.valueOf(j.optString("operation", "ADDITION")),
-            minesConfirmed = j.optBoolean("minesConfirmed", false),
+            minesConfirmed = j.optBoolean("minesConfirmed", mineBoard?.complete == true),
             sudokuBoard = j.optJSONObject("sudokuBoard")?.let { SudokuBoard(it.getInt("size"), it.ints("givens"), it.ints("solution"), it.ints("values")) }
         ).also {
             require(it.puzzlePieces in WakeTimers.pieces && it.puzzleSeconds in WakeTimers.puzzle && it.placedPieces.all { id -> id in 0 until it.puzzlePieces })

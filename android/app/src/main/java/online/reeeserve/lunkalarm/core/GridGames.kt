@@ -46,7 +46,7 @@ data class MineBoard(val size: Int, val mines: Set<Int>, val revealed: Set<Int>,
         return board.complete
     }
     fun validate() {
-        require(size in listOf(3, 4, 5, 7, 9) && mines.isNotEmpty() && mines.size < size * size)
+        require(size in listOf(3, 4, 5, 7, 9) && mines.size == mapOf(3 to 1, 4 to 2, 5 to 4, 7 to 8, 9 to 14)[size])
         require((mines + revealed + flags).all { it in cells } && revealed.intersect(mines + flags).isEmpty())
     }
     companion object {

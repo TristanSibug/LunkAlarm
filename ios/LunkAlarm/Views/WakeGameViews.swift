@@ -216,7 +216,7 @@ struct JigsawGameView: View {
 }
 
 // Recognize at touch-down duration rather than relying on a SwiftUI gesture
-// ending inside a scrolling board. Hidden cells flag; revealed cells chord.
+// ending inside a scrolling board. Hidden cells flag; holding revealed cells has no action.
 private struct MineHoldGesture: UIGestureRecognizerRepresentable {
     var action: () -> Void
     func makeCoordinator(converter: CoordinateSpaceConverter) -> Coordinator { Coordinator() }

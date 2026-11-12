@@ -245,11 +245,11 @@ class AlarmInteractionTest {
         assertNotNull(input)
         val initial = repo.state.value.session!!.challenge.answer.toString().length
         repeat(initial) { device.pressKeyCode(KeyEvent.KEYCODE_9) }
-        rule.waitUntil(3000) { input.text.isEmpty() }
+        rule.waitUntil(3000) { input.text in listOf("", "Your answer") }
         repeat(2) { index ->
             val c = repo.state.value.session!!.challenge
             c.answer.toString().forEach { device.pressKeyCode(KeyEvent.KEYCODE_0 + (it - '0')) }
-            if (index == 0) { rule.waitUntil(3000) { repo.state.value.session!!.challenge.answered == 1 && input.text.isEmpty() }; assertTrue(input.isFocused) }
+            if (index == 0) { rule.waitUntil(3000) { repo.state.value.session!!.challenge.answered == 1 && input.text in listOf("", "Your answer") }; assertTrue(input.isFocused) }
         }
         rule.waitUntil(8000) { repo.state.value.session == null }
     }
