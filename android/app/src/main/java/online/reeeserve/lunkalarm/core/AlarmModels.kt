@@ -13,7 +13,7 @@ object WakeTimers {
     val puzzle = listOf(15, 20, 25, 30, 35, 40)
     val pieces = listOf(6, 8, 10)
     val mines = puzzle
-    val sudoku = listOf(30, 60, 90, 120)
+    val sudoku = listOf(60, 120, 180, 240)
     fun nearest(value: Int, choices: List<Int>): Int {
         require(value in choices.first()..choices.last()) { "Invalid wake-up test timer." }
         return choices.minBy { kotlin.math.abs(it - value) }
@@ -27,7 +27,9 @@ data class AlarmDraft(
     val codeLength: Int = 8, val typingSeconds: Int = 30, val mathCount: Int = 0, val mathSeconds: Int = 10,
     val nativeMathKeyboard: Boolean = false, val puzzle: Boolean = false, val puzzlePieces: Int = 8, val puzzleSeconds: Int = 30,
     val mines: Boolean = false, val mineDifficulty: Int = 0, val mineSeconds: Int = 30,
-    val sudoku: Boolean = false, val sudokuDifficulty: Int = 0, val sudokuSeconds: Int = 60
+    val sudoku: Boolean = false, val sudokuDifficulty: Int = 0, val sudokuSeconds: Int = 60,
+    val mathOperations: Set<MathOperation> = setOf(MathOperation.ADDITION), val mathProblemCount: Int = 3,
+    val vibrate: Boolean = false
 ) {
     fun validate() {
         require(hour in 0..23 && minute in 0..59) { "Choose a valid time." }
@@ -35,6 +37,7 @@ data class AlarmDraft(
         require(days.all { it in 1..7 } && volume in .1f..1f && mathCount in 0..8)
         require(puzzlePieces in WakeTimers.pieces && puzzleSeconds in WakeTimers.puzzle)
         require(mineDifficulty in 0..2 && mineSeconds in WakeTimers.mines && sudokuDifficulty in 0..3 && sudokuSeconds in WakeTimers.sudoku)
+        require(mathOperations.isNotEmpty() && mathProblemCount in 1..8)
         require(codeLength in 4..10 && typingSeconds in WakeTimers.typing && mathSeconds in WakeTimers.math)
     }
 }

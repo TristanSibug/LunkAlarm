@@ -57,8 +57,8 @@ import kotlin.math.*
     BackHandler(editor != null || alarmsOpen) { if (editor != null) editor = null else alarmsOpen = false }
     LunkStyle(theme) {
         Box(Modifier.fillMaxSize().background(theme.background)) {
-            if (theme.glow) Box(Modifier.fillMaxSize().background(androidx.compose.ui.graphics.Brush.radialGradient(
-                listOf(androidx.compose.ui.graphics.Color(0xff7c5cff).copy(alpha = .22f), androidx.compose.ui.graphics.Color.Transparent), Offset.Zero, 900f)))
+            if (theme.id !in listOf("oled", "dark")) Box(Modifier.fillMaxSize().background(androidx.compose.ui.graphics.Brush.radialGradient(
+                listOf(theme.accent.copy(alpha = if (theme.light) .09f else .18f), androidx.compose.ui.graphics.Color.Transparent), Offset.Zero, 900f)))
             Column(Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.safeDrawing)) {
                 Row(Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 10.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     val revision = activity.permissionRevision
@@ -78,7 +78,7 @@ import kotlin.math.*
                     enter togetherWith exit
                 }, label = "clock-to-alarms") { open ->
                     if (open) SavedAlarmScreen(state, theme, controller, clock = { alarmsOpen = false }, add = {
-                        editingId = null; editor = state.draft.copy(name = "", timer = false)
+                        timer -> editingId = null; editor = state.draft.copy(name = "", timer = timer)
                     }, edit = { record -> editingId = record.id; editor = record.draft })
                     else ClockScreen(state.use24Hour, theme) { alarmsOpen = true }
                 }
@@ -95,9 +95,9 @@ import kotlin.math.*
                     items(Themes.all, key = { it.id }) { palette ->
                         Column(Modifier.clip(RoundedCornerShape(16.dp)).background(palette.background)
                             .border(1.dp, if (palette.id == state.theme) palette.accent else theme.border, RoundedCornerShape(16.dp))
-                            .clickable { repo.update { it.copy(theme = palette.id) } }.padding(16.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
+                            .clickable { repo.update { it.copy(theme = palette.id) }; themesOpen = false }.padding(16.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
                             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                                Box(Modifier.size(16.dp).background(palette.accent, CircleShape)); Box(Modifier.size(16.dp).background(palette.accent2, CircleShape))
+                                Box(Modifier.size(16.dp).background(if (palette.id == "signal-blue") palette.card else palette.accent, CircleShape)); Box(Modifier.size(16.dp).background(palette.accent2, CircleShape))
                             }
                             Text(palette.name, color = palette.text, fontSize = 13.sp)
                         }
@@ -153,7 +153,7 @@ import kotlin.math.*
     }
 }
 
-@Composable private fun SavedAlarmScreen(state: AppState, theme: LunkTheme, controller: AlarmController, clock: () -> Unit, add: () -> Unit, edit: (AlarmRecord) -> Unit) {
+@Composable private fun SavedAlarmScreen(state: AppState, theme: LunkTheme, controller: AlarmController, clock: () -> Unit, add: (Boolean) -> Unit, edit: (AlarmRecord) -> Unit) {
     val list = rememberLazyListState()
     val latestClock by rememberUpdatedState(clock)
     var pull by remember { mutableFloatStateOf(0f) }
@@ -171,23 +171,47 @@ import kotlin.math.*
             item {
                 Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(14.dp)) {
                     TextButton(onClick = clock, contentPadding = PaddingValues(0.dp)) { Icon(Icons.Default.KeyboardArrowDown, null, tint = theme.muted); Text("Clock", color = theme.muted) }
-                    Text("Your alarms", fontSize = 30.sp, fontWeight = FontWeight.Bold, color = theme.text, modifier = Modifier.testTag("alarms-heading"))
-                    val next = state.alarms.filter { it.enabled && it.error == null }.minByOrNull { it.target }
-                    Text(next?.let { "Next alarm " + Instant.ofEpochMilli(it.target).atZone(ZoneId.systemDefault()).format(DateTimeFormatter.ofPattern(if (state.use24Hour) "MMM d, HH:mm" else "MMM d, h:mm a")) }
-                        ?: "No upcoming alarms", fontSize = 14.sp, color = theme.muted)
+                    if (state.alarms.isEmpty()) {
+                        Text("Alarms & timers", fontSize = 30.sp, fontWeight = FontWeight.Bold, color = theme.text, modifier = Modifier.testTag("alarms-heading"))
+                        Text("No upcoming alarms", fontSize = 14.sp, color = theme.muted)
+                    }
                 }
             }
             if (state.alarms.isEmpty()) item { Text("No alarms yet. Tap + to add one.", color = theme.muted, modifier = Modifier.fillMaxWidth().padding(vertical = 40.dp)) }
-            items(state.alarms.sortedBy { it.target }, key = { it.id }) { record ->
-                AlarmCardRow(record, state.use24Hour, theme, controller, edit)
+            listOf(true, false).forEach { timer ->
+                val records = state.alarms.filter { it.draft.timer == timer }.sortedBy { it.target }
+                if (records.isNotEmpty()) {
+                    item(key = if (timer) "timers-heading" else "alarms-heading") {
+                        Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                            Text(if (timer) "Timers" else "Alarms", fontSize = 30.sp, fontWeight = FontWeight.Bold, color = theme.text,
+                                modifier = Modifier.testTag(if (timer) "timers-heading" else "alarms-heading"))
+                            val next = records.filter { it.enabled && it.error == null }.minByOrNull { it.target }
+                            Text(next?.let { (if (timer) "Next timer " else "Next alarm ") + Instant.ofEpochMilli(it.target).atZone(ZoneId.systemDefault()).format(DateTimeFormatter.ofPattern(if (state.use24Hour) "MMM d, HH:mm" else "MMM d, h:mm a")) }
+                                ?: (if (timer) "No upcoming timers" else "No upcoming alarms"), color = theme.muted, fontSize = 14.sp)
+                        }
+                    }
+                    items(records, key = { it.id }) { record -> AlarmCardRow(record, state.use24Hour, theme, controller, edit) }
+                }
             }
         }
-        FloatingActionButton(onClick = add, modifier = Modifier.align(Alignment.BottomEnd).padding(24.dp).testTag("new-alarm"),
-            shape = CircleShape, containerColor = theme.accent2, contentColor = theme.onAccent) { Icon(Icons.Default.Add, "New alarm", Modifier.size(30.dp)) }
+        var addOpen by remember { mutableStateOf(false) }
+        Box(Modifier.align(Alignment.BottomEnd).padding(24.dp)) {
+            FloatingActionButton(onClick = { addOpen = !addOpen }, modifier = Modifier.testTag("new-alarm"),
+                shape = CircleShape, containerColor = theme.accent2, contentColor = theme.onAccent) {
+                Icon(if (addOpen) Icons.Default.Close else Icons.Default.Add, "Add alarm or timer", Modifier.size(30.dp))
+            }
+            DropdownMenu(expanded = addOpen, onDismissRequest = { addOpen = false }, containerColor = theme.card) {
+                DropdownMenuItem(text = { Text("Alarm", color = theme.text) }, leadingIcon = { Icon(Icons.Default.Alarm, null, tint = theme.accent2) },
+                    onClick = { addOpen = false; add(false) }, modifier = Modifier.testTag("add-menu-alarm"))
+                DropdownMenuItem(text = { Text("Timer", color = theme.text) }, leadingIcon = { Icon(Icons.Default.Timer, null, tint = theme.accent) },
+                    onClick = { addOpen = false; add(true) }, modifier = Modifier.testTag("add-menu-timer"))
+            }
+        }
     }
 }
 
-@Composable private fun AlarmCardRow(alarm: AlarmRecord, use24: Boolean, theme: LunkTheme, controller: AlarmController, edit: (AlarmRecord) -> Unit) {
+@Composable private fun AlarmCardRow(alarm: AlarmRecord, use24: Boolean, palette: LunkTheme, controller: AlarmController, edit: (AlarmRecord) -> Unit) {
+    val theme = palette.cardPalette
     var offset by remember { mutableFloatStateOf(0f) }; var width by remember { mutableFloatStateOf(350f) }
     var dragging by remember { mutableStateOf(false) }; var armed by remember { mutableStateOf(false) }; var menu by remember { mutableStateOf(false) }
     var now by remember { mutableLongStateOf(System.currentTimeMillis()) }
@@ -229,10 +253,10 @@ import kotlin.math.*
                 else Row(Modifier.weight(1f), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                     (1..7).forEach { day ->
                         val selected = day in alarm.draft.days
-                        Box(Modifier.size(26.dp).then(if (selected) Modifier.background(theme.accent.copy(alpha = .1f), CircleShape)
-                            .border(1.dp, theme.accent.copy(alpha = .65f), CircleShape) else Modifier)
+                        Box(Modifier.size(26.dp).then(if (selected) Modifier.background(theme.dayAccent.copy(alpha = .1f), CircleShape)
+                            .border(1.dp, theme.dayAccent.copy(alpha = .65f), CircleShape) else Modifier)
                             .clearAndSetSemantics { contentDescription = listOf("Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday")[day - 1] + if (selected) ", selected" else ", not selected" }, contentAlignment = Alignment.Center) {
-                            Text(listOf("S", "M", "T", "W", "T", "F", "S")[day - 1], fontSize = 11.sp, color = if (selected) theme.accent else theme.muted)
+                            Text(listOf("S", "M", "T", "W", "T", "F", "S")[day - 1], fontSize = 11.sp, color = if (selected) theme.dayAccent else theme.muted)
                         }
                     }
                 }

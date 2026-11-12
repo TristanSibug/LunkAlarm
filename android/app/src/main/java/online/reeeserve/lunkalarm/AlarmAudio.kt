@@ -13,6 +13,7 @@ import java.io.File
 import java.util.UUID
 
 class AlarmAudio(private val context: Context, private val repository: AlarmRepository) {
+    private val vibrator = context.getSystemService(android.os.Vibrator::class.java)
     private var player: MediaPlayer? = null
     val isPlaying: Boolean get() = player?.isPlaying == true
     private val manager = context.getSystemService(AudioManager::class.java)
@@ -21,7 +22,7 @@ class AlarmAudio(private val context: Context, private val repository: AlarmRepo
     private var volume = 1f
     private var gradual = false
     private val attributes = AudioAttributes.Builder().setUsage(AudioAttributes.USAGE_ALARM).setContentType(AudioAttributes.CONTENT_TYPE_MUSIC).build()
-    fun play(tone: String, level: Float, fade: Boolean, fallback: Boolean = false) {
+    fun play(tone: String, level: Float, fade: Boolean, fallback: Boolean = false, vibrate: Boolean = false) {
         stop()
         val audio = MediaPlayer()
         try {
@@ -46,6 +47,7 @@ class AlarmAudio(private val context: Context, private val repository: AlarmRepo
             audio.isLooping = true
             val initial = if (fade) 0f else volume
             audio.setVolume(initial, initial); audio.start(); player = audio
+            if (vibrate) vibrator?.vibrate(android.os.VibrationEffect.createWaveform(longArrayOf(0, 400, 600), 0), attributes)
         } catch (failure: Exception) { audio.release(); stop(); throw failure }
     }
     fun updateLevel(level: Float) { volume = level; tick() }
@@ -54,6 +56,7 @@ class AlarmAudio(private val context: Context, private val repository: AlarmRepo
         runCatching { player?.setVolume(gain, gain) }
     }
     fun stop() {
+        vibrator?.cancel()
         player?.release(); player = null
         focus?.let { manager.abandonAudioFocusRequest(it) }; focus = null
     }

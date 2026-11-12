@@ -33,7 +33,7 @@ enum class WakeTest(val title: String, val short: String) {
     TYPING("Typing test", "Typing"), MATH("Math test", "Math"), PUZZLE("Puzzle test", "Puzzle"),
     MINES("Minesweeper test", "Minesweeper"), SUDOKU("Sudoku test", "Sudoku");
     fun enabled(d: AlarmDraft) = when (this) { TYPING -> d.typing; MATH -> d.mathCount > 0; PUZZLE -> d.puzzle; MINES -> d.mines; SUDOKU -> d.sudoku }
-    fun only(d: AlarmDraft) = d.copy(typing = this == TYPING, mathCount = if (this == MATH) d.mathCount.coerceAtLeast(1) else 0,
+    fun only(d: AlarmDraft) = d.copy(typing = this == TYPING, mathCount = if (this == MATH) d.mathCount.takeIf { it > 0 } ?: d.mathProblemCount else 0,
         puzzle = this == PUZZLE, mines = this == MINES, sudoku = this == SUDOKU)
 }
 
@@ -41,26 +41,16 @@ enum class WakeTest(val title: String, val short: String) {
 @Composable fun WakeTestSelector(draft: AlarmDraft, theme: LunkTheme, change: (AlarmDraft) -> Unit, beforePractice: () -> Unit) {
     var settings by rememberSaveable { mutableStateOf<WakeTest?>(null) }
     var practice by rememberSaveable { mutableStateOf<WakeTest?>(null) }
-    var mathCount by rememberSaveable { mutableIntStateOf(draft.mathCount.takeIf { it > 0 } ?: 3) }
     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(7.dp)) {
         WakeTest.entries.forEach { test ->
             val enabled = test.enabled(draft)
             Box(Modifier.weight(1f).clip(RoundedCornerShape(12.dp))
                 .background(if (enabled) theme.accent2.copy(alpha = .1f) else theme.field)
                 .border(if (enabled) 1.5.dp else 1.dp, if (enabled) theme.accent2 else theme.border, RoundedCornerShape(12.dp))
-                .toggleable(enabled, role = Role.Checkbox) { value ->
-                    val next = when (test) {
-                        WakeTest.TYPING -> draft.copy(typing = value)
-                        WakeTest.MATH -> { if (!value) mathCount = draft.mathCount; draft.copy(mathCount = if (value) mathCount else 0) }
-                        WakeTest.PUZZLE -> draft.copy(puzzle = value)
-                        WakeTest.MINES -> draft.copy(mines = value)
-                        WakeTest.SUDOKU -> draft.copy(sudoku = value)
-                    }
-                    change(next)
-                    settings = if (value) test else null
-                }.semantics { contentDescription = test.title }.testTag("test-tile-${test.name.lowercase()}")) {
+                .clickable(role = Role.Button) { settings = test }
+                .semantics { contentDescription = test.title; selected = enabled }.testTag("test-tile-${test.name.lowercase()}")) {
                 Column(Modifier.fillMaxWidth().padding(top = 18.dp, bottom = 12.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(9.dp)) {
-                    TestGlyph(test, if (enabled) theme.accent2 else theme.muted, Modifier.size(25.dp))
+                    TestGlyph(test, if (enabled) theme.accent2 else theme.muted, Modifier.size(if (test == WakeTest.TYPING) 36.dp else 25.dp, 25.dp))
                     Text(test.short, color = theme.text, fontSize = if (test == WakeTest.MINES) 9.sp else 10.sp, maxLines = 1)
                 }
                 if (enabled) Icon(Icons.Default.Check, null, Modifier.align(Alignment.TopEnd).padding(3.dp).size(13.dp), tint = theme.accent2)
@@ -77,8 +67,8 @@ enum class WakeTest(val title: String, val short: String) {
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     Row(Modifier.weight(1f), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     Text(test.title, color = theme.text, fontSize = 19.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f, fill = false))
-                    OutlinedButton(onClick = { beforePractice(); practice = test }, contentPadding = PaddingValues(horizontal = 10.dp, vertical = 6.dp),
-                        border = BorderStroke(1.dp, theme.accent2), modifier = Modifier.testTag("try-${test.name.lowercase()}")) {
+                    OutlinedButton(onClick = { beforePractice(); practice = test }, contentPadding = PaddingValues(horizontal = 18.dp, vertical = 6.dp),
+                        border = BorderStroke(1.dp, theme.accent2), modifier = Modifier.widthIn(min = 96.dp).testTag("try-${test.name.lowercase()}")) {
                         Icon(Icons.Default.PlayArrow, null, Modifier.size(17.dp), tint = theme.accent2)
                         Text("Try", color = theme.text, fontSize = 12.sp)
                     }
@@ -92,8 +82,22 @@ enum class WakeTest(val title: String, val short: String) {
                     }
                     WakeTest.MATH -> {
                         Row(Modifier.height(IntrinsicSize.Min), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                            SettingBox(Modifier.weight(.42f), theme) { CountSetting("Problems", draft.mathCount.coerceAtLeast(1), 1..8, "1–8 problems", "math-count", theme) { mathCount = it; change(draft.copy(mathCount = it)) } }
+                            SettingBox(Modifier.weight(.42f), theme) { CountSetting("Problems", (draft.mathCount.takeIf { it > 0 } ?: draft.mathProblemCount), 1..8, "1–8 problems", "math-count", theme) { change(draft.copy(mathProblemCount = it, mathCount = if (draft.mathCount > 0) it else 0)) } }
                             SettingBox(Modifier.weight(.58f), theme) { ChoiceSetting("Time per question", draft.mathSeconds, WakeTimers.math, "math-timer", theme) { change(draft.copy(mathSeconds = it)) } }
+                        }
+                        Text("Operations", color = theme.text, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
+                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            MathOperation.entries.forEach { op ->
+                                val chosen = op in draft.mathOperations
+                                Box(Modifier.weight(1f).height(48.dp).clip(RoundedCornerShape(12.dp))
+                                    .background(if (chosen) theme.accent2 else theme.field)
+                                    .border(1.dp, if (chosen) theme.accent2 else theme.border, RoundedCornerShape(12.dp))
+                                    .clickable { if (!chosen || draft.mathOperations.size > 1) change(draft.copy(mathOperations = if (chosen) draft.mathOperations - op else draft.mathOperations + op)) }
+                                    .semantics { selected = chosen; contentDescription = op.name.lowercase() }
+                                    .testTag("math-operation-${op.name.lowercase()}"), contentAlignment = Alignment.Center) {
+                                    Text(op.symbol, color = if (chosen) theme.onAccent else theme.text, fontSize = 23.sp)
+                                }
+                            }
                         }
                         HorizontalDivider(color = theme.border)
                         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
@@ -109,7 +113,7 @@ enum class WakeTest(val title: String, val short: String) {
                         Text("Difficulty", color = theme.text, fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
                         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                             listOf("Easy", "Medium", "Hard").forEachIndexed { i, name ->
-                                DifficultyCard(name, "${i + 3} × ${i + 3}", draft.mineDifficulty == i, WakeTest.MINES, theme, Modifier.weight(1f).testTag("mine-difficulty-$i")) { change(draft.copy(mineDifficulty = i)) }
+                                DifficultyCard(name, "${listOf(5, 7, 9)[i]} × ${listOf(5, 7, 9)[i]}", draft.mineDifficulty == i, WakeTest.MINES, theme, Modifier.weight(1f).testTag("mine-difficulty-$i")) { change(draft.copy(mineDifficulty = i)) }
                             }
                         }
                         ChoiceSetting("Time limit", draft.mineSeconds, WakeTimers.mines, "mine-timer", theme) { change(draft.copy(mineSeconds = it)) }
@@ -125,7 +129,16 @@ enum class WakeTest(val title: String, val short: String) {
                         ChoiceSetting("Time limit", draft.sudokuSeconds, WakeTimers.sudoku, "sudoku-timer", theme) { change(draft.copy(sudokuSeconds = it)) }
                     }
                 }
-                AccentButton("Done", theme, Modifier.testTag("test-settings-done")) { settings = null }
+                AccentButton(if (test.enabled(draft)) "Unset" else "Set", theme, Modifier.testTag("test-settings-done")) {
+                    val enable = !test.enabled(draft)
+                    change(when (test) {
+                        WakeTest.TYPING -> draft.copy(typing = enable)
+                        WakeTest.MATH -> draft.copy(mathCount = if (enable) draft.mathProblemCount else 0)
+                        WakeTest.PUZZLE -> draft.copy(puzzle = enable)
+                        WakeTest.MINES -> draft.copy(mines = enable)
+                        WakeTest.SUDOKU -> draft.copy(sudoku = enable)
+                    }); settings = null
+                }
             }
         }
     }
@@ -179,7 +192,7 @@ enum class WakeTest(val title: String, val short: String) {
 }
 @Composable fun TestGlyph(test: WakeTest, color: Color, modifier: Modifier = Modifier) {
     if (test == WakeTest.TYPING || test == WakeTest.MATH) Box(modifier, contentAlignment = Alignment.Center) {
-        Text(if (test == WakeTest.TYPING) "Aa" else "+=", color = color, fontSize = 20.sp, fontWeight = FontWeight.SemiBold)
+        Text(if (test == WakeTest.TYPING) "Aa" else "+=", color = color, fontSize = 20.sp, fontWeight = FontWeight.SemiBold, maxLines = 1, softWrap = false)
     } else Canvas(modifier) {
         val w = size.width; val h = size.height; val stroke = Stroke(1.5.dp.toPx())
         when (test) {
@@ -212,7 +225,7 @@ enum class WakeTest(val title: String, val short: String) {
     var challenge by remember(test) { mutableStateOf(WakeChallenge.create(snapshot).start(SystemClock.elapsedRealtime())) }
     var now by remember { mutableLongStateOf(SystemClock.elapsedRealtime()) }
     LaunchedEffect(Unit) { while (true) { now = SystemClock.elapsedRealtime(); challenge = challenge.expire(now); delay(200) } }
-    Dialog(onDismissRequest = close, properties = DialogProperties(usePlatformDefaultWidth = false, decorFitsSystemWindows = false)) {
+    Dialog(onDismissRequest = close, properties = DialogProperties(dismissOnClickOutside = false, usePlatformDefaultWidth = false, decorFitsSystemWindows = false)) {
         BackHandler(onBack = close)
         Column(Modifier.fillMaxSize().background(theme.background).windowInsetsPadding(WindowInsets.safeDrawing).imePadding().testTag("practice-test")) {
             Row(Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -224,7 +237,6 @@ enum class WakeTest(val title: String, val short: String) {
                 if (challenge.complete) {
                     Text("Well done!", color = theme.text, fontSize = 26.sp)
                     AccentButton("Try again", theme, Modifier.testTag("retry-practice")) { challenge = WakeChallenge.create(snapshot).start(SystemClock.elapsedRealtime()) }
-                    OutlinedButton(onClick = close) { Text("Back to settings", color = theme.text) }
                 } else WakeChallengeContent(challenge, snapshot, theme,
                     submit = { text, typing -> (if (typing) challenge.submitCode(text, SystemClock.elapsedRealtime()) else challenge.submitDigits(text, SystemClock.elapsedRealtime())).also { challenge = it.challenge }.result },
                     place = { challenge = challenge.placePiece(it, SystemClock.elapsedRealtime()).challenge },

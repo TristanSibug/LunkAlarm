@@ -30,7 +30,6 @@ import online.reeeserve.lunkalarm.core.*
     change: (AlarmDraft) -> Unit, close: () -> Unit, permissions: () -> Unit) {
     val repo = activity.graph.repository; val controller = activity.graph.controller
     var sheet by remember { mutableStateOf<String?>(null) }
-    var testsExpanded by remember { mutableStateOf(true) }
     var previewing by remember { mutableStateOf(false) }
     var importing by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
@@ -54,10 +53,10 @@ import online.reeeserve.lunkalarm.core.*
         onDispose { lifecycle.removeObserver(observer); preview.stop() }
     }
     SideEffect { preview.updateLevel(draft.volume) }
-    LaunchedEffect(previewing, draft.tone, draft.gradual) {
+    LaunchedEffect(previewing, draft.tone, draft.gradual, draft.vibrate) {
         if (previewing) {
             try {
-                preview.play(draft.tone, draft.volume, draft.gradual)
+                preview.play(draft.tone, draft.volume, draft.gradual, vibrate = draft.vibrate)
                 repeat(if (draft.gradual) 48 else 24) { preview.tick(); delay(250) }
                 previewing = false
             } catch (cancelled: CancellationException) { throw cancelled }
@@ -68,27 +67,16 @@ import online.reeeserve.lunkalarm.core.*
     Column(Modifier.fillMaxSize().background(theme.background).imePadding().testTag("alarm-editor")) {
         Row(Modifier.fillMaxWidth().heightIn(min = 58.dp).background(theme.card).padding(horizontal = 16.dp), verticalAlignment = Alignment.CenterVertically) {
             Spacer(Modifier.size(40.dp))
-            Text(if (editingId == null) "New alarm" else "Edit alarm", Modifier.weight(1f), fontSize = 18.sp, fontWeight = FontWeight.SemiBold, color = theme.text,
+            Text(if (editingId == null) (if (draft.timer) "New timer" else "New alarm") else (if (draft.timer) "Edit timer" else "Edit alarm"), Modifier.weight(1f), fontSize = 18.sp, fontWeight = FontWeight.SemiBold, color = theme.text,
                 textAlign = androidx.compose.ui.text.style.TextAlign.Center)
             IconButton(onClick = close, modifier = Modifier.testTag("close-editor")) { Icon(Icons.Default.Close, "Close alarm editor", tint = theme.accent) }
         }
         LazyColumn(Modifier.weight(1f).fillMaxWidth().testTag("editor-form"), contentPadding = PaddingValues(20.dp), verticalArrangement = Arrangement.spacedBy(24.dp)) {
-            if (!draft.timer) item {
-                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                    SectionLabel("Alarm name", theme)
-                    OutlinedTextField(value = draft.name, onValueChange = { change(draft.copy(name = it.take(120))) }, placeholder = { Text("Alarm name (optional)", fontSize = 14.sp) },
-                        singleLine = true, modifier = Modifier.fillMaxWidth().testTag("alarm-name"), shape = RoundedCornerShape(12.dp))
-                }
-            }
             item {
-                Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(16.dp)).background(theme.field).padding(4.dp), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                    listOf(false to "At a time", true to "In how long").forEach { (timer, label) ->
-                        val enabled = editingId == null || draft.timer == timer
-                        Box(Modifier.weight(1f).clip(RoundedCornerShape(12.dp)).background(if (draft.timer == timer) theme.text.copy(alpha = .13f) else androidx.compose.ui.graphics.Color.Transparent)
-                            .clickable(enabled = enabled) { change(draft.copy(timer = timer)) }.padding(vertical = 13.dp).testTag(if (timer) "mode-timer" else "mode-time"), contentAlignment = Alignment.Center) {
-                            Text(label, fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = if (draft.timer == timer) theme.text else theme.muted.copy(alpha = if (enabled) 1f else .5f))
-                        }
-                    }
+                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    SectionLabel(if (draft.timer) "Timer name" else "Alarm name", theme)
+                    OutlinedTextField(value = draft.name, onValueChange = { change(draft.copy(name = it.take(120))) }, placeholder = { Text(if (draft.timer) "Timer name (optional)" else "Alarm name (optional)", fontSize = 14.sp) },
+                        singleLine = true, modifier = Modifier.fillMaxWidth().testTag("alarm-name"), shape = RoundedCornerShape(12.dp))
                 }
             }
             item {
@@ -151,24 +139,18 @@ import online.reeeserve.lunkalarm.core.*
                             Text(Tones.all.firstOrNull { it.first == draft.tone }?.second ?: state.sounds.firstOrNull { it.id == draft.tone }?.name ?: "Choose a sound", modifier = Modifier.weight(1f), fontSize = 13.sp, maxLines = 1)
                             Icon(Icons.Default.KeyboardArrowDown, null, Modifier.size(18.dp), tint = theme.muted)
                         }
-                        Chip(if (previewing) "Stop" else "Preview", theme) { previewing = !previewing }
                     }
                 }
             }
             item { VolumeControls(draft, theme, change) { sheet = "sound-check" } }
             item {
-                Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
-                    Row(Modifier.fillMaxWidth().clickable { testsExpanded = !testsExpanded }.padding(vertical = 6.dp).testTag("wake-tests"), verticalAlignment = Alignment.CenterVertically) {
-                        SectionLabel("Wake-up tests", theme); Spacer(Modifier.weight(1f))
-                        Icon(if (testsExpanded) Icons.Default.KeyboardArrowDown else Icons.Default.KeyboardArrowRight, null, tint = theme.muted, modifier = Modifier.size(18.dp))
-                    }
-                    if (testsExpanded) {
-                        WakeTestSelector(draft, theme, change) { previewing = false; preview.stop() }
-                    }
+                Column(Modifier.testTag("wake-tests"), verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                    SectionLabel("Wake-up tests", theme)
+                    WakeTestSelector(draft, theme, change) { previewing = false; preview.stop() }
                 }
             }
         }
-        AccentButton(if (editingId == null) "Add alarm" else "Save changes", theme, Modifier.padding(horizontal = 20.dp, vertical = 12.dp).testTag("save-alarm"), enabled = !repo.readOnly && !importing) {
+        AccentButton(if (editingId == null) (if (draft.timer) "Add timer" else "Add alarm") else "Save changes", theme, Modifier.padding(horizontal = 20.dp, vertical = 12.dp).testTag("save-alarm"), enabled = !repo.readOnly && !importing) {
             if (!controller.scheduler.exactAllowed || !controller.scheduler.notificationsAllowed) permissions()
             else if (controller.save(draft, editingId)) close()
         }
@@ -181,9 +163,13 @@ import online.reeeserve.lunkalarm.core.*
                 LazyColumn(Modifier.heightIn(max = 560.dp), contentPadding = PaddingValues(20.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     item { ToneRow("Use my own file", false, theme) { sheet = null; importer.launch(arrayOf("audio/*")) } }
                     item { ToneRow("Find more ringtones online", false, theme) { sheet = "online" } }
+                    item { Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                        Text("Sound checker", color = theme.muted, fontSize = 13.sp, modifier = Modifier.weight(1f))
+                        Checkbox(previewing, onCheckedChange = { previewing = it }, modifier = Modifier.testTag("ringtone-sound-checker"))
+                    } }
                     item { HorizontalDivider(Modifier.padding(vertical = 8.dp), color = theme.border) }
-                    items(Tones.all, key = { it.first }) { (id, name) -> ToneRow(name, draft.tone == id, theme) { change(draft.copy(tone = id)); sheet = null; previewing = false } }
-                    items(state.sounds, key = { it.id }) { sound -> ToneRow(sound.name, draft.tone == sound.id, theme) { change(draft.copy(tone = sound.id)); sheet = null; previewing = false } }
+                    items(Tones.all, key = { it.first }) { (id, name) -> ToneRow(name, draft.tone == id, theme) { change(draft.copy(tone = id)) } }
+                    items(state.sounds, key = { it.id }) { sound -> ToneRow(sound.name, draft.tone == sound.id, theme) { change(draft.copy(tone = sound.id)) } }
                 }
             }
             "online" -> Column(Modifier.padding(24.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
@@ -221,7 +207,12 @@ import online.reeeserve.lunkalarm.core.*
 }
 @Composable private fun VolumeControls(draft: AlarmDraft, theme: LunkTheme, change: (AlarmDraft) -> Unit, check: (() -> Unit)? = null) {
     Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-        Row { SectionLabel("Alarm volume", theme); Spacer(Modifier.weight(1f)); Text("${(draft.volume * 100).toInt()}%", color = theme.muted, fontSize = 12.sp) }
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            SectionLabel("Alarm volume", theme); Spacer(Modifier.weight(1f))
+            Text("${(draft.volume * 100).toInt()}%", color = theme.muted, fontSize = 12.sp)
+            Icon(Icons.Default.Vibration, "Vibrate", tint = theme.muted, modifier = Modifier.padding(start = 10.dp).size(18.dp))
+            Checkbox(draft.vibrate, onCheckedChange = { change(draft.copy(vibrate = it)) }, modifier = Modifier.testTag("alarm-vibrate"))
+        }
         Slider(value = draft.volume, onValueChange = { change(draft.copy(volume = it)) }, valueRange = .1f..1f, steps = 17, modifier = Modifier.testTag("alarm-volume"))
         Row(verticalAlignment = Alignment.CenterVertically) {
             Text("Gradually increase volume", fontSize = 13.sp, modifier = Modifier.weight(1f))

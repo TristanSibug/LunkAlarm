@@ -58,8 +58,9 @@ class AlarmInteractionTest {
         val folder = File(context.getExternalFilesDir(null), "previews").apply { mkdirs() }
         device.takeScreenshot(File(folder, "$name.png"))
     }
-    private fun openEditor() {
+    private fun openEditor(timer: Boolean = false) {
         rule.onNodeWithTag("view-alarms").performClick(); rule.onNodeWithTag("new-alarm").performClick()
+        rule.onNodeWithTag(if (timer) "add-menu-timer" else "add-menu-alarm").performClick()
         rule.onNodeWithTag("alarm-editor").assertExists()
     }
     private fun mission(draft: AlarmDraft) {
@@ -115,14 +116,14 @@ class AlarmInteractionTest {
         val left = rule.onNodeWithTag("alarms-heading").fetchSemanticsNode().boundsInRoot.left
         capture("android-empty-list")
         rule.onNodeWithTag("new-alarm").performClick()
-        rule.onNodeWithTag("mode-timer").performClick()
+        rule.onNodeWithTag("add-menu-timer").performClick()
         rule.onNodeWithTag("duration-hours").assertExists(); rule.onNodeWithText("8 hours").assertDoesNotExist()
         rule.onNodeWithTag("save-alarm").performClick()
         val first = repo.state.value.alarms.single()
         assertTrue(first.draft.timer)
-        assertEquals(left, rule.onNodeWithTag("alarms-heading").fetchSemanticsNode().boundsInRoot.left, 1f)
+        assertEquals(left, rule.onNodeWithTag("timers-heading").fetchSemanticsNode().boundsInRoot.left, 1f)
         rule.onNodeWithTag("alarm-${first.id}").performClick()
-        rule.onNodeWithText("Edit alarm").assertExists(); rule.onNodeWithTag("duration-minutes").assertExists()
+        rule.onNodeWithText("Edit timer").assertExists(); rule.onNodeWithTag("duration-minutes").assertExists()
         capture("android-edit-countdown")
         rule.onNodeWithTag("save-alarm").performClick()
         assertEquals(first.id, repo.state.value.alarms.single().id)
@@ -212,11 +213,16 @@ class AlarmInteractionTest {
     @Test fun i_adjustingPreviewVolumeDoesNotStopPreview() {
         openEditor()
         rule.onNodeWithTag("editor-form").performScrollToNode(hasTestTag("ringtone-picker"))
-        rule.onNodeWithText("Preview", substring = false).performClick()
+        rule.onNodeWithTag("ringtone-picker").performClick()
+        rule.onNodeWithTag("ringtone-sound-checker").performClick()
+        rule.onNodeWithText("Digital Watch").performScrollTo().performClick()
+        rule.onNodeWithTag("ringtone-sound-checker").assertIsOn()
+        capture("android-ringtone-sound-checker")
+        rule.onNodeWithTag("ringtone-sound-checker").performClick()
+        device.pressBack()
         rule.onNodeWithTag("editor-form").performScrollToNode(hasTestTag("alarm-volume"))
         rule.onNodeWithTag("alarm-volume").performSemanticsAction(SemanticsActions.SetProgress) { it(.4f) }
-        rule.onNodeWithText("Stop", substring = false).assertExists().performClick()
-        rule.onNodeWithText("Preview", substring = false).assertExists()
+        rule.onNodeWithTag("alarm-vibrate").performClick().assertIsOn()
     }
 
 
@@ -234,11 +240,16 @@ class AlarmInteractionTest {
     @Test fun k_nativeMathKeyboardUsesTheSameAutomaticAnswerRules() {
         mission(AlarmDraft(mathCount = 2, mathSeconds = 15, nativeMathKeyboard = true, volume = .2f))
         rule.onNodeWithTag("key-1").assertDoesNotExist()
-        rule.onNodeWithTag("native-math-answer").performTextInput("99")
-        rule.onNodeWithTag("native-math-answer").assert(SemanticsMatcher.expectValue(androidx.compose.ui.semantics.SemanticsProperties.EditableText, androidx.compose.ui.text.AnnotatedString("")))
-        repeat(2) {
+        rule.onNodeWithTag("native-math-answer").performClick()
+        val input = device.findObject(androidx.test.uiautomator.By.desc("Math answer"))
+        assertNotNull(input)
+        val initial = repo.state.value.session!!.challenge.answer.toString().length
+        repeat(initial) { device.pressKeyCode(KeyEvent.KEYCODE_9) }
+        rule.waitUntil(3000) { input.text.isEmpty() }
+        repeat(2) { index ->
             val c = repo.state.value.session!!.challenge
-            rule.onNodeWithTag("native-math-answer").performTextInput((c.left + c.right).toString())
+            c.answer.toString().forEach { device.pressKeyCode(KeyEvent.KEYCODE_0 + (it - '0')) }
+            if (index == 0) { rule.waitUntil(3000) { repo.state.value.session!!.challenge.answered == 1 && input.text.isEmpty() }; assertTrue(input.isFocused) }
         }
         rule.waitUntil(8000) { repo.state.value.session == null }
     }
@@ -257,9 +268,7 @@ class AlarmInteractionTest {
     @Test fun m_allThemesKeepInheritedLabelsReadable() {
         for (theme in Themes.all) {
             rule.runOnIdle { repo.update { it.copy(theme = theme.id) } }
-            openEditor()
-            rule.onNodeWithTag("editor-form").performScrollToNode(hasTestTag("mode-timer"))
-            rule.onNodeWithTag("mode-timer").performClick()
+            openEditor(timer = true)
             rule.onNodeWithText("5 min").assertExists()
             capture("android-theme-${theme.id}")
             rule.onNodeWithTag("close-editor").performClick()
@@ -295,16 +304,17 @@ class AlarmInteractionTest {
         rule.onNodeWithTag("typing-timer-25").performClick()
         capture("android-typing-settings")
         rule.onNodeWithTag("test-settings-done").performClick()
-        rule.onNodeWithTag("test-tile-typing").assertIsOn()
+        rule.onNodeWithTag("test-tile-typing").assertIsSelected()
         rule.onNodeWithTag("test-tile-math").performScrollTo().performClick()
         rule.onNodeWithTag("math-count-plus").performClick()
         rule.onNodeWithTag("math-timer-15").performClick()
         rule.onNodeWithText("Use your Android number keyboard for math answers").assertDoesNotExist()
         capture("android-math-settings")
         rule.onNodeWithTag("test-settings-done").performClick()
-        rule.onNodeWithTag("test-tile-typing").assertIsOn()
-        rule.onNodeWithTag("test-tile-math").assertIsOn().performClick()
-        rule.onNodeWithTag("test-tile-math").assertIsOff()
+        rule.onNodeWithTag("test-tile-typing").assertIsSelected()
+        rule.onNodeWithTag("test-tile-math").assertIsSelected().performClick()
+        rule.onNodeWithTag("test-settings-done").performClick()
+        rule.onNodeWithTag("test-tile-math").assertIsNotSelected()
         rule.onNodeWithTag("test-settings-math").assertDoesNotExist()
         rule.onNodeWithTag("test-tile-puzzle").performScrollTo().performClick()
         rule.onNodeWithTag("puzzle-pieces-7").assertDoesNotExist()
@@ -319,7 +329,7 @@ class AlarmInteractionTest {
         rule.onNodeWithTag("test-tile-sudoku").performScrollTo().performClick()
         rule.onNodeWithTag("sudoku-difficulty-3").performClick()
         rule.onNodeWithTag("sudoku-timer-120").performClick()
-        val tops = listOf(30, 60, 90, 120).map { rule.onNodeWithTag("sudoku-timer-$it").fetchSemanticsNode().boundsInRoot.top }
+        val tops = listOf(60, 120, 180, 240).map { rule.onNodeWithTag("sudoku-timer-$it").fetchSemanticsNode().boundsInRoot.top }
         assertTrue(tops.all { kotlin.math.abs(it - tops.first()) < 1f })
         capture("android-sudoku-settings")
         rule.onNodeWithTag("test-settings-done").performClick()
@@ -340,6 +350,12 @@ class AlarmInteractionTest {
             rule.onNodeWithTag("try-$tag").performClick()
             rule.onNodeWithTag("practice-test").assertExists()
             assertTrue(repo.state.value.alarms.isEmpty()); assertNull(repo.state.value.session); assertFalse(AlarmService.isPlaying)
+            if (test == WakeTest.TYPING) {
+                rule.onNodeWithTag("wake-code").performScrollTo().performClick()
+                device.pressKeyCode(KeyEvent.KEYCODE_A)
+                rule.onNodeWithTag("practice-test").assertExists()
+                device.pressBack()
+            }
             capture("android-practice-$tag")
             if (test == WakeTest.SUDOKU) device.pressBack() else rule.onNodeWithTag("exit-practice").performClick()
             rule.onNodeWithTag("test-settings-$tag").assertExists()
@@ -356,10 +372,7 @@ class AlarmInteractionTest {
         val mine = repo.state.value.session!!.challenge.mineBoard!!
         rule.onNodeWithTag("mine-mode").performClick()
         mine.mines.forEach { rule.onNodeWithTag("mine-cell-$it").performScrollTo().performClick() }
-        if (repo.state.value.session!!.challenge.minesPending) {
-            rule.onNodeWithTag("mine-mode").performClick()
-            mine.cells.filterNot { it in mine.mines || it in mine.revealed }.forEach { rule.onNodeWithTag("mine-cell-$it").performScrollTo().performClick() }
-        }
+        rule.onNodeWithTag("mine-done").performScrollTo().assertIsEnabled().performClick()
         rule.onNodeWithTag("sudoku-board").assertExists()
         val sudoku = repo.state.value.session!!.challenge.sudokuBoard!!
         val first = sudoku.givens.indexOfFirst { it == 0 }
@@ -390,6 +403,38 @@ class AlarmInteractionTest {
         rule.onNodeWithTag("mine-cell-$mine").performScrollTo().performClick()
         rule.waitUntil(5000) { repo.state.value.session?.challenge?.resets == 2 && AlarmService.isPlaying }
         assertTrue(repo.state.value.session!!.sound)
+    }
+
+    @Test fun s_explicitSetAndOperationsKeepTheirStateWhenSheetCloses() {
+        openEditor()
+        rule.onNodeWithTag("editor-form").performScrollToNode(hasTestTag("wake-tests"))
+        rule.onNodeWithTag("test-tile-math").performScrollTo().performClick()
+        for (op in listOf("subtraction", "multiplication", "division")) rule.onNodeWithTag("math-operation-$op").performScrollTo().performClick()
+        rule.onNodeWithTag("close-test-settings").performClick()
+        rule.onNodeWithTag("test-tile-math").assertIsNotSelected().performClick()
+        MathOperation.entries.forEach { rule.onNodeWithTag("math-operation-${it.name.lowercase()}").assertIsSelected() }
+        rule.onNodeWithTag("test-settings-done").performScrollTo().performClick()
+        rule.onNodeWithTag("test-tile-math").assertIsSelected().performClick()
+        capture("android-math-four-operations")
+        rule.onNodeWithTag("close-test-settings").performClick()
+        rule.onNodeWithTag("save-alarm").performClick()
+        assertEquals(MathOperation.entries.toSet(), repo.state.value.alarms.single().draft.mathOperations)
+    }
+    @Test fun t_alarmAndTimerHaveSeparateEditorsAndOrderedSections() {
+        openEditor(timer = true)
+        rule.onNodeWithText("New timer").assertExists()
+        rule.onNodeWithTag("alarm-name").performTextInput("Tea")
+        rule.onNodeWithTag("mode-timer").assertDoesNotExist()
+        rule.onNodeWithTag("save-alarm").performClick()
+        rule.onNodeWithTag("timers-heading").assertExists()
+        rule.onNodeWithTag("alarms-heading").assertDoesNotExist()
+        rule.onNodeWithTag("new-alarm").performClick(); rule.onNodeWithTag("add-menu-alarm").performClick()
+        rule.onNodeWithTag("alarm-name").performTextInput("Morning")
+        rule.onNodeWithTag("save-alarm").performClick()
+        rule.onNodeWithTag("your-alarms").performTouchInput { swipeUp() }
+        rule.onNodeWithTag("alarms-heading").assertExists()
+        capture("android-alarms-and-timers")
+        assertEquals("Tea", repo.state.value.alarms.first { it.draft.timer }.draft.name)
     }
 
 }

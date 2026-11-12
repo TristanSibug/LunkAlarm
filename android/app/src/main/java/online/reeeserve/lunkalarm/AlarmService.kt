@@ -51,10 +51,10 @@ class AlarmService : Service() {
                 val fresh = shownOwner != current.owner
                 shownOwner = current.owner
                 foreground(notification(current, fresh))
-                val key = if (current.sound) "${current.owner}:${alarm.draft.tone}:${alarm.draft.volume}:${alarm.draft.gradual}" else null
+                val key = if (current.sound) "${current.owner}:${alarm.draft.tone}:${alarm.draft.volume}:${alarm.draft.gradual}/${alarm.draft.vibrate}" else null
                 if (key != audioOwner) {
                     audio.stop(); audioOwner = key
-                    if (key != null) try { audio.play(alarm.draft.tone, alarm.draft.volume, alarm.draft.gradual, fallback = true) }
+                    if (key != null) try { audio.play(alarm.draft.tone, alarm.draft.volume, alarm.draft.gradual, fallback = true, vibrate = alarm.draft.vibrate) }
                     catch (failure: Exception) { repo.report("Alarm audio could not play. Check your device alarm volume. ${failure.localizedMessage}") }
                 }
             } }

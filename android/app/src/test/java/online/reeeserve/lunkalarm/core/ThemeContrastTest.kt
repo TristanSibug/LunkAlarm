@@ -11,13 +11,16 @@ class ThemeContrastTest {
         val x = a.luminance(); val y = b.luminance()
         return (maxOf(x, y) + .05f) / (minOf(x, y) + .05f)
     }
-    @Test fun allNineteenPalettesHaveReadablePrimaryAndSecondaryText() {
-        assertEquals(19, Themes.all.size)
+    @Test fun allEighteenPalettesHaveReadablePrimaryAndSecondaryText() {
+        assertEquals(18, Themes.all.size)
         Themes.all.forEach { theme ->
-            for (surface in listOf(theme.background, theme.card)) {
+            for (surface in listOf(theme.background)) {
                 assertTrue("${theme.name} text contrast", contrast(theme.text, surface) >= 4.5f)
                 assertTrue("${theme.name} secondary contrast", contrast(theme.muted, surface) >= 4.5f)
             }
+            val card = theme.cardPalette
+            assertTrue("${theme.name} card text", contrast(card.text, card.card) >= 4.5f)
+            assertTrue("${theme.name} card detail", contrast(card.muted, card.card) >= 4.5f)
         }
     }
 }

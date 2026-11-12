@@ -46,13 +46,13 @@ data class MineBoard(val size: Int, val mines: Set<Int>, val revealed: Set<Int>,
         return board.complete
     }
     fun validate() {
-        require(size in 3..5 && mines.size == listOf(1, 2, 4)[size - 3])
+        require(size in listOf(3, 4, 5, 7, 9) && mines.isNotEmpty() && mines.size < size * size)
         require((mines + revealed + flags).all { it in cells } && revealed.intersect(mines + flags).isEmpty())
     }
     companion object {
         fun create(difficulty: Int, seed: Long): MineBoard {
             require(difficulty in 0..2)
-            val size = difficulty + 3; val count = listOf(1, 2, 4)[difficulty]; val random = Random(seed)
+            val size = listOf(5, 7, 9)[difficulty]; val count = listOf(4, 8, 14)[difficulty]; val random = Random(seed)
             repeat(300) {
                 val board = MineBoard(size, (0 until size * size).shuffled(random).take(count).toSet(), emptySet())
                 val start = board.cells.filter { it !in board.mines && board.number(it) == 0 }.randomOrNull(random) ?: return@repeat

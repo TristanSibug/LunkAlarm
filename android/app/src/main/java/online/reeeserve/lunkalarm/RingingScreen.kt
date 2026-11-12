@@ -97,7 +97,7 @@ import online.reeeserve.lunkalarm.core.*
         }
     } else if (challenge.remaining > 0) {
         Text("${challenge.answered} / ${challenge.total} answered", fontSize = 17.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.testTag("math-progress"))
-        Text("${challenge.left} + ${challenge.right}", fontSize = 48.sp, fontWeight = FontWeight.Light, modifier = Modifier.testTag("math-problem"))
+        Text("${challenge.left} ${challenge.operation.symbol} ${challenge.right}", fontSize = 48.sp, fontWeight = FontWeight.Light, modifier = Modifier.testTag("math-problem"))
         fun enter(value: String) {
             if (value.length < answer.length) { answer = value; return }
             when (submit(value, false)) {
@@ -107,7 +107,7 @@ import online.reeeserve.lunkalarm.core.*
                 AnswerResult.TIMED_OUT -> { answer = ""; hint = "Time’s up. Tests restarted." }
             }
         }
-        if (draft.nativeMathKeyboard) NativeMathField(answer, theme) { enter(it) }
+        if (draft.nativeMathKeyboard) NativeMathField(answer, theme) { enter(it); answer }
         else {
             Box(Modifier.fillMaxWidth().clip(RoundedCornerShape(14.dp)).background(theme.field).padding(14.dp), contentAlignment = Alignment.Center) {
                 Text(answer.ifEmpty { "Your answer" }, fontSize = 26.sp, color = if (answer.isEmpty()) theme.muted else theme.text, modifier = Modifier.testTag("math-answer"))
@@ -173,15 +173,32 @@ private class NoPasteEditText(context: Context) : EditText(context) {
     })
 }
 
-@Composable private fun NativeMathField(answer: String, theme: LunkTheme, change: (String) -> Unit) {
-    val focus = remember { FocusRequester() }
+@Composable private fun NativeMathField(answer: String, theme: LunkTheme, change: (String) -> String) {
+    val latest by rememberUpdatedState(change)
     val keyboard = LocalSoftwareKeyboardController.current
-    LaunchedEffect(Unit) { focus.requestFocus(); keyboard?.show() }
     DisposableEffect(Unit) { onDispose { keyboard?.hide() } }
-    OutlinedTextField(value = answer, onValueChange = { value ->
-        if (value.all { it in '0'..'9' } && value.length <= 2) change(value)
-    }, singleLine = true, placeholder = { Text("Your answer", color = theme.muted) },
-        textStyle = androidx.compose.ui.text.TextStyle(color = theme.text, fontSize = 26.sp),
-        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.NumberPassword, imeAction = ImeAction.Done),
-        modifier = Modifier.fillMaxWidth().focusRequester(focus).testTag("native-math-answer"))
+    AndroidView(modifier = Modifier.fillMaxWidth().height(60.dp).clip(RoundedCornerShape(14.dp))
+        .background(theme.field).border(1.dp, theme.border, RoundedCornerShape(14.dp)).testTag("native-math-answer"), factory = { context ->
+        NoPasteEditText(context).apply {
+            inputType = InputType.TYPE_CLASS_NUMBER
+            imeOptions = EditorInfo.IME_ACTION_DONE or EditorInfo.IME_FLAG_NO_EXTRACT_UI
+            setSingleLine(true); textSize = 26f; gravity = Gravity.CENTER
+            setBackgroundColor(android.graphics.Color.TRANSPARENT)
+            contentDescription = "Math answer"; hint = "Your answer"
+            filters = arrayOf(InputFilter.LengthFilter(3))
+            addTextChangedListener(object : TextWatcher {
+                override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
+                override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {}
+                override fun afterTextChanged(value: Editable?) {
+                    if (suppress) return
+                    val accepted = latest(value.toString())
+                    // Clear the actual IME buffer even if Compose's old and new values are both empty.
+                    if (text.toString() != accepted) { suppress = true; setText(accepted); setSelection(accepted.length); suppress = false }
+                }
+            })
+        }
+    }, update = { field ->
+        field.setTextColor(theme.text.toArgb()); field.setHintTextColor(theme.muted.toArgb())
+        if (field.text.toString() != answer) { field.suppress = true; field.setText(answer); field.setSelection(answer.length); field.suppress = false }
+    })
 }

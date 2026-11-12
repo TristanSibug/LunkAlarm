@@ -28,9 +28,9 @@ import online.reeeserve.lunkalarm.core.*
         Text("${board.flags.size}/${board.mines.size} flags", color = theme.muted, fontSize = 13.sp, modifier = Modifier.weight(1f).testTag("mine-progress"))
         Chip(if (flagMode) "⚑ Flag" else "Reveal", theme, Modifier.testTag("mine-mode")) { flagMode = !flagMode }
     }
-    Column(Modifier.widthIn(max = 360.dp).fillMaxWidth().testTag("mine-board"), verticalArrangement = Arrangement.spacedBy(7.dp)) {
+    Column(Modifier.widthIn(max = 360.dp).fillMaxWidth().testTag("mine-board"), verticalArrangement = Arrangement.spacedBy(if (board.size == 9) 3.dp else 5.dp)) {
         repeat(board.size) { row ->
-            Row(horizontalArrangement = Arrangement.spacedBy(7.dp)) {
+            Row(horizontalArrangement = Arrangement.spacedBy(if (board.size == 9) 3.dp else 5.dp)) {
                 repeat(board.size) { col ->
                     val cell = row * board.size + col; val revealed = cell in board.revealed; val flagged = cell in board.flags
                     Box(Modifier.weight(1f).aspectRatio(1f).clip(RoundedCornerShape(9.dp))
@@ -42,17 +42,21 @@ import online.reeeserve.lunkalarm.core.*
                             flagged -> "flagged"; revealed -> "${board.number(cell)} adjacent mines"; else -> "hidden" }
                         }.testTag("mine-cell-$cell"), contentAlignment = Alignment.Center) {
                         Text(if (flagged) "⚑" else if (revealed && board.number(cell) != 0) "${board.number(cell)}" else "",
-                            color = if (flagged) theme.accent2 else theme.text, fontSize = 24.sp, fontWeight = FontWeight.SemiBold)
+                            color = if (flagged) theme.accent2 else theme.text, fontSize = if (board.size == 9) 16.sp else 21.sp, fontWeight = FontWeight.SemiBold)
                     }
                 }
             }
         }
     }
+    AccentButton("I'm done", theme, Modifier.widthIn(max = 360.dp).testTag("mine-done"), enabled = board.flags.size == board.mines.size) { action(-1, false) }
 }
 
-@Composable fun SudokuView(board: SudokuBoard, theme: LunkTheme, action: (Int, Int) -> Unit) {
+@Composable fun SudokuView(board: SudokuBoard, palette: LunkTheme, action: (Int, Int) -> Unit) {
+    val theme = palette.cardPalette
     var cell by rememberSaveable(board.givens) { mutableIntStateOf(board.givens.indexOfFirst { it == 0 }) }
     val view = LocalView.current
+    Column(Modifier.widthIn(max = 400.dp).fillMaxWidth().clip(RoundedCornerShape(16.dp)).background(theme.card).padding(12.dp),
+        verticalArrangement = Arrangement.spacedBy(14.dp), horizontalAlignment = Alignment.CenterHorizontally) {
     Text("Sudoku", color = theme.text, fontSize = 20.sp, fontWeight = FontWeight.SemiBold)
     Text("Use 1–${board.size} once in each row, column and box.", color = theme.muted, fontSize = 12.sp)
     Text("${board.filled}/${board.blanks} filled", color = theme.muted, fontSize = 13.sp, modifier = Modifier.testTag("sudoku-progress"))
@@ -61,7 +65,7 @@ import online.reeeserve.lunkalarm.core.*
             Row {
                 repeat(board.size) { col ->
                     val id = row * board.size + col; val given = board.givens[id] != 0; val selected = cell == id; val conflict = board.conflict(id)
-                    Box(Modifier.weight(1f).aspectRatio(1f).background(when { selected -> theme.accent2.copy(alpha = .2f); given -> theme.text.copy(alpha = .05f); else -> theme.field })
+                    Box(Modifier.weight(1f).aspectRatio(1f).background(when { selected -> theme.accent2.copy(alpha = .2f); else -> theme.field })
                         .drawBehind {
                             val thin = .5.dp.toPx(); val strong = 1.5.dp.toPx(); val color = theme.text.copy(alpha = .45f)
                             drawLine(color, Offset.Zero, Offset(size.width, 0f), if (row % 2 == 0) strong else thin)
@@ -85,4 +89,5 @@ import online.reeeserve.lunkalarm.core.*
         }
     }
     Chip("Erase", theme, Modifier.testTag("sudoku-erase")) { haptic(view); action(cell, 0) }
+}
 }

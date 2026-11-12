@@ -135,7 +135,7 @@ Try opens an isolated full-screen practice session with the same challenge engin
 | Minesweeper | Easy 5×5 (4 mines), Medium 7×7 (8 mines), Hard 9×9 (14 mines) | 15–40 seconds in five-second steps |
 | Sudoku | Easy 4×4 easy, Medium 4×4 hard, Hard 6×6 easy, Difficult 6×6 hard | 60 / 120 / 180 / 240 seconds |
 
-Minesweeper starts with a safe opening and uses deduction-solvable boards. Reveal all safe squares and flag all mines. Tap reveals, hold a hidden cell flags it, and hold a revealed number to open its unflagged neighbors when the adjacent flag count matches. Incorrect flags can reveal a mine and restart the whole sequence audibly. The Reveal/Flag button and VoiceOver actions offer alternatives to holding. Sudoku has a unique solution, immutable clues, reversible entries/erase, and conflict indication. Puzzle pieces use randomized interlocking seams, with exactly one board position per piece, no empty-piece outlines, drag/tap placement and a placement-count heading. Typing has a faint answer-field border and placeholder.
+Minesweeper starts with a safe opening and uses deduction-solvable boards. Reveal all safe squares and flag all mines. Tap reveals, hold a hidden cell flags it, and holding a revealed number has no action. Incorrect flags can reveal a mine and restart the whole sequence audibly. The Reveal/Flag button and VoiceOver actions offer alternatives to holding. Sudoku has a unique solution, immutable clues, reversible entries/erase, and conflict indication. Puzzle pieces use randomized interlocking seams, with exactly one board position per piece, no empty-piece outlines, drag/tap placement and a placement-count heading. Typing has a faint answer-field border and placeholder.
 
 Actual games follow typing → math → puzzle → Minesweeper → Sudoku, skipping disabled tests. Each game has one deadline; moves never extend it. Timeouts or mine hits reset all configured tests and restore sound. Alarm definitions snapshot all settings; game boards and progress persist with the active owner across app restarts. Old iOS alarms retain their existing timer snapshots; editing rounds legacy intermediate typing/math timers to the nearest new button choice.
 
@@ -145,6 +145,11 @@ The subtle **In-app vibration** checkbox beside volume is intentionally scoped t
 
 The + menu creates an Alarm or Timer in separate editors. Both accept optional names; timers appear first in their own section and disappear when finished. Empty sections are hidden. Wake-up tests are always visible: tiles open settings, Set/Unset alone changes activation, and closing or swiping down preserves activation. Practice remains isolated.
 
-Math supports any nonempty selection of addition, subtraction, multiplication and division. Subtraction stays non-negative and division has whole-number answers. Minesweeper uses a native long press for flags/chording (adjacent flags must match the number). I'm done is enabled only at the exact flag count, validates positions, and resets on incorrect flags; the game no longer completes automatically. Over-flagging is allowed.
+Math supports any nonempty selection of addition, subtraction, multiplication and division. Subtraction stays non-negative and division has whole-number answers. Minesweeper uses a native long press to flag hidden squares; holding revealed numbers does nothing. I'm done is enabled only at the exact flag count, validates positions, and resets on incorrect flags; the game no longer completes automatically. Over-flagging is allowed.
 
 Ringtone selection stays open; Sound checker previews selections inside that picker. Themes dismiss on selection. VS Code Blue was removed (existing selections migrate to Deep Ocean); most backgrounds have subtle gradients except OLED Black and Dark. Midnight Cherry has pale alarm cards with dark text and a clearer Sudoku board; Heritage cards are lighter, Cobalt & Coral weekday circles use coral, and Signal Blue's swatches include red.
+
+
+## iOS 1.8.1
+
+Remove stale scheduling confirmation text from the alarm/timer editor. Native math input clears its displayed answer synchronously after correct and incorrect submissions while keeping the keyboard focused. Minesweeper no longer opens adjacent squares when holding a number; holding a hidden square still flags/unflags it. Existing AlarmKit delivery is retained.
