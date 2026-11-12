@@ -12,6 +12,7 @@ class PermissionGateTest {
         assertFalse(rule.activity.graph.controller.scheduler.exactAllowed)
         rule.onNodeWithTag("view-alarms").performClick()
         rule.onNodeWithTag("new-alarm").performClick()
+        rule.onNodeWithTag("add-menu-alarm").performClick()
         rule.onNodeWithTag("save-alarm").performClick()
         rule.onNodeWithText("Allow alarms & reminders").assertExists()
         assertTrue(rule.activity.graph.repository.state.value.alarms.isEmpty())

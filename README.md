@@ -21,14 +21,14 @@ The repository also retains the earlier native C# / WPF Windows implementation i
 - A large clock-first screen with local date, time zone, and 12/24-hour display. Swipe up to view alarms and down to return to the clock.
 - Saved alarms with optional names, daily or selected-weekday repeats, editing, duplication, and swipe-to-delete with haptic feedback.
 - Active countdowns alongside saved alarms. Completed countdowns disappear; At a time alarms stay until deleted.
-- Floating Add alarm / Save changes buttons, time and duration wheels, and collapsible wake-up test settings.
-- Nineteen app-owned themes, ten offline ringtones, sound previews, audio-file imports, a volume slider, and optional gradual fade-in.
+- Floating Add alarm / Save changes buttons, time and duration wheels, and always-visible wake-up test tiles.
+- Eighteen app-owned mobile themes, ten offline ringtones, sound previews, audio-file imports, a volume slider, and optional gradual fade-in.
 - Configurable timed typing and math tests, automatic math answer submission, an answering sound switch, and progress resets when a test times out. Both mobile apps also include puzzle, Minesweeper and Sudoku tests, with platform-specific options described below.
 - Native alarm scheduling so a scheduled alarm does not depend on keeping the clock screen open.
 
-### Android 1.2.0
+### Mobile wake-up tests
 
-Choose wake-up tests using five icon tiles. Enabling a tile opens its settings; disabling it leaves the other selected tests enabled. Each test has a **Try** button for a practice run you can exit anytime without scheduling an alarm. Test settings use fixed buttons and bounded **− / +** controls instead of looping wheels.
+Choose wake-up tests using five icon tiles. Tapping a tile opens settings; Set / Unset changes activation while other selected tests stay enabled. Each test has a **Try** button for a practice run you can exit anytime without scheduling an alarm. Test settings use fixed buttons and bounded **− / +** controls instead of looping wheels.
 
 | Wake-up test | Options | Time limit |
 | --- | --- | --- |
