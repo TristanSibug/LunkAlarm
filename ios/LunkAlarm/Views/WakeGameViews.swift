@@ -31,7 +31,7 @@ struct MineGameView: View {
     var body: some View {
         VStack(spacing: 14) {
             Text("Minesweeper").font(.system(size: 20, weight: .semibold))
-            Text("Reveal safe squares and flag all mines.\nTap to reveal · Hold a hidden square to flag.\nHold a number with matching adjacent flags to reveal squares.")
+            Text("Reveal safe squares and flag all mines.\nTap to reveal · Hold a hidden square to flag.")
                 .font(.system(size: 12)).foregroundStyle(theme.muted).multilineTextAlignment(.center)
             HStack {
                 Text("\(board.flags.count)/\(board.mines.count) flags").font(.system(size: 13)).foregroundStyle(theme.muted).accessibilityIdentifier("mineProgress")
@@ -54,14 +54,14 @@ struct MineGameView: View {
             .contentShape(Rectangle())
             .onTapGesture { if !shown { AlarmHaptics.keypress(); action(cell, flagMode, false) } }
             .gesture(MineHoldGesture {
-                AlarmHaptics.keypress(); action(cell, !shown, shown)
+                if !shown { AlarmHaptics.keypress(); action(cell, true, false) }
             })
             .accessibilityElement(children: .ignore)
             .accessibilityLabel("Row \(cell / board.size + 1), column \(cell % board.size + 1)")
             .accessibilityValue(flag ? "Flagged" : shown ? "\(number) adjacent mines" : "Hidden")
             .accessibilityAddTraits(.isButton)
-            .accessibilityAction { action(cell, flagMode, false) }
-            .accessibilityAction(named: shown ? "Reveal adjacent squares" : "Toggle flag") { action(cell, !shown, shown) }
+            .accessibilityAction { if !shown { action(cell, flagMode, false) } }
+            .accessibilityAction(named: "Toggle flag") { if !shown { action(cell, true, false) } }
             .accessibilityIdentifier("mine-cell-\(cell)")
     }
 }

@@ -44,12 +44,13 @@ struct WakeChallengeContent: View {
             Text("\(challenge.answered) / \(challenge.answered + challenge.remaining) answered").font(.headline).accessibilityIdentifier("mathProgress")
             Text("\(challenge.left) \(challenge.operation.symbol) \(challenge.right)").font(.system(size: 48, weight: .light)).monospacedDigit().accessibilityIdentifier("mathProblem")
             if nativeMath {
-                TextField("Your answer", text: Binding(get: { answer }, set: { value in
-                    let clean = String(value.filter { $0.isNumber }.prefix(3))
+                NativeMathAnswerField(text: answer, color: UIColor(theme.text), placeholderColor: UIColor(theme.muted)) { value in
+                    let clean = String(value.filter { $0.isASCII && $0.isNumber }.prefix(3))
                     if clean.count < answer.count { answer = clean } else { enter(clean) }
-                })).keyboardType(.numberPad).font(.system(size: 28, weight: .light)).multilineTextAlignment(.center)
-                    .padding(16).background(theme.field, in: RoundedRectangle(cornerRadius: 14)).overlay(RoundedRectangle(cornerRadius: 14).stroke(theme.border))
-                    .accessibilityIdentifier("nativeMathAnswer")
+                    return answer
+                }.frame(height: 36).padding(16)
+                    .background(theme.field, in: RoundedRectangle(cornerRadius: 14))
+                    .overlay(RoundedRectangle(cornerRadius: 14).stroke(theme.border))
             } else {
                 Text(answer.isEmpty ? "Your answer" : answer).font(.system(size: 28, weight: .light)).monospacedDigit()
                     .foregroundStyle(answer.isEmpty ? theme.muted : theme.text).frame(maxWidth: .infinity).padding(16)
@@ -74,6 +75,42 @@ struct WakeChallengeContent: View {
         case .correct: answer = ""; hint = ""
         case .incorrect: answer = ""; hint = "Try that one again."; UINotificationFeedbackGenerator().notificationOccurred(.error)
         case .timedOut: answer = ""; hint = "Time’s up. Tests restarted."
+        }
+    }
+}
+
+// UIKit must receive the accepted value synchronously. A completed one-digit
+// answer can leave SwiftUI's state unchanged (empty -> empty), so a Binding alone
+// does not reliably clear the text displayed by the native field.
+private struct NativeMathAnswerField: UIViewRepresentable {
+    let text: String
+    let color: UIColor
+    let placeholderColor: UIColor
+    var edit: (String) -> String
+    func makeCoordinator() -> Coordinator { Coordinator(edit: edit) }
+    func makeUIView(context: Context) -> UITextField {
+        let field = UITextField()
+        field.keyboardType = .numberPad
+        field.font = .systemFont(ofSize: 28, weight: .light)
+        field.textAlignment = .center
+        field.autocorrectionType = .no
+        field.accessibilityIdentifier = "nativeMathAnswer"
+        field.addTarget(context.coordinator, action: #selector(Coordinator.changed(_:)), for: .editingChanged)
+        return field
+    }
+    func updateUIView(_ field: UITextField, context: Context) {
+        context.coordinator.edit = edit
+        field.textColor = color
+        field.tintColor = color
+        field.attributedPlaceholder = NSAttributedString(string: "Your answer", attributes: [.foregroundColor: placeholderColor])
+        if field.text != text { field.text = text }
+    }
+    final class Coordinator: NSObject {
+        var edit: (String) -> String
+        init(edit: @escaping (String) -> String) { self.edit = edit }
+        @objc func changed(_ field: UITextField) {
+            let accepted = edit(field.text ?? "")
+            if field.text != accepted { field.text = accepted }
         }
     }
 }

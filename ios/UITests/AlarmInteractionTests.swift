@@ -493,7 +493,7 @@ final class AlarmInteractionTests: XCTestCase {
         app.buttons["exitPractice"].tap()
     }
 
-    @MainActor func testMinesHoldChordsAndDoneRequiresExactFlagCount() {
+    @MainActor func testMinesNumberHoldIsInertAndDoneRequiresExactFlagCount() {
         let app = XCUIApplication(); app.launchArguments = ["--ui-testing", "--ui-mine-chord"]; app.launch()
         openEditor(app); openTest(app, "mines")
         app.buttons["mine-timer-40"].tap(); app.buttons["try-mines"].tap()
@@ -503,7 +503,7 @@ final class AlarmInteractionTests: XCTestCase {
         cells["mine-cell-17"].press(forDuration: 0.6)
         XCTAssertEqual(cells["mine-cell-17"].value as? String, "Flagged")
         cells["mine-cell-16"].press(forDuration: 0.6)
-        XCTAssertNotEqual(cells["mine-cell-22"].value as? String, "Hidden")
+        XCTAssertEqual(cells["mine-cell-22"].value as? String, "Hidden")
         XCTAssertFalse(app.buttons["mineDone"].isEnabled)
         for id in [14, 18, 19] { cells["mine-cell-\(id)"].press(forDuration: 0.6) }
         XCTAssertTrue(app.buttons["mineDone"].isEnabled)
@@ -550,6 +550,30 @@ final class AlarmInteractionTests: XCTestCase {
         app.buttons["sudoku-timer-240"].tap(); app.buttons["try-sudoku"].tap()
         XCTAssertTrue(app.buttons["sudoku-cell-0"].waitForExistence(timeout: 5))
         capture(app, name: "ios-midnight-cherry-sudoku-contrast")
+    }
+
+    @MainActor func testNativeMathClearsCorrectAndIncorrectAnswersWithoutLosingFocus() {
+        let app = launch(); openEditor(app); openTest(app, "math")
+        app.buttons["math-timer-15"].tap()
+        app.switches["nativeMathKeyboard"].tap()
+        app.buttons["try-math"].tap()
+        let field = app.textFields["nativeMathAnswer"]
+        XCTAssertTrue(field.waitForExistence(timeout: 5)); field.tap()
+        for index in 0..<2 {
+            let parts = app.staticTexts["mathProblem"].label.split(separator: "+").compactMap { Int($0.trimmingCharacters(in: .whitespaces)) }
+            XCTAssertEqual(parts.count, 2)
+            let sum = parts.reduce(0, +)
+            if index == 0 {
+                field.typeText(String(repeating: "0", count: String(sum).count))
+                XCTAssertEqual(field.value as? String, "Your answer")
+                XCTAssertEqual(app.staticTexts["mathProgress"].label, "0 / 3 answered")
+            }
+            field.typeText(String(sum))
+            XCTAssertEqual(field.value as? String, "Your answer")
+            XCTAssertEqual(app.staticTexts["mathProgress"].label, "\(index + 1) / 3 answered")
+            XCTAssertTrue(app.keyboards.firstMatch.exists)
+        }
+        capture(app, name: "ios-native-math-cleared")
     }
 
 }

@@ -46,7 +46,6 @@ struct AlarmEditorView: View {
             }.font(.system(size: 13)).foregroundStyle(store.theme.accent)
             soundLevelControls()
             wakeUpTests
-            if let message = store.message { Text(message).font(.caption).foregroundStyle(store.theme.accent) }
         }.padding(20)
         }.scrollDismissesKeyboard(.interactively).clipped()
             saveButton.padding(.horizontal, 20).padding(.top, 12).padding(.bottom, 12)
