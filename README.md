@@ -53,6 +53,8 @@ Tests run in sequence. Timeouts restart the configured sequence and restore audi
 
 See the [iOS guide](ios/README.md) and [Android guide](android/README.md) for installation, signing and platform behavior. IPA files require signing/provisioning before installation.
 
+The [Android 1.3.0 build](https://github.com/TristanSibug/LunkAlarm/actions/runs/43328992753) passed **30 core tests, 20 emulator UI tests, the denied-permission check, and lint**. Its **LunkAlarm-Android** artifact contains the installable APK.
+
 Alarms, themes, and imported sounds are saved locally on each device. There is no account requirement or cross-device synchronization. The website and mobile apps have separate saved data, and some features differ by platform.
 
 ## Install the mobile apps

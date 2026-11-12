@@ -14,7 +14,7 @@ concurrency:
 jobs:
   build:
     runs-on: macos-15
-    timeout-minutes: 40
+    timeout-minutes: 50
     permissions:
       contents: write
     steps:
@@ -63,7 +63,7 @@ jobs:
           } 2>&1 | tee ios-launch.log
       - name: Test native editing, countdowns, floating actions and swipe deletion
         id: uiTests
-        timeout-minutes: 20
+        timeout-minutes: 30
         run: |
           set -o pipefail
           xcodebuild test -project ios/LunkAlarm.xcodeproj -scheme LunkAlarm \

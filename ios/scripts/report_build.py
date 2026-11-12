@@ -36,6 +36,10 @@ for filename in ("ios-launch.log", "ios-ui-test.log"):
         if filename == "ios-ui-test.log":
             lines = path.read_text().splitlines()
             report["uiFailureContexts"] = [lines[max(0, i - 18):i + 55] for i, line in enumerate(lines) if "error:" in line][:10]
+ui_log = Path("ios-ui-test.log")
+if ui_log.exists():
+    report["uiTestSummary"] = [line for line in ui_log.read_text().splitlines()
+                               if line.startswith("Test Case ") or ("Executed " in line and "tests" in line)]
 previews = []
 for index, path in enumerate(sorted(Path("artifacts/ios-ui-previews").rglob("*.png"))[:60]):
     name = f"ios-ui-preview-{index + 1}.png"
