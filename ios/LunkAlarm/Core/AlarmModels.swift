@@ -70,7 +70,7 @@ public struct AlarmRecord: Codable, Identifiable, Equatable, Sendable {
     public var clockMinute: Int?
     public var isEnabled: Bool { enabled != false }
     public var displayName: String { name ?? (isTimer ? "Timer" : "Alarm") }
-    public var accessibleName: String { displayName.isEmpty ? "Alarm" : displayName }
+    public var accessibleName: String { displayName.isEmpty ? (isTimer ? "Timer" : "Alarm") : displayName }
     public var timeDate: Date {
         Calendar.current.date(bySettingHour: clockHour ?? Calendar.current.component(.hour, from: target), minute: clockMinute ?? Calendar.current.component(.minute, from: target), second: 0, of: Date()) ?? target
     }

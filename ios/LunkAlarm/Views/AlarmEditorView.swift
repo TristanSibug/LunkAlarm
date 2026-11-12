@@ -17,7 +17,7 @@ struct AlarmEditorView: View {
         ScrollView {
         AlarmCard(theme: store.theme) {
             if onAdded == nil { Text("New alarm").font(.system(size: 14, weight: .medium)).foregroundStyle(store.theme.muted) }
-            if true {
+            Group {
                 VStack(alignment: .leading, spacing: 10) {
                     sectionLabel(store.state.settings.mode == .timer ? "Timer name" : "Alarm name")
                     TextField(store.state.settings.mode == .timer ? "Timer name (optional)" : "Alarm name (optional)", text: Binding(get: { store.state.settings.alarmName ?? "" }, set: { store.state.settings.alarmName = $0 }))
