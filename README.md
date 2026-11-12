@@ -44,17 +44,19 @@ Enabled tests run in sequence. A timeout restarts the configured sequence and re
 
 This section describes **Android 1.2.0**. See the [Android guide](android/README.md) for game rules, installation and build instructions. The [verified Android 1.2.0 build](https://github.com/TristanSibug/LunkAlarm/actions/runs/42785336619) passed 27 core tests, 18 emulator UI tests, the denied-permission check, and Android lint.
 
-### iOS 1.7.0
+### iOS 1.8.0
 
-The native iPhone app now includes all five wake-up tests, finite settings controls, a wider **Try** button, and full-screen practice that stays open when the typing keyboard appears. Puzzle boards have 6/8/10 pieces and support drag or tap placement.
+The floating **+** menu offers **Alarm** and **Timer**, each with its own editor and optional name. Active timers appear first under **Timers**; saved alarms appear under **Alarms**. Empty sections are hidden, and completed timers disappear.
 
-- **Minesweeper:** Easy 5×5, Medium 7×7, Hard 9×9. Hold a hidden square to flag; hold a revealed number to open adjacent unflagged squares when its flag count matches. Timers remain 15–40 seconds in five-second steps.
-- **Sudoku:** 4×4 easy/hard or 6×6 easy/hard, with **60 / 120 / 180 / 240-second** buttons.
-- **In-app vibration:** a subtle checkbox beside alarm volume controls vibration during audible foreground playback/previews. AlarmKit does not expose per-alarm Lock Screen vibration control.
+- **Wake-up tests** are always visible. Tapping a tile opens its settings; **Set / Unset** alone changes whether it is enabled. Closing with × or swiping down preserves that state. Practice stays separate from real alarms.
+- **Math:** choose any combination of addition, subtraction, multiplication and division. Subtraction stays non-negative and division uses whole-number answers.
+- **Minesweeper:** native hold-to-flag and hold-to-reveal adjacent squares when flags match the revealed number. **I'm done** enables only at the exact flag count and validates the flagged positions. Extra flags are allowed but disable confirmation.
+- **Ringtones:** the picker stays open after selection, with an internal **Sound checker** checkbox for previewing choices.
+- **Themes:** selecting a theme closes its picker. Most backgrounds have subtle gradients; OLED Black and Dark remain flat. Midnight Cherry has pale alarm cards with dark text and clearer Sudoku cells; Heritage cards are lighter, Cobalt & Coral weekday rings use coral, and Signal Blue's swatches include red. VS Code Blue was removed; existing selections migrate to Deep Ocean.
 
-The existing clock, themes and system alarm delivery are retained. Actual test progress is saved across app restarts; practice stays separate from real alarms. See the [iOS guide](ios/README.md) for behavior and setup.
+The [verified iOS 1.8.0 build](https://github.com/TristanSibug/LunkAlarm/actions/runs/43252813825) passed **33 core tests and 22 simulator UI tests**. Its **LunkAlarm-iOS** artifact includes the unsigned IPA, which needs signing/provisioning before installation.
 
-The [verified iOS 1.7.0 build](https://github.com/TristanSibug/LunkAlarm/actions/runs/42816334325) passed **31 core tests and 18 simulator UI tests**, including typing with the keyboard open, game-board alignment, theme navigation and full-swipe deletion. Its **LunkAlarm-iOS** artifact contains `LunkAlarm-iOS-unsigned.ipa`; signing/provisioning is required before installation. This release updates iOS; Android remains at 1.2.0.
+The existing system alarm delivery and in-app vibration behavior are retained. See the [iOS guide](ios/README.md) for game options, signing and setup. Android remains at **1.2.0**.
 
 Alarms, themes, and imported sounds are saved locally on each device. There is no account requirement or cross-device synchronization. The website and mobile apps have separate saved data, and some features differ by platform.
 
