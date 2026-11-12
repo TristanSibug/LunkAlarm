@@ -119,7 +119,7 @@ private struct WakeTestSettingsView: View {
             .presentationDetents([.height(test == .sudoku ? 590 : test == .mines ? 470 : test == .math ? 540 : 360), .large])
             .presentationDragIndicator(.visible).presentationBackground(theme.card)
             .fullScreenCover(item: $practice) { kind in WakePracticeView(test: kind, settings: practiceSettings, theme: theme) }
-            .onChange(of: mathProblems) { _, value in var g = games; g.mathProblemCount = value; settings.wakeGames = g }
+            .onChange(of: mathProblems) { _, value in var g = games; g.mathProblemCount = value; settings.wakeGames = g; if settings.mathCount > 0 { settings.mathCount = value } }
             .onAppear { mathProblems = max(1, settings.mathCount == 0 ? (games.mathProblemCount ?? 3) : settings.mathCount) }
     }
     private var practiceSettings: AlarmSettings { var s = settings; s.mathCount = mathProblems; return s }
