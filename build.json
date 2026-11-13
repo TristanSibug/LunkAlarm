@@ -1,6 +1,6 @@
 {
-  "commit": "8e964f4c8d3bf770fc598d43103175fbeab761e7",
-  "run": "https://github.com/TristanSibug/LunkAlarm/actions/runs/43328992753",
+  "commit": "93790936730fe900797e5c5c1cc715d37032a232",
+  "run": "https://github.com/TristanSibug/LunkAlarm/actions/runs/43343419821",
   "status": "success",
   "build": "success",
   "emulator": "success",
@@ -78,5 +78,6 @@
     "android-typing-settings.png",
     "android-typing-test.png",
     "android-wake-test-tiles.png"
-  ]
+  ],
+  "upgrade": true
 }
