@@ -55,6 +55,8 @@ See the [iOS guide](ios/README.md) and [Android guide](android/README.md) for in
 
 The [Android 1.3.0 build](https://github.com/TristanSibug/LunkAlarm/actions/runs/43328992753) passed **30 core tests, 20 emulator UI tests, the denied-permission check, and lint**. Its **LunkAlarm-Android** artifact contains the installable APK.
 
+The [iOS 1.8.1 build](https://github.com/TristanSibug/LunkAlarm/actions/runs/43332158870) passed **33 core tests and all 23 simulator UI tests**, including native-keypad clearing and inert Minesweeper number holds. Its **LunkAlarm-iOS** artifact contains the unsigned IPA and UI previews.
+
 Alarms, themes, and imported sounds are saved locally on each device. There is no account requirement or cross-device synchronization. The website and mobile apps have separate saved data, and some features differ by platform.
 
 ## Install the mobile apps
