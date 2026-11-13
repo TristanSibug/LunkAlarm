@@ -171,12 +171,35 @@ const server = createServer(async (req, res) => {
         ),
         "Horizontal overflow " + JSON.stringify(size),
       );
-      if (size.width >= 1000)
+      if (size.width >= 1000) {
+        await p.locator("[data-test=mines]").scrollIntoViewIfNeeded();
+        assert(
+          await p.locator("[data-test=mines]").evaluate((el) => {
+            const text = [...el.childNodes].find(
+              (n) => n.nodeType === Node.TEXT_NODE,
+            );
+            const range = new Range();
+            range.selectNode(text);
+            return (
+              range.getBoundingClientRect().width <=
+              el.getBoundingClientRect().width - 8
+            );
+          }),
+          "Test labels must fit the desktop panel",
+        );
+        assert(
+          await p.locator("#setBtn").evaluate((el) => {
+            const r = el.getBoundingClientRect();
+            return r.top >= 0 && r.bottom <= innerHeight;
+          }),
+          "Save button stays within desktop viewport",
+        );
         assert(
           await p.evaluate(
             () => document.documentElement.scrollHeight <= innerHeight + 1,
           ),
         );
+      }
     }
     await p.screenshot({
       path: path.join(output, "studio-phone.png"),

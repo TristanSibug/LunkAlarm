@@ -1114,3 +1114,16 @@ dialog::backdrop {
     grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 }
+
+/* A narrow editor stacks its settings without shrinking test names. */
+@container alarm-setup (max-width:540px) {
+  .app #setupCard .sound-tests {
+    grid-template-columns: 1fr;
+  }
+  .app #setupCard .wake-settings {
+    border-left: 0;
+    border-top: 1px solid var(--card-border);
+    padding-left: 0;
+    padding-top: 20px;
+  }
+}
