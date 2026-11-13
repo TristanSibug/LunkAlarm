@@ -639,7 +639,7 @@ function renderTimePicker() {
   const hour = match ? Number(match[1]) : null;
   const minute = match ? Number(match[2]) : null;
   selectedTimePeriod = hour !== null && hour >= 12 ? 'PM' : 'AM';
-  $('alarmHour').value = hour === null ? '' : pad(state.use24h ? hour : hour % 12 || 12);
+  $('alarmHour').value = hour === null ? '' : state.use24h ? pad(hour) : String(hour % 12 || 12);
   $('alarmMinute').value = minute === null ? '' : pad(minute);
   $('alarmHour').setAttribute('aria-valuemin', state.use24h ? '0' : '1');
   $('alarmHour').setAttribute('aria-valuemax', state.use24h ? '23' : '12');
@@ -667,7 +667,7 @@ function commitTimePicker(format = false) {
   const canonicalHour = state.use24h ? hour : hour % 12 + (selectedTimePeriod === 'PM' ? 12 : 0);
   $('timeInput').value = pad(canonicalHour) + ':' + pad(minute);
   if (timePickerErrorShown) showMessage('', false);
-  if (format) { $('alarmHour').value = pad(hour); $('alarmMinute').value = pad(minute); }
+  if (format) { $('alarmHour').value = state.use24h ? pad(hour) : String(hour); $('alarmMinute').value = pad(minute); }
   return true;
 }
 function stepAlarmTime(part, direction) {
@@ -1640,12 +1640,8 @@ function init() {
   }
   save('wake.alarm', null);
 
-  // When the app is opened:
-  //   - an alarm that was ringing when the page closed keeps ringing
-  //   - an alarm whose time passed more than a minute ago while the app
-  //     was closed is forgotten (it would be silly to ring late)
-  //   - the others are just waiting for their time
-  state.alarms = state.alarms.filter((a) => a.ringing || a.targetMs >= trueNow() - 60000);
+  // studio.js owns saved-routine migration and overdue handling.
+  // Never discard saved routines before that migration runs.
   state.alarms.sort((a, b) => a.targetMs - b.targetMs);
   saveAlarms();
   renderAlarmList();
@@ -1659,8 +1655,7 @@ function init() {
   window.addEventListener('online', syncTime);
   window.addEventListener('offline', () => setSyncBadge('offline'));
 
-  tick();
-  startTicker();
+  // studio.js starts ticking after migrating saved alarms.
 }
 
 init();

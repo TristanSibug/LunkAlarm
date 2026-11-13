@@ -1,0 +1,1116 @@
+/* Desktop-first studio, layered over the original clock and native picker styles. */
+[hidden],
+.hidden {
+  display: none !important;
+}
+button,
+input,
+select {
+  font: inherit;
+}
+button {
+  transition:
+    background 0.18s,
+    border-color 0.18s,
+    transform 0.18s;
+}
+button:focus-visible,
+summary:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 4px;
+}
+button:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+.studio-brand {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  grid-column: 1/-1;
+}
+.brand-mark {
+  display: grid;
+  place-items: center;
+  background: linear-gradient(135deg, var(--accent), var(--accent-2));
+  color: var(--on-accent);
+  height: 32px;
+  width: 32px;
+  border-radius: 10px;
+  font-weight: 800;
+  font-size: 20px;
+}
+.studio-brand strong {
+  font-size: 17px;
+  letter-spacing: -0.5px;
+}
+.brand-caption {
+  color: var(--muted);
+  font-size: 12px;
+  margin-left: 12px;
+}
+.studio-brand #focusClock {
+  margin-left: auto;
+  font-size: 12px;
+}
+html.clock-focus .studio-brand {
+  max-width: 1100px;
+  width: 100%;
+  margin-inline: auto;
+}
+html.clock-focus .clock-card {
+  max-width: 1100px;
+}
+html.clock-focus .clock-hm {
+  font-size: clamp(100px, min(32cqi, 43dvh), 340px);
+  letter-spacing: -0.075em;
+}
+html.clock-focus .clock-actions {
+  margin-top: 36px;
+}
+.clock-picker-toggle {
+  padding: 13px 24px;
+}
+.date {
+  font-size: 17px;
+}
+.zone {
+  font-size: 12px;
+}
+.editor-heading {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 24px;
+}
+.eyebrow {
+  font-size: 9px;
+  letter-spacing: 0.18em;
+  color: var(--muted);
+  display: block;
+  margin-bottom: 8px;
+}
+.editor-heading .card-title {
+  margin: 0 !important;
+  font-size: 24px !important;
+  font-weight: 600;
+  letter-spacing: -0.7px;
+}
+.create-switch {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 24px;
+}
+.create-switch .chip {
+  padding: 10px 22px;
+}
+.create-switch [aria-pressed="true"] {
+  background: var(--soft);
+  border-color: var(--accent);
+  color: var(--text);
+}
+.optional {
+  font-size: 11px;
+  text-transform: none;
+  letter-spacing: 0;
+  font-weight: 400;
+  opacity: 0.6;
+  margin-left: 6px;
+}
+.text-input {
+  background: var(--field);
+  border: 1px solid var(--card-border);
+  color: var(--text);
+  padding: 13px 15px;
+  border-radius: 12px;
+  width: 100%;
+  min-width: 0;
+}
+.text-input::placeholder {
+  color: var(--muted);
+  opacity: 0.6;
+}
+.repeat-caption {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 22px;
+}
+.repeat-caption .field-label {
+  margin: 0 !important;
+}
+.weekday-row {
+  display: flex;
+  gap: 8px;
+  margin-top: 12px;
+}
+.day-choice {
+  height: 35px;
+  flex: 1;
+  border-radius: 50%;
+  max-width: 38px;
+  border: 1px solid var(--card-border);
+  background: transparent;
+  color: var(--muted);
+  font-size: 12px;
+  cursor: pointer;
+}
+.day-choice[aria-pressed="true"] {
+  border-color: var(--accent-2);
+  background: color-mix(in srgb, var(--accent-2) 12%, transparent);
+  color: var(--accent-2);
+}
+.sound-select {
+  width: 100%;
+  text-align: left;
+  padding: 14px;
+  background: var(--field);
+  border: 1px solid var(--card-border);
+  border-radius: 12px;
+  color: var(--text);
+  cursor: pointer;
+}
+.volume-caption {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 30px;
+}
+.volume-caption .field-label {
+  margin: 0 !important;
+}
+.volume-caption output {
+  font-size: 12px;
+  color: var(--muted);
+}
+input[type="range"] {
+  width: 100%;
+  accent-color: var(--accent-2);
+  margin: 18px 0;
+}
+.gradual-control {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  font-size: 12px;
+  color: var(--muted);
+  margin-bottom: 20px;
+}
+input[type="checkbox"] {
+  accent-color: var(--accent-2);
+  width: 16px;
+  height: 16px;
+}
+.section-note {
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.7;
+  margin: 10px 0 18px;
+}
+.test-tiles {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+.test-tile {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 11px;
+  min-height: 86px;
+  border: 1px solid var(--card-border);
+  background: var(--field);
+  color: var(--muted);
+  border-radius: 13px;
+  font-size: 10px;
+  cursor: pointer;
+}
+.test-tile > span {
+  font-size: 26px;
+  line-height: 1;
+  color: var(--text);
+  font-weight: 500;
+}
+.test-tile i {
+  position: absolute;
+  right: 7px;
+  top: 3px;
+  color: var(--accent-2);
+  font-size: 13px;
+  font-style: normal;
+}
+.test-tile[aria-pressed="true"] {
+  border-color: var(--accent-2);
+  background: color-mix(in srgb, var(--accent-2) 8%, var(--field));
+}
+.test-tile:hover {
+  border-color: var(--accent);
+  transform: translateY(-2px);
+}
+.selected-tests {
+  font-size: 11px;
+  color: var(--muted);
+  margin-top: 14px;
+  line-height: 1.7;
+}
+#setupCard .sound-tests {
+  margin-top: 30px !important;
+}
+#setupCard .wake-settings > .field-label {
+  margin: 0 !important;
+}
+#setupCard .sound-settings > .field-label {
+  margin-top: 0 !important;
+}
+.setup-actions {
+  padding-top: 14px;
+}
+#formMsg:empty {
+  display: none;
+}
+.setup-actions .primary {
+  min-height: 50px;
+}
+#studioStatus {
+  position: fixed;
+  bottom: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--dialog-bg);
+  color: var(--text);
+  border: 1px solid var(--card-border);
+  border-radius: 12px;
+  padding: 12px 22px;
+  box-shadow: 0 8px 40px #0003;
+  font-size: 12px;
+  z-index: 100;
+  pointer-events: none;
+}
+#studioStatus:empty {
+  display: none;
+}
+#alarmsCard {
+  background: color-mix(in srgb, var(--card) 75%, transparent);
+}
+.alarm-list {
+  gap: 12px;
+  display: flex;
+  flex-direction: column;
+}
+.list-section {
+  list-style: none;
+  font-size: 11px;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  margin: 12px 0 0;
+}
+.routine-card {
+  list-style: none;
+  border: 1px solid var(--card-border);
+  border-radius: 17px;
+  padding: 18px;
+  background: var(--card);
+}
+.routine-top {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.routine-edit {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 9px;
+  flex: 1;
+  min-width: 0;
+  background: none;
+  border: 0;
+  color: var(--text);
+  text-align: left;
+  cursor: pointer;
+}
+.routine-name {
+  font-size: 12px;
+  font-weight: 500;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+  white-space: nowrap;
+}
+.routine-time {
+  font-family: "Wake Clock", sans-serif;
+  font-size: 30px;
+  font-weight: 300;
+  letter-spacing: -1.5px;
+}
+.routine-toggle {
+  width: 36px;
+  height: 22px;
+  border: 0;
+  flex-shrink: 0;
+  border-radius: 50px;
+  background: var(--switch-off);
+  position: relative;
+  cursor: pointer;
+}
+.routine-toggle:after {
+  content: "";
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 16px;
+  height: 16px;
+  background: #fff;
+  border-radius: 50%;
+}
+.routine-toggle[aria-checked="true"] {
+  background: var(--accent-2);
+}
+.routine-toggle[aria-checked="true"]:after {
+  left: 17px;
+}
+.routine-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 16px;
+  gap: 8px;
+  color: var(--muted);
+  font-size: 11px;
+}
+.day-dot {
+  display: inline-grid;
+  place-items: center;
+  width: 23px;
+  height: 23px;
+  border: 1px solid transparent;
+  border-radius: 50%;
+  font-size: 10px;
+}
+.day-dot.chosen {
+  border-color: var(--accent-2);
+  color: var(--accent-2);
+}
+.routine-menu {
+  position: relative;
+}
+.routine-menu summary {
+  cursor: pointer;
+  list-style: none;
+  padding: 6px;
+}
+.routine-menu summary::-webkit-details-marker {
+  display: none;
+}
+.routine-menu > div {
+  position: absolute;
+  z-index: 3;
+  right: 0;
+  top: 28px;
+  min-width: 120px;
+  background: var(--dialog-bg);
+  padding: 6px;
+  border: 1px solid var(--card-border);
+  border-radius: 10px;
+  box-shadow: 0 8px 30px #0004;
+}
+.routine-menu button {
+  background: none;
+  color: var(--text);
+  border: 0;
+  display: block;
+  padding: 10px;
+  width: 100%;
+  text-align: left;
+  cursor: pointer;
+  font-size: 12px;
+}
+.routine-menu button:hover {
+  background: var(--hover);
+}
+.routine-tests {
+  font-size: 10px;
+  line-height: 1.7;
+  color: var(--muted);
+  margin-top: 8px;
+}
+.routine-card.is-off .routine-time {
+  color: var(--muted);
+}
+.empty {
+  line-height: 1.8;
+  padding: 45px 10px;
+  font-size: 13px;
+}
+.dialog {
+  border: 1px solid var(--card-border);
+}
+.studio-dialog {
+  width: min(600px, calc(100% - 32px));
+  padding: 30px;
+  max-height: 85dvh;
+  overflow: auto;
+  border-radius: 24px;
+}
+.dialog-top {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 26px;
+}
+.dialog-top h2 {
+  font-size: 21px;
+  font-weight: 600;
+  letter-spacing: -0.6px;
+  margin: 0;
+  flex: 1;
+}
+.icon-close {
+  background: none;
+  border: 0;
+  color: var(--muted);
+  font-size: 26px;
+  cursor: pointer;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+}
+.icon-close:hover {
+  background: var(--hover);
+}
+.dialog-top .chip {
+  min-width: 96px;
+}
+dialog::backdrop {
+  background: #040611a8;
+  backdrop-filter: blur(8px);
+}
+.setting-group {
+  padding: 20px 0;
+  border-top: 1px solid var(--card-border);
+}
+.setting-group h3 {
+  font-size: 13px;
+  font-weight: 500;
+  margin: 0 0 14px;
+}
+.choice-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.choice {
+  flex: 1;
+  min-width: 38px;
+  min-height: 44px;
+  padding: 10px 7px;
+  border: 1px solid var(--card-border);
+  border-radius: 10px;
+  background: var(--field);
+  color: var(--text);
+  cursor: pointer;
+  font-size: 13px;
+}
+.choice[aria-pressed="true"] {
+  background: var(--accent-2);
+  border-color: var(--accent-2);
+  color: var(--on-accent);
+}
+.studio-dialog > .primary {
+  margin-top: 20px;
+}
+.sound-option,
+.sound-action {
+  display: flex;
+  justify-content: space-between;
+  width: 100%;
+  border: 0;
+  border-bottom: 1px solid var(--card-border);
+  padding: 16px 10px;
+  background: transparent;
+  color: var(--text);
+  cursor: pointer;
+  text-align: left;
+  font-size: 13px;
+}
+.sound-option[aria-pressed="true"] {
+  color: var(--accent-2);
+}
+.sound-option:hover {
+  background: var(--hover);
+}
+.sound-action {
+  color: var(--accent);
+}
+.sound-check {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  color: var(--muted);
+  font-size: 12px;
+  padding: 20px 10px;
+}
+.mission-dialog {
+  width: min(600px, calc(100% - 32px));
+  max-height: 92dvh;
+  padding: 30px;
+  border-radius: 24px;
+  overflow: auto;
+}
+.mission-dialog .dialog-top {
+  position: sticky;
+  top: -30px;
+  background: var(--dialog-bg);
+  padding-top: 8px;
+  padding-bottom: 8px;
+  z-index: 5;
+}
+.mission-meta {
+  display: flex;
+  justify-content: space-between;
+  color: var(--muted);
+  font-size: 12px;
+  margin-bottom: 24px;
+}
+#missionBody {
+  text-align: center;
+}
+#missionBody h3 {
+  font-size: 20px;
+  font-weight: 500;
+}
+#missionBody .text-input {
+  text-align: center;
+  min-height: 58px;
+  margin: 20px 0;
+  font-size: 24px;
+}
+#missionBody .problem {
+  font-size: 64px;
+  font-weight: 300;
+}
+.mission-complete {
+  font-size: 35px;
+  font-weight: 300;
+  padding: 50px 0;
+}
+#missionHint {
+  color: var(--accent-2);
+  font-size: 12px;
+  text-align: center;
+}
+.game-grid {
+  display: grid;
+  grid-template-columns: repeat(var(--size), minmax(0, 1fr));
+  gap: 4px;
+  max-width: 420px;
+  margin: 20px auto;
+}
+.mine-cell {
+  aspect-ratio: 1;
+  min-width: 0;
+  border: 1px solid color-mix(in srgb, var(--accent-2) 40%, transparent);
+  border-radius: 6px;
+  background: color-mix(in srgb, var(--accent-2) 12%, var(--field));
+  color: var(--text);
+  font-weight: 600;
+  font-size: 18px;
+  cursor: pointer;
+}
+.mine-cell.revealed {
+  border-color: var(--card-border);
+  background: var(--field);
+}
+.game-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  color: var(--muted);
+  font-size: 12px;
+}
+.sudoku-board {
+  gap: 0;
+  background: var(--card);
+  border: 1px solid var(--muted);
+}
+.sudoku-cell {
+  aspect-ratio: 1;
+  background: var(--field);
+  border: 1px solid var(--card-border);
+  color: var(--accent);
+  font-size: 24px;
+  cursor: pointer;
+}
+.sudoku-cell:disabled {
+  opacity: 1;
+  color: var(--text);
+  font-weight: 600;
+  cursor: default;
+}
+.sudoku-cell.selected {
+  background: color-mix(in srgb, var(--accent-2) 25%, var(--field));
+}
+.sudoku-cell.conflict {
+  color: var(--danger);
+}
+.puzzle-board,
+.puzzle-tray {
+  display: grid;
+  grid-template-columns: repeat(var(--cols), minmax(0, 1fr));
+  width: 100%;
+  margin: 24px auto;
+}
+.puzzle-board {
+  background: var(--field);
+  border-radius: 12px;
+  overflow: hidden;
+  aspect-ratio: 1.8;
+}
+.puzzle-slot,
+.puzzle-piece {
+  background: transparent;
+  border: 0;
+  min-width: 0;
+  min-height: 0;
+  padding: 0;
+  cursor: pointer;
+}
+.puzzle-tray {
+  gap: 10px;
+}
+.puzzle-piece {
+  aspect-ratio: 1.25;
+  border: 2px solid transparent;
+  border-radius: 8px;
+  overflow: hidden;
+}
+.puzzle-piece.picked {
+  border-color: var(--accent);
+}
+.puzzle-slot:not(.placed):hover {
+  background: var(--hover);
+}
+:root[data-theme="midnight-cherry"] .routine-card,
+:root[data-theme="midnight-cherry"] .sudoku-board {
+  --text: #341522;
+  --muted: #765260;
+  --accent: #305d86;
+  --accent-2: #a9384b;
+  --field: #00000008;
+  --card-border: #34152220;
+  background: #fff3f6;
+}
+:root[data-theme="cobalt-coral"] .day-dot.chosen {
+  color: var(--accent-2);
+  border-color: var(--accent-2);
+}
+@media (min-width: 1000px) and (hover: hover) and (pointer: fine) {
+  html:not(.clock-focus),
+  html:not(.clock-focus) body {
+    height: 100%;
+    overflow: hidden;
+  }
+  html:not(.clock-focus) .app {
+    display: grid;
+    max-width: 2100px;
+    width: 100%;
+    height: 100dvh;
+    grid-template-columns: minmax(260px, 0.85fr) minmax(430px, 1.4fr) 64px;
+    grid-template-rows: 40px minmax(0, 1fr) auto auto;
+    gap: 24px;
+    padding: 24px 32px;
+    transition: grid-template-columns 0.3s;
+  }
+  html:not(.clock-focus) .app.alarms-open {
+    grid-template-columns: minmax(220px, 0.8fr) minmax(360px, 1.3fr) minmax(
+        250px,
+        0.8fr
+      );
+  }
+  .app > .clock-card {
+    grid-column: 1;
+    grid-row: 2;
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    min-height: 0;
+    padding: 14px 0;
+  }
+  .clock-face {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+  }
+  .clock-hm {
+    font-size: clamp(75px, 10vw, 190px);
+    letter-spacing: -0.075em;
+  }
+  .clock-top {
+    margin: 0;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+  .clock-top .badge {
+    font-size: 10px;
+  }
+  .clock-top .clock-buttons {
+    gap: 5px;
+  }
+  .clock-buttons .chip {
+    padding: 9px 12px;
+    font-size: 11px;
+  }
+  html:not(.clock-focus) #setupCard {
+    grid-column: 2;
+    grid-row: 2;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    padding: 28px;
+    border-radius: 24px;
+    overflow: hidden;
+  }
+  .setup-fields {
+    min-height: 0;
+    flex: 1;
+    overflow-y: auto;
+    padding-right: 8px;
+    scrollbar-width: thin;
+  }
+  .sound-tests {
+    display: grid !important;
+    grid-template-columns: 1fr 1.1fr;
+    gap: 24px;
+  }
+  .sound-settings,
+  .wake-settings {
+    display: block;
+    min-width: 0;
+  }
+  .wake-settings {
+    border-left: 1px solid var(--card-border);
+    padding-left: 20px;
+  }
+  .app #setupCard .field-label {
+    font-size: 10px;
+    letter-spacing: 0.09em;
+  }
+  .app #setupCard #panelTime > .field-label,
+  .app #setupCard #panelTimer > .field-label {
+    margin-top: 26px;
+  }
+  .custom-time-picker:not([hidden]) {
+    min-height: 124px;
+  }
+  .app #setupCard #panelTimer .timer-row {
+    min-height: 124px;
+  }
+  .app #setupCard .time-number {
+    font-size: 38px;
+  }
+  html:not(.clock-focus) #alarmsCard {
+    grid-column: 3;
+    grid-row: 2;
+    min-height: 0;
+    padding: 0;
+    overflow: visible;
+    border-radius: 24px;
+  }
+  .app.alarms-open #alarmsCard {
+    padding: 24px 18px;
+    overflow-y: auto;
+    scrollbar-width: thin;
+  }
+  .app.alarms-open .alarms-panel {
+    overflow: visible;
+    flex: initial;
+  }
+  .alarms-header {
+    margin-bottom: 12px;
+  }
+  .app.alarms-open #alarmsHeading {
+    font-size: 17px;
+  }
+  .sidebar-label {
+    font-size: 11px;
+  }
+  .app .browser-tools {
+    grid-column: 1/-1;
+    grid-row: 3;
+    margin: 0;
+  }
+  .browser-notice {
+    font-size: 11px;
+    text-align: center;
+    max-width: none;
+    margin: 0;
+  }
+  #footnote {
+    grid-row: 4;
+    grid-column: 1/-1;
+    margin: 0;
+    text-align: center;
+    font-size: 10px;
+    color: var(--muted);
+  }
+}
+@media (max-width: 999px) {
+  html:not(.clock-focus) .app {
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+    padding: 20px;
+    max-width: 760px;
+  }
+  .studio-brand {
+    margin-bottom: 12px;
+  }
+  .brand-caption {
+    display: none;
+  }
+  .clock-hm {
+    font-size: clamp(90px, 20vw, 170px);
+  }
+  #setupCard,
+  #alarmsCard {
+    padding: 24px;
+  }
+  .sound-tests {
+    display: grid !important;
+    grid-template-columns: 1fr 1fr;
+    gap: 26px;
+  }
+  .sound-settings,
+  .wake-settings {
+    display: block;
+  }
+  .wake-settings {
+    padding: 0;
+    border: 0;
+  }
+  .clock-top {
+    margin-top: 14px;
+  }
+  .alarms-panel {
+    display: block !important;
+  }
+  .sidebar-toggle {
+    display: none;
+  }
+  .studio-brand #focusClock {
+    font-size: 11px;
+  }
+}
+@media (max-width: 560px) {
+  .sound-tests {
+    grid-template-columns: 1fr;
+    gap: 28px;
+  }
+  .test-tiles {
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+  }
+  .test-tile {
+    font-size: 9px;
+    min-height: 86px;
+    gap: 12px;
+  }
+  .test-tile > span {
+    font-size: 24px;
+  }
+  .dialog-top {
+    gap: 8px;
+  }
+  .dialog-top h2 {
+    font-size: 18px;
+  }
+  .studio-dialog,
+  .mission-dialog {
+    padding: 22px;
+  }
+  .brand-caption {
+    display: none;
+  }
+  .choice-row {
+    gap: 5px;
+  }
+  .choice {
+    font-size: 12px;
+    min-width: 32px;
+  }
+  .mission-dialog .dialog-top {
+    top: -22px;
+  }
+  .mission-dialog .problem {
+    font-size: 48px !important;
+  }
+  .day-choice {
+    height: 36px;
+  }
+  .sound-tests {
+    display: flex !important;
+    flex-direction: column;
+  }
+  .setting-group {
+    padding: 16px 0;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0s !important;
+    transition-duration: 0s !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+.clock-hm {
+  font-family: "Wake Clock", sans-serif;
+  font-weight: 200;
+}
+.editor-meta {
+  display: grid;
+  grid-template-columns: 1.1fr 1fr;
+  gap: 24px;
+  align-items: start;
+}
+.editor-meta .field-label {
+  margin-top: 0 !important;
+}
+.editor-meta .repeat-caption {
+  margin: 0;
+  min-height: 14px;
+}
+.editor-meta .weekday-row {
+  margin-top: 11px;
+}
+.editor-meta:has(#repeatControls[hidden]) {
+  grid-template-columns: 1fr;
+}
+.editor-meta .text-input {
+  height: 44px;
+  font-size: 13px;
+}
+.create-switch {
+  margin-bottom: 22px;
+}
+@media (min-width: 1000px) and (hover: hover) and (pointer: fine) {
+  .app > .clock-card {
+    container-type: inline-size;
+  }
+  .clock-hm {
+    font-size: clamp(64px, 31cqi, 190px);
+  }
+  .editor-meta .day-choice {
+    height: 30px;
+    font-size: 11px;
+  }
+  .editor-meta .weekday-row {
+    gap: 4px;
+  }
+  .editor-meta .day-choice {
+    min-width: 0;
+  }
+  .app #setupCard .sound-tests {
+    margin-top: 26px !important;
+  }
+  .editor-heading {
+    margin-bottom: 20px;
+  }
+}
+@media (max-width: 560px) {
+  .editor-meta {
+    grid-template-columns: 1fr;
+    gap: 20px;
+  }
+  html.clock-focus .clock-hm {
+    font-size: clamp(64px, 31cqi, 170px);
+  }
+  .clock-side {
+    font-size: 16px;
+  }
+  html.clock-focus .clock-face {
+    padding-inline: 0;
+  }
+  .brand-caption {
+    display: none;
+  }
+}
+
+/* Keep weekday selection on one line, even in the smallest supported window. */
+.routine-footer > span {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  min-width: 0;
+}
+.day-dot {
+  width: 20px;
+  height: 20px;
+  flex-shrink: 0;
+}
+.editor-heading .card-title {
+  color: var(--text);
+}
+.jigsaw-shape {
+  display: block;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+  pointer-events: none;
+  fill: var(--accent);
+  stroke: var(--text);
+  stroke-width: 0.5;
+  stroke-opacity: 0.45;
+}
+.puzzle-slot {
+  position: relative;
+  overflow: visible;
+}
+.puzzle-slot.placed {
+  z-index: 1;
+}
+:root[data-theme="nord"] {
+  --glow-a: #88c0d022;
+  --glow-b: #b48ead18;
+}
+@media (max-width: 560px) {
+  .test-tiles {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+  .test-tile {
+    font-size: 11px;
+  }
+  .day-dot {
+    width: 18px;
+    height: 18px;
+    font-size: 9px;
+  }
+}
+.puzzle-piece {
+  aspect-ratio: calc(3.6 / var(--cols));
+}
+
+/* Dialogs use desktop space too; phone widths remain bounded by the viewport. */
+.studio-dialog,
+.mission-dialog {
+  max-width: min(600px, calc(100vw - 32px));
+}
+#themeDialog {
+  width: min(680px, calc(100vw - 32px));
+  max-width: 680px;
+  max-height: 85dvh;
+  overflow: auto;
+  border-radius: 24px;
+}
+@media (min-width: 600px) {
+  #themeDialog .theme-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}

@@ -79,6 +79,12 @@ These are development/test builds, separate from App Store or Google Play distri
 
 Use **[alarm.reeeserve.online](https://alarm.reeeserve.online)** directly, without installing an app. Keep the page open, sound available, and the device awake: browsers can delay background tabs, and the website cannot wake a sleeping device.
 
+The desktop website now includes recurring weekday alarms, separate temporary timers, optional names, editing and duplication, and all five wake-up tests with practice runs. The spacious workspace places the clock beside the editor and a collapsible alarms/timers sidebar; **Focus clock** returns to the large clock view. Time and duration fields support the mouse wheel, arrow keys and direct entry. Test settings use fixed choices, math supports all four operations with automatic answer clearing, and the ringtone picker includes a **Sound checker**. Eighteen grouped themes mirror the mobile collection.
+
+Saved website alarms migrate in the same browser and origin. Completed timers disappear; saved alarms remain, with one-time alarms switched off after completion. Recurring alarms advance to their next selected day. Custom sounds are stored with each new alarm. This is a browser app: mobile lock-screen scheduling and vibration are native-app features.
+
+Website development lives on [`website/desktop-studio`](https://github.com/TristanSibug/LunkAlarm/tree/website/desktop-studio). The original website is preserved on [`website/rollback-before-desktop-update`](https://github.com/TristanSibug/LunkAlarm/tree/website/rollback-before-desktop-update). These branches do not change the mobile releases.
+
 To deploy your own copy with Vercel, use **Root Directory `web`** and **Framework Preset Other**. No build/install command, database, Supabase connection, or environment variables are required. Add your domain in Vercel and configure the DNS records Vercel provides. See the [Namecheap + Vercel deployment guide](docs/WEBSITE-DEPLOYMENT.md).
 
 ## Source, builds, and tests
@@ -91,6 +97,8 @@ To deploy your own copy with Vercel, use **Root Directory `web`** and **Framewor
 | [`src/Wake.Core/`](src/Wake.Core/) | Earlier Windows scheduling, persistence, challenges, and sound synthesis |
 | [`src/Wake.Windows/`](src/Wake.Windows/) | Earlier native WPF Windows app |
 | [`docs/`](docs/) | Deployment and Windows documentation |
+
+The **Website checks** workflow runs offline browser regressions, including desktop and phone layouts, alarm migration, game completion, and storage failures, and uploads UI previews. Vercel deploys the static `web/` directory from its configured production branch. Website checks and native builds have separate path filters.
 
 The **Native iOS app** workflow builds simulator/device targets, runs core and native UI tests, and uploads an unsigned IPA. The **Native Android app** workflow builds a signed development APK, runs core tests, Android lint, and emulator checks, and packages successful builds in its **LunkAlarm-Android** Actions artifact. GitHub Releases are uploaded manually by the maintainer. Each platform guide includes local build commands and installation details.
 

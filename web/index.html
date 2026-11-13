@@ -1,9 +1,11 @@
 <!DOCTYPE html>
 <!--
-  WAKE - alarm clock  (page structure)
+  LunkAlarm browser edition (page structure)
   This file only describes WHAT is on the screen.
     style.css = how it looks (and the themes)
-    app.js    = what it does
+    app.js    = clock, time wheels and offline sound engine
+    studio.js = recurring alarms, timer workspace and wake-up tests
+    studio.css = desktop workspace and responsive layout
   Standalone browser edition: upload this folder to a static web host.
 -->
 <html lang="en" class="clock-focus">
@@ -12,7 +14,7 @@
   <!-- Makes the page fit phone screens properly -->
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>LunkAlarm</title>
-  <meta name="description" content="Your calm, customizable alarm clock. Set timers, choose a ringtone, and wake up with typing or math challenges." />
+  <meta name="description" content="A calm desktop clock with recurring alarms, timers, eighteen themes, and five wake-up tests you can practice before setting." />
   <link rel="icon" type="image/png" href="icon.png" />
 
   <!-- Apply the saved theme BEFORE the page is drawn, so you never see
@@ -26,6 +28,7 @@
 
   <link rel="preload" href="fonts/inter-latin-wght-normal.woff2" as="font" type="font/woff2" crossorigin />
   <link rel="stylesheet" href="style.css" />
+  <link rel="stylesheet" href="studio.css" />
 </head>
 
 <body>
@@ -327,5 +330,6 @@
   </div>
 
   <script src="app.js"></script>
+  <script src="studio.js"></script>
 </body>
 </html>

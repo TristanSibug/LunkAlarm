@@ -1,6 +1,6 @@
-# Deploy Wake to alarm.reeeserve.online
+# Deploy LunkAlarm to alarm.reeeserve.online
 
-The upload-ready website is the repository's **web/** folder. It contains the original browser UI, all eight themes, generated ringtones, custom audio, alarms, timers and typing/math challenges. It needs static hosting only. Vercel hosts it; your DNS provider points the subdomain to Vercel. Namecheap registration/hosting and DNS management are separate roles.
+The upload-ready website is the repository's **web/** folder. It includes the desktop clock workspace, recurring alarms, temporary timers, eighteen themes, offline ringtones, custom audio and five wake-up tests. It needs static hosting only. Vercel hosts it; your DNS provider points the subdomain to Vercel. Namecheap registration/hosting and DNS management are separate roles.
 
 ## 1. Create a separate Vercel project
 
@@ -62,42 +62,57 @@ Return to Vercel's Domains screen and refresh/check the domain. DNS propagation 
 https://alarm.reeeserve.online
 ```
 
-Test on the final domain: click **Add alarm**, preview a ringtone, add a short timer, complete typing/math tests, change theme, and reload to confirm saved settings. Normal clicks and key presses activate browser audio; no separate sound button is needed. Browser data on the temporary `.vercel.app` address does not automatically transfer to the custom domain because browser storage is origin-specific.
+Test on the final domain: click **Add alarm**, preview a ringtone, add a short timer, complete wake-up tests, change theme, and reload to confirm saved settings. Normal clicks and key presses activate browser audio; no separate sound button is needed. Browser data on the temporary `.vercel.app` address does not automatically transfer to the custom domain because browser storage is origin-specific.
 
 ## Supabase
 
 This version uses browser localStorage. It has no accounts or cross-device sync and makes no Supabase requests. Your existing Supabase project does not need changes. Supabase can be added later for login and synchronized alarm preferences; it does not make browser alarms ring while the page/device is asleep. Do not put a Supabase service-role key into this static website.
 
-## Automatic layouts
+## Desktop workspace
 
-Each visit starts with a centered clock and an **Add alarm** button. Opening the picker transitions to the alarm workspace; **Hide alarm picker** beneath the clock returns to the clock view. Settings and running alarms remain active in either view. A **Your alarms** shortcut appears beside the button when saved alarms are present. The transition respects reduced-motion preferences, and the clock view adapts to small windows.
+Each visit starts with a centered clock and **Open workspace**. The workspace places the clock on the left, the editor in the center, and an expandable alarms/timers sidebar on the right. **Focus clock** returns to the large clock without disabling scheduled items. The sidebar remembers its expanded state. Smaller windows stack the same panels; mouse/trackpad layouts at least 1000 CSS pixels wide use the available window height with scrolling inside the editor and sidebar. Add/Save remains visible at the bottom of the editor. Reduced-motion preferences are respected.
 
-Wide screens (at least 1000 CSS pixels) with a primary mouse/trackpad use a fixed-height workspace: clock on the left, expanded alarm setup in the middle, and a collapsible alarms sidebar on the right. The sidebar starts collapsed, shows the alarm count, and remembers your open/closed preference. Opening it reveals the list; closing it gives the space back to the form. Escape from inside the sidebar collapses it and returns focus to its toggle. The page itself does not scroll. Long lists and expanded settings in smaller windows can scroll inside their panels, and Add alarm stays visible.
+Use **Alarm** for a time of day or **Timer** for a duration. Both support optional names. Alarms can repeat daily or on selected weekdays, remain saved after ringing, and support enable/disable, editing, deletion and exact duplication. One-time alarms switch off after completion. Timers appear first in their own section and disappear once finished. Each item remembers its own sound, volume, fade and test settings.
 
-The desktop time picker has editable hour/minute fields, mouse-wheel and arrow-key/stepper controls, and an AM/PM toggle; it follows the 12/24-hour clock setting. Hover a number and scroll up to increase it or down to decrease it. The countdown uses the same styled controls for hours, minutes and seconds, with rollover between units and a duration range of zero through 99:59:59 (zero cannot be added as an alarm). Wheel handling is limited to the number being hovered; scrolling elsewhere and Ctrl-wheel zoom keep their normal behavior. At spacious panel widths, ringtone controls sit beside wake-up tests, with the two ringtone links on separate lines. Narrow panels stack those sections to keep everything accessible.
+Desktop time/duration fields support direct typing, mouse-wheel adjustments and arrow keys; the time follows the 12/24-hour display preference. Touch-first devices use native time entry and swipe-and-snap duration wheels, with a **Type instead** fallback. Duration presets occupy one row, hiding trailing choices at narrow widths and sharing available space evenly.
 
-Touch-first devices and narrower windows retain the stacked phone layout and native time input for At a time. The mobile countdown has separate swipe-and-snap wheels for hours, minutes and seconds, plus Type instead for numeric keyboard entry. Presets and both entry methods stay synchronized; the selected duration is captured when Add alarm is pressed. The native time field is constrained to the card width, including WebKit-specific sizing rules. Switching screen size or input capabilities updates the layout automatically without resetting alarms or reloading the page. This uses responsive CSS rather than unreliable device-name guessing.
+The ringtone picker stays open when selecting a sound. Enable **Sound checker** to audition choices; closing the picker stops its preview. Import audio or open the existing online-sources window from inside the picker. Browser volume is a relative playback level, separate from the operating system's volume.
 
-Countdown presets stay on a single row. As the available width shrinks, trailing choices are hidden instead of wrapping; visible choices share the row equally. Resizing restores choices when they fit again.
+The five wake-up tests match the mobile choices: typing, four-operation math, solid jigsaw puzzle, Minesweeper and Sudoku. A tile opens settings without changing activation; **Set / Unset** changes activation. **Try it** launches an isolated practice session. Real tests run in order; a timeout restarts the sequence and restores sound. Math answers clear automatically with keyboard focus retained. Minesweeper uses right-click or Flag mode, allows excess flags, and enables **I'm done** only at the exact mine count. Sudoku puzzles have one solution. Puzzle placement supports dragging or selecting a piece and clicking its position, with exactly one target per piece and no empty-piece outlines.
+
+The grouped eighteen-theme collection mirrors mobile, including pale Midnight Cherry alarm cards, coral weekday rings, and a red Signal Blue preview. Theme selection closes its dialog. OLED Black and Dark stay flat; most other backgrounds use subtle gradients.
+
+## Saved data and rollback
+
+Existing `wake.alarms` records migrate in place; a pre-migration copy is stored in `wake.studio.beforeMigration`. One-time alarms more than a minute overdue are retained disabled, recurring alarms advance, and expired non-ringing timers more than a minute overdue are removed. An alarm already ringing resumes after reload, with saved challenge progress and deadline. Storage failures report an error and preserve the previous saved list when adding or editing.
+
+New records retain the original typing/math fields for compatibility. The older website does not understand every new game or recurring schedule, so a code rollback preserves the old interface but cannot provide all new behaviors. Do not clear browser storage as part of a deployment.
+
+The development branch is **website/desktop-studio**. The starting version is preserved on **website/rollback-before-desktop-update** at `85e08a7`. Keep both remote branches. For a production rollback, revert the website-update commit on the production branch and push it; this preserves subsequent mobile commits. Avoid resetting the entire repository to the backup branch.
 
 ## Browser limitations
 
-- Keep the page open, sound enabled, and your device awake. Muted tabs/site settings can prevent sound.
-- Browsers can delay or suspend background tabs; a Web Worker cannot guarantee on-time background delivery.
-- A website cannot wake a sleeping or shut-down computer, and closing the page stops it.
-- Alarms and preferences belong to the current browser/device. Clearing site data removes them.
-- On reopening, the original app resumes ringing alarms and retains alarms less than a minute overdue; older non-ringing missed alarms are discarded, matching the supplied frontend.
-- Custom audio uses browser-supported codecs and localStorage (2 MB per imported clip). The original frontend has one custom ringtone slot; importing another file changes the sound used by custom-tone alarms.
-- Internet time services may be unavailable or blocked by browser CORS/network rules. The clock reports the device-clock fallback. The site still runs without these services.
+- Keep the page open, sound available and your device awake. Muted tabs/site settings can prevent sound. Normal clicks and key presses activate browser audio.
+- Browsers can delay or suspend background tabs; a Web Worker cannot guarantee on-time background delivery. The website cannot wake a sleeping or shut-down device, and closing the page stops it.
+- Alarms and preferences belong to the current browser/device and origin. Clearing site data removes them. There is no account or cross-device synchronization.
+- Audio imports use browser-supported codecs and localStorage, with a 2 MB limit per file. New alarms snapshot imported audio; multiple large imports may exhaust browser storage.
+- Native lock-screen alarms, system volume control and reliable vibration belong to the mobile apps, not the website.
+- Internet time services can be unavailable or blocked by CORS/network rules. The clock reports the device-clock fallback and remains usable offline once its assets are loaded.
 
 ## Development checks
 
-From the repository root, install Playwright locally in `tests/web` (not in the deployed `web/` directory), then run the browser checks:
+From the repository root:
 
-```
-npm install --prefix tests/web --no-save playwright
-npx --prefix tests/web playwright install chromium
-node tests/web/smoke.cjs
+```sh
+npm ci --prefix tests/web
+cd tests/web
+npx playwright install chromium
+cd ../..
+node tests/web/studio.cjs
 ```
 
-The runner uses system Chromium when available, otherwise Playwright's Chromium. Set `CHROMIUM_PATH` to select another compatible executable. Tests exercise offline startup, sound activation, all eight themes with both system color schemes, phone width, timers, challenge order/wrong answers, queues, reload persistence, and storage failures. The mobile checks also exercise an actual Chromium touch-swipe gesture, wheel selection/presets/manual entry, and native time-field bounds at 320–430px widths. Native iOS Safari still requires real-device verification. Captures are written to `artifacts/web-previews/`.
+The runner starts its own local static server. It uses system Chromium when available, otherwise Playwright's Chromium. `CHROMIUM_PATH` selects another compatible executable. The older `node tests/web/smoke.cjs` command delegates to the same suite. No test dependencies are shipped in `web/`.
+
+Checks cover alarm creation/editing/duplication, timer grouping, legacy migration, theme persistence, ringtone selection, desktop and narrow layouts, completion of all five tests, unique Sudoku generation, Minesweeper confirmation and storage failures. Captures go to `artifacts/web-previews/`. Native Safari still requires real-device verification.
+
+The **Website checks** GitHub Actions workflow runs on website changes and uploads screenshots. Vercel's Git integration deploys independently from its configured production branch (`main` in the settings above); this workflow validates the website but does not itself publish a Vercel deployment. Native build workflows are unaffected by website-only changes.
