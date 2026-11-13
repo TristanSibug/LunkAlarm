@@ -77,3 +77,5 @@ Theme selection closes the picker, VS Code Blue migrates to Deep Ocean, and them
 ## Android 1.3.1 signing baseline
 
 The pipeline now checks both the keystore certificate and the final APK against the permanent public certificate pin. It builds a lower-version fixture with the same key, seeds saved alarms, a timer, preferences and an imported ringtone, then uses `adb install -r` to install the higher-version app and verifies the data survives. No uninstall or data clear occurs between the two installations. Test fixtures and private signing files are excluded from the downloadable artifacts.
+
+The [verified 1.3.1 build](https://github.com/TristanSibug/LunkAlarm/actions/runs/43343419821) passed all signing safeguards, core/native UI tests, lint, and the real update-installation data-retention check.

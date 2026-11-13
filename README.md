@@ -65,6 +65,8 @@ Future distributable Android builds use a permanent private key, with a public c
 
 Older development-signed APKs require one final reinstall to move to this baseline. Updates from 1.3.1 onward reuse the permanent identity and retain app data.
 
+The [verified Android 1.3.1 build](https://github.com/TristanSibug/LunkAlarm/actions/runs/43343419821) passed **6 signing-safety tests, 30 core tests, 20 native UI tests, the denied-permission check, and the upgrade/data-retention check**. Its **LunkAlarm-Android** artifact contains the certificate-verified APK.
+
 ## Install the mobile apps
 
 **Android:** Download the `.apk` from [Releases](https://github.com/TristanSibug/LunkAlarm/releases), or extract `artifacts/LunkAlarm-Android-1.3.1.apk` from the **LunkAlarm-Android** artifact in the latest [Android build](https://github.com/TristanSibug/LunkAlarm/actions/workflows/android.yml). Open it on your phone, and allow installation from your browser or file manager if Android asks. In LunkAlarm, open **Alarm access** and enable alarms, notifications, and full-screen alarms where available. Overall sound level uses your device's alarm volume.
