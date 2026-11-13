@@ -1,3 +1,5 @@
+import java.util.Properties
+
 plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
@@ -10,13 +12,27 @@ android {
         applicationId = "online.reeeserve.lunkalarm"
         minSdk = 26
         targetSdk = 36
-        versionCode = 4
-        versionName = "1.3.0"
+        versionCode = providers.gradleProperty("lunkVersionCode").orNull?.toInt() ?: 5
+        versionName = providers.gradleProperty("lunkVersionName").orNull ?: "1.3.1"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
     buildFeatures { compose = true }
     androidResources { noCompress += "wav" }
-    signingConfigs.getByName("debug") { System.getenv("LUNK_ANDROID_KEYSTORE")?.let { storeFile = file(it) } }
+    val signingPath = System.getenv("LUNK_ANDROID_SIGNING_PROPERTIES")
+    if (System.getenv("LUNK_ANDROID_REQUIRE_SIGNING") == "true" && signingPath == null) {
+        error("Permanent signing is required. Run prepare_signing.py with ANDROID_SIGNING_BUNDLE first.")
+    }
+    signingConfigs.getByName("debug") {
+        if (signingPath != null) {
+            val signing = Properties().apply { file(signingPath).reader(Charsets.UTF_8).use { load(it) } }
+            storeFile = file(signing.getProperty("storeFile"))
+            storePassword = signing.getProperty("storePassword")
+            keyPassword = signing.getProperty("keyPassword")
+            keyAlias = signing.getProperty("keyAlias")
+        } else {
+            System.getenv("LUNK_ANDROID_KEYSTORE")?.let { storeFile = file(it) }
+        }
+    }
     compileOptions { sourceCompatibility = JavaVersion.VERSION_17; targetCompatibility = JavaVersion.VERSION_17 }
     kotlinOptions { jvmTarget = "17" }
     buildTypes { release { isMinifyEnabled = true; proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro") } }

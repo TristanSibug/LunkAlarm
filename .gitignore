@@ -24,3 +24,11 @@ android/local.properties
 *.aab
 *.jks
 *.keystore
+
+# Permanent signing secrets stay outside version control
+*.p12
+*.pfx
+ANDROID_SIGNING_BUNDLE*.json
+signing.properties
+__pycache__/
+*.py[cod]

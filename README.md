@@ -59,9 +59,15 @@ The [iOS 1.8.1 build](https://github.com/TristanSibug/LunkAlarm/actions/runs/433
 
 Alarms, themes, and imported sounds are saved locally on each device. There is no account requirement or cross-device synchronization. The website and mobile apps have separate saved data, and some features differ by platform.
 
+### Android 1.3.1: permanent signing baseline
+
+Future distributable Android builds use a permanent private key, with a public certificate pin and fail-closed checks. The pipeline includes a real update-installation check for data retention. See [Android signing setup](android/SIGNING.md) for the required repository secret and private backup.
+
+Older development-signed APKs require one final reinstall to move to this baseline. Updates from 1.3.1 onward reuse the permanent identity and retain app data.
+
 ## Install the mobile apps
 
-**Android:** Download the `.apk` from [Releases](https://github.com/TristanSibug/LunkAlarm/releases), or extract `artifacts/LunkAlarm-Android-1.3.0.apk` from the **LunkAlarm-Android** artifact in the latest [Android build](https://github.com/TristanSibug/LunkAlarm/actions/workflows/android.yml). Open it on your phone, and allow installation from your browser or file manager if Android asks. In LunkAlarm, open **Alarm access** and enable alarms, notifications, and full-screen alarms where available. Overall sound level uses your device's alarm volume.
+**Android:** Download the `.apk` from [Releases](https://github.com/TristanSibug/LunkAlarm/releases), or extract `artifacts/LunkAlarm-Android-1.3.1.apk` from the **LunkAlarm-Android** artifact in the latest [Android build](https://github.com/TristanSibug/LunkAlarm/actions/workflows/android.yml). Open it on your phone, and allow installation from your browser or file manager if Android asks. In LunkAlarm, open **Alarm access** and enable alarms, notifications, and full-screen alarms where available. Overall sound level uses your device's alarm volume.
 
 **iOS:** Download the `.ipa` from [Releases](https://github.com/TristanSibug/LunkAlarm/releases) when attached, or extract it from a successful **Native iOS app** Actions build. The cloud-generated IPA is unsigned and needs signing/provisioning through AltStore Classic/AltServer or another compatible signing tool before installation. GitHub hosting does not replace Apple's signing requirements. See the [iOS guide](ios/README.md) for setup and build instructions.
 

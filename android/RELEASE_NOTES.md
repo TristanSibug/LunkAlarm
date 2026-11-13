@@ -1,13 +1,13 @@
-# LunkAlarm for Android 1.3.0 — Alarms, Timers & Wake-up Tests
+# LunkAlarm for Android v1.3.1 — Reliable App Updates
 
-- Separate Alarm and Timer creation, optional names, and grouped lists with timers first.
-- Always-visible wake-up test tiles with explicit Set/Unset and isolated Try mode.
-- Addition, subtraction, multiplication and division; select any combination.
-- Native math input clears submitted answers while keeping keyboard focus.
-- Minesweeper boards: 5×5, 7×7 and 9×9. Hold hidden squares to flag; confirm exact flags with **I'm done**. Holding numbers has no action.
-- Sudoku timers: **60 / 120 / 180 / 240 seconds**.
-- Ringtone picker stays open, with its own Sound checker and a vibration option beside volume.
-- Theme gradients, improved card/Sudoku contrast, and automatic theme-picker dismissal.
-- Remove stale editor confirmation text and the practice completion Back to settings button.
+- Establishes one permanent signing identity for future releases.
+- Removes cache-based signing and automatic replacement-key generation.
+- Rejects missing or incorrect signing keys before building a distributable APK.
+- Verifies the final APK certificate before packaging.
+- Adds an installation-over-existing-app test covering saved alarms, timers, preferences and imported ringtones.
 
-Download the attached APK to install/update. Existing Android alarm delivery and local saved alarms are retained.
+## One-time transition
+
+Older test releases use different signing keys. Moving to **1.3.1** requires one final reinstall, which removes their local alarm data. Record any alarm details you want to recreate before uninstalling. Future updates from this new signing baseline install over the existing app and retain its data, provided the same application ID and permanent key are used.
+
+Download the attached APK to install.

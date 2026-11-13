@@ -10,7 +10,8 @@ report={
     'build':os.environ.get('APK_STATUS'),
     'emulator':os.environ.get('EMULATOR_STATUS'),
     'release':os.environ.get('RELEASE_STATUS'),
-    'tests':[], 'errors':[], 'previews':[]
+    'tests':[], 'errors':[], 'previews':[],
+    'upgrade': all(Path(f'artifacts/android-upgrade-{stage}.log').exists() and 'OK (1 test)' in Path(f'artifacts/android-upgrade-{stage}.log').read_text() for stage in ['seed','verify'])
 }
 for pattern in ['android/app/build/test-results/testDebugUnitTest/TEST-*.xml','android/app/build/outputs/androidTest-results/connected/**/*.xml']:
     for path in sorted(Path('.').glob(pattern)):
@@ -20,7 +21,7 @@ for pattern in ['android/app/build/test-results/testDebugUnitTest/TEST-*.xml','a
             for failure in root.iter('failure'):
                 report['errors'].append((failure.text or failure.get('message') or '')[:8000])
         except ET.ParseError: pass
-for name in ['artifacts/android-sdk-setup.log','artifacts/android-build.log','artifacts/android-ui-test.log','artifacts/android-permission-test.log']:
+for name in ['artifacts/android-sdk-setup.log','artifacts/android-build.log','artifacts/android-ui-test.log','artifacts/android-permission-test.log','artifacts/android-upgrade-pair.log','artifacts/android-upgrade-seed.log','artifacts/android-upgrade-verify.log']:
     p=Path(name)
     if not p.exists(): continue
     lines=p.read_text(errors='replace').splitlines()

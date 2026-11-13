@@ -12,9 +12,24 @@ adb wait-for-device
 adb shell settings put global window_animation_scale 0
 adb shell settings put global transition_animation_scale 0
 adb shell settings put global animator_duration_scale 0
-adb install -r android/app/build/outputs/apk/debug/app-debug.apk
+baseline_apk="${RUNNER_TEMP:?}/lunkalarm-upgrade-fixture.apk"
+python3 android/scripts/verify_upgrade_pair.py "$baseline_apk" android/app/build/outputs/apk/debug/app-debug.apk | tee artifacts/android-upgrade-pair.log
+adb install "$baseline_apk"
 adb install -r android/app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk
 adb shell pm grant online.reeeserve.lunkalarm android.permission.POST_NOTIFICATIONS
+adb shell appops set online.reeeserve.lunkalarm SCHEDULE_EXACT_ALARM allow
+adb shell am instrument -w -r -e class 'online.reeeserve.lunkalarm.UpgradePersistenceTest#seedBeforeUpgrade' online.reeeserve.lunkalarm.test/androidx.test.runner.AndroidJUnitRunner | tee artifacts/android-upgrade-seed.log
+python3 - <<'PYCHECK'
+from pathlib import Path
+assert 'OK (1 test)' in Path('artifacts/android-upgrade-seed.log').read_text()
+PYCHECK
+# This is deliberately an update, with no uninstall, data clear or reseeding.
+adb install -r android/app/build/outputs/apk/debug/app-debug.apk
+adb shell am instrument -w -r -e class 'online.reeeserve.lunkalarm.UpgradePersistenceTest#verifyAfterUpgrade' online.reeeserve.lunkalarm.test/androidx.test.runner.AndroidJUnitRunner | tee artifacts/android-upgrade-verify.log
+python3 - <<'PYCHECK'
+from pathlib import Path
+assert 'OK (1 test)' in Path('artifacts/android-upgrade-verify.log').read_text()
+PYCHECK
 adb shell appops set online.reeeserve.lunkalarm SCHEDULE_EXACT_ALARM deny
 adb shell am instrument -w -r -e class online.reeeserve.lunkalarm.PermissionGateTest online.reeeserve.lunkalarm.test/androidx.test.runner.AndroidJUnitRunner | tee artifacts/android-permission-test.log
 python3 - <<'PY'
