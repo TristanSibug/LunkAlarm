@@ -489,13 +489,38 @@
       list.append(heading);
       for (const a of group) {
         const li = document.createElement("li");
-        li.className = "routine-card" + (!a.enabled ? " is-off" : "");
-        li.innerHTML = `<div class="routine-top"><button class="routine-edit" aria-label="Edit ${esc(a.name || "alarm")}"><span class="routine-name">${esc(a.name || (type === "timer" ? "Timer" : "Alarm"))}</span><span class="routine-time ${type === "timer" ? "remaining" : ""}" data-target="${a.targetMs}">${type === "timer" ? formatRemaining(a.targetMs - trueNow()) : formatClockTime(new Date(2000, 0, 1, a.hour, a.minute))}</span></button>${type === "time" ? `<button class="routine-toggle" aria-label="Enable ${esc(a.name || "alarm")}" role="switch" aria-checked="${a.enabled}" ${a.ringing ? "disabled" : ""}></button>` : ""}</div><div class="routine-footer"><span>${type === "timer" ? '<span class="remaining" data-target="' + a.targetMs + '">' + formatRemaining(a.targetMs - trueNow()) + "</span> remaining" : a.days.length === 7 ? "Daily" : a.days.length ? ["S", "M", "T", "W", "T", "F", "S"].map((d, i) => `<span class="day-dot ${a.days.includes(i) ? "chosen" : ""}">${d}</span>`).join("") : "Once"}</span><button type="button" class="routine-menu-trigger" aria-label="Options for ${esc(a.name || "alarm")}" aria-haspopup="true" aria-expanded="false" aria-controls="routineActions">•••</button></div><div class="routine-tests">${
+        li.className =
+          "routine-card" +
+          (!a.enabled ? " is-off" : "") +
+          (type === "timer" ? " is-timer" : "");
+        const repeat =
+          type === "timer"
+            ? ""
+            : a.days.length === 7
+              ? "Daily"
+              : a.days.length
+                ? ["S", "M", "T", "W", "T", "F", "S"]
+                    .map(
+                      (d, i) =>
+                        `<span class="day-dot ${a.days.includes(i) ? "chosen" : ""}">${d}</span>`,
+                    )
+                    .join("")
+                : "Once";
+        const tests =
           Object.keys(testNames)
             .filter((k) => a.tests[k])
-            .map((k) => esc(testNames[k]))
-            .join(" · ") || "No wake-up tests"
-        }</div>`;
+            .map((k) => testNames[k])
+            .join(" · ") || "No wake-up tests";
+        const time =
+          type === "timer"
+            ? formatRemaining(a.targetMs - trueNow())
+            : formatClockTime(new Date(2000, 0, 1, a.hour, a.minute));
+        li.innerHTML = `<button type="button" class="routine-edit" aria-label="Edit ${esc(a.name || (type === "timer" ? "timer" : "alarm"))}">
+          <span class="routine-time ${type === "timer" ? "remaining" : ""}" data-target="${a.targetMs}">${esc(time)}</span>
+          <span class="routine-copy">${a.name ? `<span class="routine-name">${esc(a.name)}</span>` : ""}${repeat ? `<span class="routine-repeat">${repeat}</span>` : ""}<span class="routine-tests">${esc(tests)}</span></span>
+        </button><div class="routine-controls">${type === "time" ? `<button type="button" class="routine-toggle" aria-label="Enable ${esc(a.name || "alarm")}" role="switch" aria-checked="${a.enabled}" ${a.ringing ? "disabled" : ""}></button>` : ""}
+          <button type="button" class="routine-menu-trigger" aria-label="Options for ${esc(a.name || (type === "timer" ? "timer" : "alarm"))}" aria-haspopup="true" aria-expanded="false" aria-controls="routineActions">•••</button>
+        </div>`;
         li.querySelector(".routine-edit").onclick = () => editRecord(a);
         li.querySelector(".routine-toggle")?.addEventListener("click", () =>
           persist(() => {

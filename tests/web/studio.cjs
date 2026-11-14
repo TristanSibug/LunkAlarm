@@ -1053,6 +1053,151 @@ const server = createServer(async (req, res) => {
     checks++;
     await close(p);
 
+    // Compact cards keep one time display, actual names, and separate controls.
+    const compactRecords = [
+      {
+        id: "compact-alarm",
+        type: "time",
+        name: "",
+        hour: 9,
+        minute: 0,
+        days: [0, 1, 2, 3, 4, 5, 6],
+        enabled: false,
+        targetMs: Date.now() + 3600000,
+        tests: { typing: true, math: true, sudoku: true },
+      },
+      {
+        id: "compact-timer",
+        type: "timer",
+        name: "",
+        duration: 1800,
+        enabled: true,
+        targetMs: Date.now() + 1800000,
+      },
+      {
+        id: "named-alarm",
+        type: "time",
+        name: "Morning routine",
+        hour: 7,
+        minute: 30,
+        days: [1, 3, 5],
+        enabled: false,
+        targetMs: Date.now() + 3600000,
+        tests: {
+          typing: true,
+          math: true,
+          puzzle: true,
+          mines: true,
+          sudoku: true,
+        },
+      },
+    ];
+    p = await fresh(
+      { "wake.alarms": compactRecords, "wake.theme": "cobalt-coral" },
+      { width: 1920, height: 1080 },
+    );
+    await workspace(p);
+    const blankAlarm = p.getByRole("button", {
+      name: "Edit alarm",
+      exact: true,
+    });
+    const blankTimer = p.getByRole("button", {
+      name: "Edit timer",
+      exact: true,
+    });
+    assert.equal(await blankAlarm.locator(".routine-name").count(), 0);
+    assert.equal(await blankTimer.locator(".routine-name").count(), 0);
+    assert.equal(
+      await blankAlarm.locator(".routine-repeat").textContent(),
+      "Daily",
+    );
+    assert.equal(await blankTimer.locator(".remaining").count(), 1);
+    assert.equal(await p.locator(".routine-footer").count(), 0);
+    assert(!(await blankTimer.textContent()).includes("remaining"));
+    const countdown = await blankTimer.locator(".remaining").textContent();
+    await p.waitForFunction(
+      (before) =>
+        document.querySelector(".routine-card.is-timer .remaining")
+          .textContent !== before,
+      countdown,
+    );
+    const split = await blankAlarm.evaluate((el) => {
+      const time = el.querySelector(".routine-time").getBoundingClientRect();
+      const copy = el.querySelector(".routine-copy").getBoundingClientRect();
+      const card = el.closest(".routine-card").getBoundingClientRect();
+      const controls = el
+        .closest(".routine-card")
+        .querySelector(".routine-controls")
+        .getBoundingClientRect();
+      return { time, copy, card, controls };
+    });
+    assert(split.time.right < split.copy.left);
+    assert(split.copy.right <= split.controls.left);
+    assert(split.card.height <= 105);
+    const nameBox = await p.locator("#alarmName").boundingBox();
+    const dayBox = await p.locator(".day-choice").first().boundingBox();
+    assert(
+      Math.abs(nameBox.y - dayBox.y) < 1,
+      "Name and repeat-day tops align",
+    );
+    assert(Math.abs(nameBox.height - dayBox.height) < 1);
+    assert.equal(await p.locator(".routine-repeat .day-dot.chosen").count(), 3);
+    await p.screenshot({
+      path: path.join(output, "compact-time-led-desktop.png"),
+    });
+    await p
+      .locator("#alarmsCard")
+      .screenshot({ path: path.join(output, "compact-time-led-cards.png") });
+    await p
+      .getByRole("button", { name: "Edit Morning routine", exact: true })
+      .click();
+    assert.equal(await p.locator("#alarmName").inputValue(), "Morning routine");
+    checks++;
+    await close(p);
+    for (const width of [320, 390, 1280]) {
+      p = await fresh(
+        {
+          "wake.alarms": [
+            {
+              ...compactRecords[0],
+              name: "A very long saved alarm name that stays on one line",
+              tests: compactRecords[2].tests,
+            },
+            {
+              ...compactRecords[1],
+              name: "A long running timer",
+              targetMs: Date.now() + 359999000,
+            },
+          ],
+        },
+        { width, height: 900 },
+      );
+      await workspace(p);
+      assert(
+        await p.locator(".routine-card").evaluateAll((cards) =>
+          cards.every((card) => {
+            const edit = card.querySelector(".routine-edit");
+            const controls = card
+              .querySelector(".routine-controls")
+              .getBoundingClientRect();
+            return (
+              edit.scrollWidth <= edit.clientWidth + 1 &&
+              edit.getBoundingClientRect().right <= controls.left &&
+              card.scrollWidth <= card.clientWidth + 1
+            );
+          }),
+        ),
+        `Compact cards fit at ${width}px`,
+      );
+      assert(
+        await p.evaluate(
+          () => document.documentElement.scrollWidth <= innerWidth,
+        ),
+      );
+      checks++;
+      await close(p);
+    }
+
     assert.deepEqual(errors, []);
     console.log(
       "PASS",
