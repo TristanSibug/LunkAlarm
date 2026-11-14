@@ -923,11 +923,24 @@ const server = createServer(async (req, res) => {
       checks,
       "browser scenarios; desktop/mobile layouts, saved data, all five games, and quota handling.",
     );
+  } catch (error) {
+    error.testContext = `After ${checks} completed browser scenarios`;
+    const failedPage = browser.contexts().at(-1)?.pages().at(-1);
+    if (failedPage)
+      await failedPage
+        .screenshot({ path: path.join(output, "failure.png"), fullPage: true })
+        .catch(() => {});
+    throw error;
   } finally {
     await browser.close();
     server.close();
   }
 })().catch((e) => {
   console.error(e);
+  const detail = `${e.testContext || ""}\n${e.stack || e}`
+    .replace(/%/g, "%25")
+    .replace(/\r/g, "%0D")
+    .replace(/\n/g, "%0A");
+  console.error(`::error title=Website browser failure::${detail}`);
   process.exit(1);
 });
