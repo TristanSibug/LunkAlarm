@@ -514,6 +514,218 @@ const server = createServer(async (req, res) => {
     assert(await p.locator("#alarmName").isVisible());
     await close(p);
     checks++;
+    // The uncluttered clock has a text-only upcoming schedule and chevron navigation.
+    const future = Date.now() + 3600000;
+    p = await fresh({
+      "wake.alarms": [
+        {
+          id: "daily",
+          type: "time",
+          name: "Morning routine",
+          targetMs: future,
+          hour: 7,
+          minute: 0,
+          days: [0, 1, 2, 3, 4, 5, 6],
+          enabled: true,
+        },
+        {
+          id: "tea",
+          type: "timer",
+          name: "Tea break",
+          targetMs: future,
+          duration: 3600,
+          enabled: true,
+        },
+        {
+          id: "disabled",
+          type: "time",
+          name: "Disabled alarm",
+          targetMs: future,
+          hour: 9,
+          minute: 0,
+          enabled: false,
+        },
+      ],
+      "wake.alarmsSidebarOpen": false,
+    });
+    assert.equal(
+      await p
+        .locator("#syncBadge,.brand-mark,.brand-caption,#focusClock,.eyebrow")
+        .count(),
+      0,
+    );
+    assert.equal(await p.locator("#focusAgenda .agenda-item").count(), 2);
+    assert(await p.locator("#focusAgenda").isVisible());
+    assert(
+      await p
+        .locator("#focusAgenda")
+        .evaluate(
+          (el) =>
+            getComputedStyle(el).backgroundColor === "rgba(0, 0, 0, 0)" &&
+            getComputedStyle(el).borderTopWidth === "0px",
+        ),
+    );
+    assert.equal(await p.locator("#alarmPickerToggle").innerText(), "");
+    assert.equal(
+      await p.locator("#alarmPickerToggle").getAttribute("aria-expanded"),
+      "false",
+    );
+    await p.screenshot({ path: path.join(output, "clock-with-agenda.png") });
+    checks++;
+    const finishMotion = async () => {
+      await p.evaluate(async () => {
+        if (clockViewTransition)
+          await clockViewTransition.finished.catch(() => {});
+      });
+      await p.waitForTimeout(250);
+    };
+    const z = await p.locator("#zoneText").boundingBox(),
+      c = await p.locator(".clock-card").boundingBox();
+    await p.mouse.click(c.x + c.width / 2, z.y + z.height + 10);
+    await p.waitForFunction(
+      () => !document.documentElement.classList.contains("clock-focus"),
+    );
+    assert(
+      await p.evaluate(async () => {
+        if (!document.startViewTransition) return true;
+        try {
+          await clockViewTransition?.ready;
+          return true;
+        } catch {
+          return false;
+        }
+      }),
+      "Clock snapshots should animate without a skipped transition",
+    );
+    await finishMotion();
+    assert.equal(
+      await p.locator("#alarmPickerToggle").getAttribute("aria-expanded"),
+      "true",
+    );
+    assert(await p.locator("#alarmsPanel").isVisible());
+    assert(await p.locator("#alarmsToggle").isHidden());
+    assert(
+      await p
+        .locator("#mainApp")
+        .evaluate((el) => el.classList.contains("alarms-open")),
+    );
+    assert.equal(
+      await p
+        .locator("#mainApp")
+        .evaluate((el) => getComputedStyle(el).transitionProperty),
+      "none",
+    );
+    checks++;
+    // Wheel-up over either panel must never collapse the workspace.
+    for (const id of ["editorTitle", "alarmsHeading"]) {
+      await p.locator("#" + id).hover();
+      await p.mouse.wheel(0, -200);
+      await p.waitForTimeout(150);
+      assert.equal(
+        await p.locator("#alarmPickerToggle").getAttribute("aria-expanded"),
+        "true",
+      );
+    }
+    await p.locator("#clockHM").hover();
+    await p.mouse.wheel(0, -120);
+    await p.waitForFunction(() =>
+      document.documentElement.classList.contains("clock-focus"),
+    );
+    await finishMotion();
+    await p.locator("#focusAgenda h2").first().hover();
+    await p.mouse.wheel(0, 120);
+    await p.waitForFunction(
+      () => !document.documentElement.classList.contains("clock-focus"),
+    );
+    // Same-direction trackpad momentum must not bounce the new view back.
+    await p.mouse.wheel(0, 120);
+    await finishMotion();
+    assert.equal(
+      await p.locator("#alarmPickerToggle").getAttribute("aria-expanded"),
+      "true",
+    );
+    checks++;
+    // Day controls stay circular and legible across panel/window widths.
+    for (const width of [1600, 1366, 1024, 390, 320]) {
+      await p.setViewportSize({ width, height: 1000 });
+      const sizes = await p.locator(".day-choice").evaluateAll((bs) =>
+        bs.map((b) => {
+          const r = b.getBoundingClientRect(),
+            s = getComputedStyle(b);
+          return {
+            w: r.width,
+            h: r.height,
+            font: parseFloat(s.fontSize),
+            weight: s.fontWeight,
+          };
+        }),
+      );
+      assert(
+        sizes.every(
+          (d) => Math.abs(d.w - d.h) < 1 && d.font >= 13 && d.weight === "500",
+        ),
+      );
+      assert(
+        await p.evaluate(
+          () => document.documentElement.scrollWidth <= innerWidth + 1,
+        ),
+      );
+    }
+    await p.setViewportSize({ width: 1600, height: 1000 });
+    checks++;
+    // Preview lives beside volume, plays directly, and creates no alarm/dialog.
+    const beforePreview = (await storage(p)).length;
+    await p.locator("#checkSound").click();
+    assert.equal(
+      await p.locator("#checkSound").getAttribute("aria-pressed"),
+      "true",
+    );
+    await p.waitForFunction(() => audioCtx?.state === "running");
+    assert(await p.evaluate(() => !!sound.master));
+    assert.equal(await p.locator("#sounds").evaluate((d) => d.open), false);
+    await p.locator("#checkSound").click();
+    assert(await p.evaluate(() => !sound.master));
+    assert.equal((await storage(p)).length, beforePreview);
+    await p.screenshot({ path: path.join(output, "workspace-refined.png") });
+    checks++;
+    await p.locator("#alarmPickerToggle").click();
+    await finishMotion();
+    await p
+      .locator("#focusAgenda")
+      .getByRole("button", { name: "Edit Morning routine", exact: true })
+      .click();
+    await finishMotion();
+    assert.equal(await p.locator("#alarmName").inputValue(), "Morning routine");
+    assert.equal(await p.locator("#editorTitle").textContent(), "Edit alarm");
+    checks++;
+    await close(p);
+    // Same-origin HTTPS Date is automatic, cache-busted and never a UI badge.
+    p = await fresh();
+    await p.route("**/index.html?*", (r) =>
+      r.fulfill({
+        status: 200,
+        headers: {
+          date: new Date(Date.now() + 118000).toUTCString(),
+          age: "2",
+        },
+      }),
+    );
+    await p.evaluate(() => syncTime());
+    assert(
+      await p.evaluate(
+        () => state.hasSynced && Math.abs(state.timeOffsetMs - 120000) < 1000,
+      ),
+    );
+    const lastGood = await p.evaluate(() => state.timeOffsetMs);
+    await p.unroute("**/index.html?*");
+    await p.route("**/index.html?*", (r) => r.abort());
+    await p.evaluate(() => syncTime());
+    assert.equal(await p.evaluate(() => state.timeOffsetMs), lastGood);
+    assert.equal(await p.locator("#syncBadge").count(), 0);
+    assert.notEqual(await p.locator("#clockHM").textContent(), "--:--");
+    await close(p);
+    checks++;
+
     assert.deepEqual(errors, []);
     console.log(
       "PASS",

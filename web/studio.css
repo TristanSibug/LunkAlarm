@@ -1127,3 +1127,431 @@ dialog::backdrop {
     padding-top: 20px;
   }
 }
+
+/* Clock navigation: plain iOS-style chevrons and a generous click target. */
+#alarmPickerText {
+  display: none;
+}
+#clockAlarmsToggle,
+.sidebar-label,
+#alarmsToggle {
+  display: none !important;
+}
+.clock-actions,
+html.clock-focus .clock-actions {
+  width: 100%;
+  min-height: 84px;
+  margin-top: 8px;
+  cursor: pointer;
+}
+.clock-picker-toggle,
+html.clock-focus .clock-picker-toggle {
+  display: grid;
+  place-items: center;
+  width: 64px;
+  height: 56px;
+  padding: 0;
+  color: var(--muted);
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+.clock-picker-toggle:hover,
+html.clock-focus .clock-picker-toggle:hover {
+  color: var(--text);
+  background: transparent;
+  transform: translateY(2px);
+}
+#alarmPickerIcon {
+  display: flex;
+}
+.clock-top {
+  justify-content: flex-end;
+}
+.studio-brand {
+  gap: 0;
+}
+.editor-heading {
+  margin-bottom: 18px;
+}
+
+/* The selected underlined tabs retain clear keyboard focus, without pills. */
+.create-switch {
+  display: flex;
+  gap: 26px;
+  border-bottom: 1px solid var(--card-border);
+  margin-bottom: 24px;
+}
+.create-switch button {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  min-height: 48px;
+  padding: 8px 4px 14px;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  color: var(--muted);
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+}
+.create-switch svg {
+  width: 19px;
+  height: 19px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.6;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.create-switch [aria-pressed="true"] {
+  background: transparent;
+  color: var(--text);
+}
+.create-switch [aria-pressed="true"]::after {
+  content: "";
+  position: absolute;
+  bottom: -1px;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: var(--accent-2);
+  border-radius: 2px;
+}
+.create-switch [aria-pressed="true"] svg {
+  color: var(--accent-2);
+}
+
+/* A true circle at every width, with regular-size Inter labels. */
+.editor-meta .weekday-row {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 5px;
+  max-width: 294px;
+  margin-top: 10px;
+  align-items: center;
+  justify-items: center;
+}
+.editor-meta .day-choice {
+  display: grid;
+  place-items: center;
+  width: 100%;
+  height: auto;
+  aspect-ratio: 1;
+  max-width: 34px;
+  min-width: 0;
+  flex: none;
+  padding: 0;
+  border: 1px solid transparent;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--muted);
+  font-family: "Wake Clock", var(--font);
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 1;
+  letter-spacing: 0;
+}
+.editor-meta .day-choice[aria-pressed="true"] {
+  border-color: var(--accent-2);
+  color: var(--accent-2);
+  background: color-mix(in srgb, var(--accent-2) 8%, transparent);
+}
+.editor-meta .day-choice:hover {
+  background: var(--hover);
+  color: var(--text);
+}
+
+.volume-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.volume-preview {
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  padding: 6px;
+  border: 1px solid var(--card-border);
+  border-radius: 50%;
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+}
+.volume-preview svg {
+  width: 17px;
+  height: 17px;
+  stroke: currentColor;
+  stroke-width: 1.6;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.volume-preview:hover,
+.volume-preview[aria-pressed="true"] {
+  color: var(--accent-2);
+  border-color: var(--accent-2);
+}
+
+/* Upcoming items remain text, with no card, border or filled background. */
+.focus-agenda {
+  align-self: center;
+  width: 100%;
+  max-height: 65dvh;
+  overflow: auto;
+  scrollbar-width: thin;
+  padding: 12px 4px;
+}
+.focus-agenda h2 {
+  font-size: 11px;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.13em;
+  color: var(--muted);
+  margin: 0 0 16px;
+}
+.focus-agenda section + section {
+  margin-top: 34px;
+}
+.agenda-item {
+  display: flex;
+  align-items: baseline;
+  gap: 20px;
+  width: 100%;
+  padding: 10px 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  color: var(--text);
+  text-align: left;
+  cursor: pointer;
+}
+.agenda-time {
+  font-family: "Wake Clock", var(--font);
+  font-size: 24px;
+  font-weight: 300;
+  letter-spacing: -0.5px;
+  white-space: nowrap;
+}
+.agenda-info {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+  font-size: 13px;
+  line-height: 1.5;
+}
+.agenda-info > span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.agenda-info small {
+  color: var(--muted);
+  font-size: 11px;
+}
+.agenda-item:hover .agenda-time {
+  color: var(--accent-2);
+}
+html:not(.clock-focus) .focus-agenda {
+  display: none;
+}
+
+/* Let the original View Transition do all the moving, with no competing
+   grid tween or reveal transform changing geometry during its snapshots. */
+.app.picker-open #setupCard,
+.app.picker-open #alarmsCard {
+  animation: none;
+}
+html:not(.clock-focus) .app {
+  transition: none;
+  grid-template-areas: none;
+}
+.clock-face {
+  view-transition-name: none;
+}
+.clock-hm {
+  view-transition-name: clock-digits;
+}
+.clock-side {
+  view-transition-name: clock-seconds;
+}
+#dateText {
+  view-transition-name: clock-date;
+}
+#zoneText {
+  view-transition-name: clock-zone;
+}
+.clock-actions {
+  view-transition-name: clock-navigation;
+}
+::view-transition-group(clock-digits),
+::view-transition-group(clock-seconds),
+::view-transition-group(clock-date),
+::view-transition-group(clock-zone),
+::view-transition-group(clock-navigation),
+::view-transition-group(clock-toolbar) {
+  animation-duration: 0.32s;
+  animation-timing-function: cubic-bezier(0.2, 0.7, 0.2, 1);
+}
+::view-transition-old(clock-digits),
+::view-transition-new(clock-digits),
+::view-transition-old(clock-seconds),
+::view-transition-new(clock-seconds) {
+  height: 100%;
+  width: 100%;
+  object-fit: fill;
+  mix-blend-mode: normal;
+}
+@media (min-width: 1000px) and (hover: hover) and (pointer: fine) {
+  html:not(.clock-focus) .app {
+    grid-template-columns: minmax(220px, 0.8fr) minmax(360px, 1.3fr) minmax(
+        250px,
+        0.8fr
+      );
+  }
+  .studio-brand {
+    grid-row: 1;
+  }
+}
+@media (min-width: 1100px) {
+  html.clock-focus .app:has(#focusAgenda:not([hidden])) {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(220px, 280px);
+    grid-template-rows: 40px minmax(0, 1fr) auto;
+    grid-template-areas: none;
+    column-gap: clamp(32px, 5vw, 100px);
+    max-width: 1900px;
+  }
+  html.clock-focus .app:has(#focusAgenda:not([hidden])) .studio-brand {
+    grid-column: 1/-1;
+    grid-row: 1;
+    max-width: none;
+  }
+  html.clock-focus .app:has(#focusAgenda:not([hidden])) .clock-card {
+    grid-column: 1;
+    grid-row: 2;
+    height: 100%;
+    padding: 0;
+  }
+  html.clock-focus .app:has(#focusAgenda:not([hidden])) #focusAgenda {
+    grid-column: 2;
+    grid-row: 2;
+  }
+  html.clock-focus .app:has(#focusAgenda:not([hidden])) #footnote {
+    grid-column: 1/-1;
+    grid-row: 3;
+  }
+}
+@media (max-width: 1099px) {
+  html.clock-focus .focus-agenda {
+    width: min(390px, 100%);
+    max-height: 24dvh;
+    margin: 0 auto;
+    padding: 8px 12px;
+  }
+  html.clock-focus .focus-agenda h2 {
+    margin-bottom: 4px;
+  }
+  html.clock-focus .focus-agenda section + section {
+    margin-top: 14px;
+  }
+  .agenda-item {
+    padding: 7px 0;
+  }
+  .agenda-time {
+    font-size: 20px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  ::view-transition-group(*),
+  ::view-transition-old(*),
+  ::view-transition-new(*) {
+    animation-duration: 0s !important;
+  }
+}
+/* Snapshot only each small control, rather than scaling its empty hit area. */
+.clock-top,
+.clock-actions {
+  view-transition-name: none;
+}
+.clock-buttons {
+  view-transition-name: clock-toolbar;
+}
+.clock-picker-toggle {
+  view-transition-name: clock-navigation;
+}
+/* Shared text columns keep names aligned across both upcoming sections. */
+.focus-agenda {
+  display: grid;
+  grid-template-columns: max-content minmax(0, 1fr);
+  column-gap: 20px;
+}
+.focus-agenda section {
+  display: grid;
+  grid-column: 1/-1;
+  grid-template-columns: subgrid;
+}
+.focus-agenda h2 {
+  grid-column: 1/-1;
+}
+.agenda-item {
+  display: grid;
+  grid-column: 1/-1;
+  grid-template-columns: subgrid;
+}
+
+/* Move the clock first, then reveal the editor behind its settled position.
+   This avoids the large digits crossing freshly visible form controls. */
+.studio-brand {
+  view-transition-name: clock-brand;
+}
+::view-transition-group(clock-brand) {
+  animation-duration: 0.32s;
+  animation-timing-function: cubic-bezier(0.2, 0.7, 0.2, 1);
+}
+::view-transition-old(root),
+::view-transition-old(clock-navigation) {
+  animation: clock-scene-out 0.12s ease-out both;
+  mix-blend-mode: normal;
+}
+::view-transition-new(root),
+::view-transition-new(clock-navigation) {
+  animation: clock-scene-in 0.16s ease-out 0.2s both;
+  mix-blend-mode: normal;
+}
+@keyframes clock-scene-out {
+  to {
+    opacity: 0;
+  }
+}
+@keyframes clock-scene-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+html.clock-focus .studio-brand {
+  order: 0;
+}
+html.clock-focus .clock-card {
+  order: 1;
+}
+html.clock-focus .focus-agenda {
+  order: 2;
+}
+html.clock-focus #footnote {
+  order: 3;
+}
+@media (prefers-reduced-motion: reduce) {
+  ::view-transition-old(root),
+  ::view-transition-new(root) {
+    animation: none !important;
+  }
+}

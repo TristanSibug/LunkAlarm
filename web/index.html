@@ -38,10 +38,6 @@
     <!-- ============ 1. THE CLOCK ============ -->
     <section class="clock-card">
       <div class="clock-top">
-        <!-- Shows if the time came from the internet or from this device -->
-        <span id="syncBadge" class="badge" data-state="checking">
-          <span class="dot"></span><span id="syncText">Checking time...</span>
-        </span>
         <div class="clock-buttons">
           <!-- Opens the theme picker -->
           <button id="themeBtn" class="chip" type="button">Theme</button>
@@ -62,7 +58,7 @@
       <div id="dateText" class="date"></div>
       <div id="zoneText" class="zone"></div>
       <div class="clock-actions">
-        <button id="alarmPickerToggle" class="clock-picker-toggle" type="button" aria-expanded="false" aria-controls="setupCard"><span id="alarmPickerIcon" aria-hidden="true">+</span> <span id="alarmPickerText">Add alarm</span></button>
+        <button id="alarmPickerToggle" class="clock-picker-toggle" type="button" aria-expanded="false" aria-controls="setupCard" aria-label="Show alarms and timer settings"><span id="alarmPickerIcon" aria-hidden="true"><svg viewBox="0 0 24 24" width="26" height="26" fill="none"><path d="m5 9 7 7 7-7" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></span><span id="alarmPickerText"></span></button>
         <button id="clockAlarmsToggle" class="chip" type="button" aria-controls="alarmsCard" hidden>Your alarms</button>
       </div>
       </div>

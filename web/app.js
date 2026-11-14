@@ -109,6 +109,15 @@ const MAX_CUSTOM_BYTES = 2 * 1024 * 1024;
 // Several free time websites. If the first one fails we try the next.
 // Each "read" function pulls the time (in milliseconds) out of that site's answer.
 const TIME_SOURCES = [
+  // Same-origin HTTPS response time avoids cross-origin API/CORS dependencies.
+  {url: new URL('index.html', document.baseURI).href, method: 'HEAD', headerTime: true,
+    read: async response => {
+      const stamp = Date.parse(response.headers.get('date'));
+      const age = Number(response.headers.get('age') || 0);
+      if (!Number.isFinite(stamp) || !Number.isFinite(age) || age < 0 || age > 5) throw Error('No fresh server time');
+      return stamp + age * 1000 + 500; // HTTP Date has whole-second precision.
+    },
+  },
   {
     url: 'https://worldtimeapi.org/api/timezone/Etc/UTC',
     read: async (response) => {
@@ -142,6 +151,7 @@ function trueNow() {
 // Updates the little badge at the top of the clock.
 function setSyncBadge(status) {
   const badge = $('syncBadge');
+  if (!badge) return;
   badge.dataset.state = status; // the CSS colors the dot based on this
 
   if (status === 'online') {
@@ -167,7 +177,9 @@ async function syncTime() {
 
     try {
       const startedAt = Date.now();
-      const response = await fetch(source.url, { cache: 'no-store', signal: controller.signal });
+      const sourceURL = new URL(source.url);
+      if (source.headerTime) sourceURL.searchParams.set('_clock', Date.now());
+      const response = await fetch(sourceURL, { method: source.method || 'GET', cache: 'no-store', signal: controller.signal });
       if (!response.ok) throw new Error('site said no');
 
       const serverMs = await source.read(response);
@@ -913,12 +925,13 @@ let alarmPickerOpen = false;
 let clockViewTransition = null;
 let clockViewRequest = 0;
 function updateClockActions() {
-  $('alarmPickerToggle').setAttribute('aria-expanded', String(alarmPickerOpen));
-  $('alarmPickerText').textContent = alarmPickerOpen ? 'Hide alarm picker' : 'Add alarm';
-  $('alarmPickerIcon').textContent = alarmPickerOpen ? '−' : '+';
+  const toggle = $('alarmPickerToggle');
+  toggle.setAttribute('aria-expanded', String(alarmPickerOpen));
+  toggle.setAttribute('aria-label', alarmPickerOpen ? 'Show large clock' : 'Show alarms and timer settings');
+  $('alarmPickerText').textContent = '';
+  $('alarmPickerIcon').innerHTML = `<svg viewBox="0 0 24 24" width="26" height="26" fill="none" aria-hidden="true"><path d="${alarmPickerOpen ? 'm5 15 7-7 7 7' : 'm5 9 7 7 7-7'}" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
   $('footnote').textContent = alarmPickerOpen ? 'Alarms and themes are saved in this browser on this device.' : 'Keep this page open and your device awake for alarms.';
-  $('clockAlarmsToggle').hidden = alarmPickerOpen || state.alarms.length === 0;
-  $('clockAlarmsToggle').textContent = 'Your alarms (' + state.alarms.length + ')';
+  $('clockAlarmsToggle').hidden = true;
 }
 function applyAlarmPickerView(open) {
   if (!open) {
@@ -933,6 +946,7 @@ function applyAlarmPickerView(open) {
   if (open) { renderCountdownFields(); fitDurationPresets(); }
 }
 function setAlarmPickerOpen(open) {
+  if (open === alarmPickerOpen && !clockViewTransition) return Promise.resolve();
   const request = ++clockViewRequest;
   const update = () => { if (request === clockViewRequest) applyAlarmPickerView(open); };
   if (clockViewTransition) clockViewTransition.skipTransition();

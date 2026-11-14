@@ -147,7 +147,7 @@
   }
   $("mainApp").insertAdjacentHTML(
     "afterbegin",
-    '<header class="studio-brand"><span class="brand-mark">L</span><strong>LunkAlarm</strong><span class="brand-caption">A little more awake.</span><button class="chip" id="focusClock">Clock view</button></header>',
+    '<header class="studio-brand"><strong>LunkAlarm</strong></header>',
   );
   document.body.insertAdjacentHTML(
     "beforeend",
@@ -157,13 +157,13 @@
     <dialog id="sounds" class="dialog studio-dialog"><div class="dialog-top"><h2>Ringtone</h2><button class="icon-close" id="closeSounds" aria-label="Close ringtone picker">×</button></div><button class="sound-action" id="ownSound">Use my own file ↗</button><button class="sound-action" id="moreSounds">Find more ringtones online ↗</button><label class="sound-check"><input type="checkbox" id="soundChecker"> Sound checker</label><div id="soundChoices"></div></dialog>`,
   );
   $("setupCard").querySelector(".card-title").outerHTML =
-    '<div class="editor-heading"><div><span class="eyebrow">MAKE TIME FOR YOURSELF</span><h2 class="card-title" id="editorTitle">New alarm</h2></div><button id="cancelEdit" class="chip" hidden>Cancel edit</button></div>';
+    '<div class="editor-heading"><div><h2 class="card-title" id="editorTitle">New alarm</h2></div><button id="cancelEdit" class="chip" hidden>Cancel edit</button></div>';
   document.querySelector(".tabs").hidden = true;
   document
     .querySelector(".tabs")
     .insertAdjacentHTML(
       "beforebegin",
-      '<div class="create-switch"><button id="newAlarm" class="chip" type="button">◷ Alarm</button><button id="newTimer" class="chip" type="button">◴ Timer</button></div><label class="field-label" for="alarmName">Alarm name <span class="optional">optional</span></label><input id="alarmName" class="text-input" maxlength="120" placeholder="What are you waking up for?"><div id="repeatControls"><div class="repeat-caption"><span class="field-label">Repeat</span><button id="daily" class="link-btn">Daily</button></div><div id="repeatDays" class="weekday-row"></div></div>',
+      '<div class="create-switch" role="group" aria-label="Create alarm or timer"><button id="newAlarm" type="button"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9M10 21h4"/></svg>Alarm</button><button id="newTimer" type="button"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3h12M6 21h12M7 3c0 6 5 6 5 9S7 15 7 21M17 3c0 6-5 6-5 9s5 3 5 9"/></svg>Timer</button></div><label class="field-label" for="alarmName">Alarm name <span class="optional">optional</span></label><input id="alarmName" class="text-input" maxlength="120" placeholder="What are you waking up for?"><div id="repeatControls"><div class="repeat-caption"><span class="field-label">Repeat</span><button id="daily" class="link-btn">Daily</button></div><div id="repeatDays" class="weekday-row"></div></div>',
     );
   const legacy = document.createElement("div");
   legacy.hidden = true;
@@ -183,7 +183,7 @@
   meta.append(nameBlock, $("repeatControls"));
   document.querySelector(".create-switch").after(meta);
   document.querySelector(".sound-settings").innerHTML =
-    '<label class="field-label">Ringtone</label><button id="chooseSound" class="sound-select"></button><div class="volume-caption"><label for="alarmVolume" class="field-label">Alarm volume</label><output id="volumeValue"></output></div><input id="alarmVolume" type="range" min="10" max="100" step="5"><label class="gradual-control"><span>Gradually increase volume</span><input id="gradualVolume" type="checkbox"></label><button id="checkSound" class="link-btn">Check alarm sound</button>';
+    '<label class="field-label">Ringtone</label><button id="chooseSound" class="sound-select"></button><div class="volume-caption"><label for="alarmVolume" class="field-label">Alarm volume</label><div class="volume-actions"><output id="volumeValue"></output><button id="checkSound" class="volume-preview" type="button" aria-label="Preview alarm sound" aria-pressed="false"><svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="m9 5 11 7-11 7V5Z"/></svg></button></div></div><input id="alarmVolume" type="range" min="10" max="100" step="5"><label class="gradual-control"><span>Gradually increase volume</span><input id="gradualVolume" type="checkbox"></label>';
   // Preserve the imported-file handler while moving its controls into the dialog.
   const file = document.createElement("input");
   file.type = "file";
@@ -212,6 +212,7 @@
   $("ownSound").onclick = () => file.click();
   $("moreSounds").onclick = () => $("onlineDialog").showModal();
   $("chooseSound").onclick = () => {
+    stopVolumePreview();
     drawSounds();
     $("sounds").showModal();
   };
@@ -282,11 +283,24 @@
       ? play(state.ringtoneId, level, gradual)
       : stopSound();
   };
+  let previewTimer;
+  function stopVolumePreview() {
+    clearTimeout(previewTimer);
+    if ($("checkSound").getAttribute("aria-pressed") === "true") stopSound();
+    $("checkSound").setAttribute("aria-pressed", "false");
+    $("checkSound").setAttribute("aria-label", "Preview alarm sound");
+    $("checkSound").innerHTML =
+      '<svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="m9 5 11 7-11 7V5Z"/></svg>';
+  }
   $("checkSound").onclick = () => {
-    drawSounds();
-    $("sounds").showModal();
-    $("soundChecker").checked = true;
-    play(state.ringtoneId, level, gradual);
+    if ($("checkSound").getAttribute("aria-pressed") === "true")
+      return stopVolumePreview();
+    play(state.ringtoneId, level, false);
+    $("checkSound").setAttribute("aria-pressed", "true");
+    $("checkSound").setAttribute("aria-label", "Stop sound preview");
+    $("checkSound").innerHTML =
+      '<svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M8 5v14M16 5v14"/></svg>';
+    previewTimer = setTimeout(stopVolumePreview, 6000);
   };
   $("alarmVolume").oninput = () => {
     level = +$("alarmVolume").value / 100;
@@ -447,6 +461,7 @@
   }
   renderAlarmList = () => {
     updateAlarmsSidebar();
+    renderFocusAgenda();
     const list = $("alarmList");
     list.innerHTML = "";
     $("emptyText").classList.toggle("hidden", state.alarms.length > 0);
@@ -631,6 +646,7 @@
     launch(s, true);
   };
   function launch(s, practice, alarm = null, stored = null) {
+    stopVolumePreview();
     stopSound();
     mission = stored || {
       owner: alarm?.id,
@@ -1213,17 +1229,123 @@
     }
     if (e.key === "Escape" && !$("mission").open) setAlarmPickerOpen(false);
   });
-  const clockActions = updateClockActions;
-  updateClockActions = () => {
-    clockActions();
-    $("focusClock").textContent = alarmPickerOpen
-      ? "Focus clock"
-      : "Open workspace";
-    $("alarmPickerText").textContent = alarmPickerOpen
-      ? "Focus clock"
-      : "Open workspace";
+  // Keep the schedule readable in clock view without introducing another card.
+  $("mainApp").insertAdjacentHTML(
+    "beforeend",
+    '<aside id="focusAgenda" class="focus-agenda" aria-label="Upcoming alarms and timers" hidden></aside>',
+  );
+  function renderFocusAgenda() {
+    const agenda = $("focusAgenda");
+    const active = state.alarms.filter((a) => a.enabled);
+    agenda.hidden = !active.length;
+    agenda.innerHTML = "";
+    for (const type of ["timer", "time"]) {
+      const group = active
+        .filter((a) => a.type === type)
+        .sort((a, b) => a.targetMs - b.targetMs);
+      if (!group.length) continue;
+      const section = document.createElement("section");
+      section.innerHTML = `<h2>${type === "timer" ? "Timers" : "Alarms"}</h2>`;
+      for (const a of group) {
+        const button = document.createElement("button");
+        button.type = "button";
+        button.className = "agenda-item";
+        const when =
+          type === "timer"
+            ? formatRemaining(a.targetMs - trueNow())
+            : formatClockTime(new Date(2000, 0, 1, a.hour, a.minute));
+        const repeat =
+          a.days.length === 7
+            ? "Daily"
+            : a.days.length
+              ? [...a.days]
+                  .sort()
+                  .map(
+                    (i) => ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"][i],
+                  )
+                  .join(" · ")
+              : "Once";
+        button.innerHTML = `<span class="agenda-time ${type === "timer" ? "remaining" : ""}" data-target="${a.targetMs}">${esc(when)}</span><span class="agenda-info"><span>${esc(a.name || (type === "timer" ? "Timer" : "Alarm"))}</span><small>${type === "timer" ? "remaining" : repeat}</small></span>`;
+        button.setAttribute(
+          "aria-label",
+          `Edit ${a.name || (type === "timer" ? "timer" : "alarm")}`,
+        );
+        button.onclick = () => editRecord(a);
+        section.append(button);
+      }
+      agenda.append(section);
+    }
+  }
+  // The right schedule is always open. Resizing cannot restore the old rail.
+  const refreshSidebar = updateAlarmsSidebar;
+  updateAlarmsSidebar = () => {
+    alarmsSidebarOpen = true;
+    refreshSidebar();
+    $("alarmsToggle").hidden = true;
   };
-  $("focusClock").onclick = () => setAlarmPickerOpen(!alarmPickerOpen);
+  setAlarmsSidebar = () => {
+    alarmsSidebarOpen = true;
+    updateAlarmsSidebar();
+  };
+  desktopWorkspace.addEventListener("change", updateAlarmsSidebar);
+
+  // One gesture produces one transition; trackpad momentum cannot bounce views.
+  let navigationBusy = false,
+    wheelTotal = 0,
+    wheelDirection = 0,
+    lastWheel = 0;
+  const transitionView = setAlarmPickerOpen;
+  setAlarmPickerOpen = (open) => {
+    if (navigationBusy) return Promise.resolve();
+    if (open === alarmPickerOpen) return Promise.resolve();
+    stopVolumePreview();
+    navigationBusy = true;
+    return Promise.resolve(transitionView(open)).finally(() =>
+      setTimeout(() => {
+        navigationBusy = false;
+      }, 200),
+    );
+  };
+  const clockArea = document.querySelector(".clock-card");
+  clockArea.addEventListener("click", (e) => {
+    if (e.target.closest("button,a,input,select,textarea")) return;
+    const zone = $("zoneText").getBoundingClientRect();
+    if (e.clientY >= zone.bottom) setAlarmPickerOpen(!alarmPickerOpen);
+  });
+  document.addEventListener(
+    "wheel",
+    (e) => {
+      if (
+        e.ctrlKey ||
+        e.metaKey ||
+        Math.abs(e.deltaX) > Math.abs(e.deltaY) ||
+        document.querySelector("dialog[open]") ||
+        navigationBusy
+      )
+        return;
+      const allowed = !alarmPickerOpen
+        ? e.deltaY > 0
+        : e.deltaY < 0 && clockArea.contains(e.target);
+      if (!allowed) {
+        wheelTotal = 0;
+        return;
+      }
+      const now = performance.now(),
+        direction = Math.sign(e.deltaY);
+      if (now - lastWheel > 220 || direction !== wheelDirection) wheelTotal = 0;
+      wheelDirection = direction;
+      lastWheel = now;
+      wheelTotal +=
+        Math.abs(e.deltaY) *
+        (e.deltaMode === 1 ? 16 : e.deltaMode === 2 ? innerHeight : 1);
+      e.preventDefault();
+      if (wheelTotal >= 70) {
+        wheelTotal = 0;
+        setAlarmPickerOpen(!alarmPickerOpen);
+      }
+    },
+    { passive: false },
+  );
   function volumeUI() {
     $("alarmVolume").value = Math.round(level * 100);
     $("volumeValue").textContent = Math.round(level * 100) + "%";
