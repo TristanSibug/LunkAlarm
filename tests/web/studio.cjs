@@ -12,6 +12,7 @@ const mime = {
   ".js": "text/javascript",
   ".png": "image/png",
   ".woff2": "font/woff2",
+  ".ttf": "font/ttf",
 };
 const server = createServer(async (req, res) => {
   try {
@@ -786,7 +787,7 @@ const server = createServer(async (req, res) => {
     );
     checks++;
     await close(p);
-    // Native iOS palette values and both gradient overlays are copied exactly.
+    // Native palettes and corner opacity are retained with bounded desktop glow sizes.
     const nativeSource = await readFile(
       path.resolve(__dirname, "../../ios/LunkAlarm/Views/AlarmTheme.swift"),
       "utf8",
@@ -824,7 +825,7 @@ const server = createServer(async (req, res) => {
       if (["oled", "dark"].includes(id)) assert.equal(visuals.image, "none");
       else {
         assert(visuals.image.includes("radial-gradient"));
-        assert(visuals.image.includes("1600px"));
+        assert(visuals.image.includes("560px"));
         assert(visuals.image.includes("/ 0.17"));
         assert(
           visuals.image.includes(
@@ -914,6 +915,135 @@ const server = createServer(async (req, res) => {
       await p.locator("#alarmPickerToggle").getAttribute("aria-expanded"),
       "true",
     );
+    checks++;
+    await close(p);
+
+    // Font choices preserve the current default and affect only the clock display.
+    p = await fresh();
+    assert.equal(
+      await p.locator("html").getAttribute("data-clock-font"),
+      "inter",
+    );
+    assert.equal(
+      await p
+        .locator("#clockHM")
+        .evaluate((el) => getComputedStyle(el).fontWeight),
+      "200",
+    );
+    const originalBodyFont = await p
+      .locator("body")
+      .evaluate((el) => getComputedStyle(el).fontFamily);
+    await p.setViewportSize({ width: 1919, height: 912 });
+    assert(
+      await p.evaluate(() =>
+        getComputedStyle(document.body).backgroundImage.includes("560px"),
+      ),
+    );
+    await p.screenshot({ path: path.join(output, "sunrise-corners-wide.png") });
+    checks++;
+    const expectedFonts = {
+      inter: "Wake Clock",
+      rounded: "Clock Rounded",
+      mono: "Clock Mono",
+      serif: "Georgia",
+      digital: "Clock Digital",
+    };
+    for (const [id, family] of Object.entries(expectedFonts)) {
+      await p.locator("#themeBtn").click();
+      if (!(await p.locator("#clockFontGroup").evaluate((el) => el.open)))
+        await p.locator("#clockFontGroup summary").click();
+      await p.locator(`[data-clock-choice="${id}"]`).click();
+      await p.waitForFunction(
+        (id) =>
+          document.documentElement.dataset.clockFont === id &&
+          !document.querySelector("#themeDialog").open,
+        id,
+      );
+      assert(
+        (
+          await p
+            .locator("#clockHM")
+            .evaluate((el) => getComputedStyle(el).fontFamily)
+        ).includes(family),
+      );
+      assert.equal(
+        await p
+          .locator("body")
+          .evaluate((el) => getComputedStyle(el).fontFamily),
+        originalBodyFont,
+      );
+      for (const width of [1919, 1024, 390, 320]) {
+        await p.setViewportSize({ width, height: 912 });
+        assert(
+          await p.locator("#clockHM").evaluate((el) => {
+            el.textContent = "12:59";
+            const r = el.getBoundingClientRect();
+            return r.left >= 0 && r.right <= innerWidth;
+          }),
+          id + " clock overflow at " + width,
+        );
+      }
+      await p.setViewportSize({ width: 1600, height: 1000 });
+      if (["rounded", "digital"].includes(id))
+        await p.screenshot({
+          path: path.join(output, "clock-font-" + id + ".png"),
+        });
+    }
+    await p.reload();
+    await p.evaluate(() => document.fonts.ready);
+    assert.equal(
+      await p.locator("html").getAttribute("data-clock-font"),
+      "digital",
+    );
+    assert.equal(
+      await p.evaluate(() =>
+        JSON.parse(localStorage.getItem("wake.clockFont")),
+      ),
+      "digital",
+    );
+    await p.locator("#themeBtn").click();
+    if (!(await p.locator("#clockFontGroup").evaluate((el) => el.open)))
+      await p.locator("#clockFontGroup summary").click();
+    await p.screenshot({ path: path.join(output, "clock-font-picker.png") });
+    await p.locator("[data-clock-choice=inter]").click();
+    await p.waitForFunction(
+      () =>
+        document.documentElement.dataset.clockFont === "inter" &&
+        !document.querySelector("#themeDialog").open,
+    );
+    assert.equal(
+      await p
+        .locator("#clockHM")
+        .evaluate((el) => getComputedStyle(el).fontWeight),
+      "200",
+    );
+    checks++;
+    await workspace(p);
+    await p.locator("#alarmName").fill("Keep this alarm");
+    await p.locator("#setBtn").click();
+    const savedBeforeCancel = (await storage(p))[0];
+    await p
+      .getByRole("button", { name: "Edit Keep this alarm", exact: true })
+      .click();
+    assert(await p.locator(".editor-action-row #cancelEdit").isVisible());
+    assert.equal(await p.locator(".create-switch #cancelEdit").count(), 0);
+    const cancelBox = await p.locator("#cancelEdit").boundingBox(),
+      saveBox = await p.locator("#setBtn").boundingBox();
+    assert(
+      Math.abs(cancelBox.y - saveBox.y) < 1 &&
+        Math.abs(cancelBox.height - saveBox.height) < 1,
+    );
+    await p.locator("#alarmName").fill("Discard this edit");
+    await p.locator("#cancelEdit").click();
+    assert.deepEqual((await storage(p))[0], savedBeforeCancel);
+    assert.equal(await p.locator("#setBtn").textContent(), "Add alarm");
+    assert(await p.locator("#cancelEdit").isHidden());
+    await p
+      .getByRole("button", { name: "Edit Keep this alarm", exact: true })
+      .click();
+    await p.screenshot({
+      path: path.join(output, "edit-actions-integrated.png"),
+    });
     checks++;
     await close(p);
 

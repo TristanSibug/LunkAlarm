@@ -380,6 +380,12 @@
   const oldSet = $("setBtn");
   const set = oldSet.cloneNode(true);
   oldSet.replaceWith(set);
+  const actionRow = document.createElement("div");
+  actionRow.className = "editor-action-row";
+  set.before(actionRow);
+  actionRow.append($("cancelEdit"), set);
+  $("cancelEdit").textContent = "Cancel";
+  $("cancelEdit").setAttribute("aria-label", "Cancel editing");
   set.onclick = () => {
     commitMobileDuration();
     if (desktopWorkspace.matches) commitTimePicker();
@@ -1494,7 +1500,72 @@
   $("clockAlarmsToggle").textContent = "Alarms & timers";
   $("alarmsToggle").setAttribute("aria-label", "Expand alarms and timers");
   updateClockActions();
-  // Use iOS palette values and the same radial-gradient opacity, radius and layering.
+  // Clock typography is separate from the rest of the interface.
+  const clockFonts = [
+    {
+      id: "inter",
+      name: "Inter",
+      family: '"Wake Clock"',
+      weight: 200,
+      default: true,
+    },
+    { id: "rounded", name: "Rounded", family: '"Clock Rounded"', weight: 300 },
+    { id: "mono", name: "Monospace", family: '"Clock Mono"', weight: 300 },
+    {
+      id: "serif",
+      name: "Serif",
+      family: 'Georgia, "Times New Roman", serif',
+      weight: 400,
+    },
+    { id: "digital", name: "Digital", family: '"Clock Digital"', weight: 300 },
+  ];
+  let clockFont = loadSaved("wake.clockFont", "inter"),
+    fontRequest = 0;
+  if (!clockFonts.some((f) => f.id === clockFont)) clockFont = "inter";
+  function renderClockFonts() {
+    const selected = clockFonts.find((f) => f.id === clockFont);
+    document.documentElement.dataset.clockFont = clockFont;
+    $("currentClockFont").textContent = selected.name;
+    $("clockFontChoices").innerHTML = clockFonts
+      .map(
+        (f) =>
+          `<button type="button" class="clock-font-option" data-clock-choice="${f.id}" aria-pressed="${f.id === clockFont}"><span class="clock-font-sample" style='font-family:${f.family};font-weight:${f.weight}'>12:48</span><span class="clock-font-label">${f.name}${f.default ? "<small>Default</small>" : ""}</span></button>`,
+      )
+      .join("");
+    $("clockFontChoices")
+      .querySelectorAll("button")
+      .forEach(
+        (button) =>
+          (button.onclick = async () => {
+            const request = ++fontRequest,
+              choice = clockFonts.find(
+                (f) => f.id === button.dataset.clockChoice,
+              );
+            $("clockFontStatus").textContent = "";
+            try {
+              if (!["serif"].includes(choice.id)) {
+                const faces = await document.fonts.load(
+                  `${choice.weight} 64px ${choice.family}`,
+                  "12:48",
+                );
+                if (!faces.length) throw Error("Font unavailable");
+              }
+              if (request !== fontRequest) return;
+              if (!save("wake.clockFont", choice.id))
+                throw Error("Storage unavailable");
+              clockFont = choice.id;
+              renderClockFonts();
+              $("themeDialog").close();
+            } catch {
+              if (request !== fontRequest) return;
+              $("clockFontStatus").textContent =
+                "Could not apply this font. Please try again.";
+            }
+          }),
+      );
+  }
+  renderClockFonts();
+  // Use iOS palette values and corner opacity; CSS bounds the glow for desktop screens.
   const preferredTheme = loadSaved("wake.studio.theme", state.themeId);
   const themeTokens = document.createElement("style");
   themeTokens.id = "mobileThemeTokens";
