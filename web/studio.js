@@ -1342,8 +1342,25 @@
       alarm.ringing;
     if (nativeActionPopover) routineActions.showPopover();
     else routineActions.dataset.open = "true";
-    const anchor = trigger.getBoundingClientRect(),
-      box = routineActions.getBoundingClientRect(),
+    positionRoutineMenu();
+    routineActions
+      .querySelector("button:not(:disabled)")
+      ?.focus({ preventScroll: true });
+  }
+  function positionRoutineMenu() {
+    if (!actionTrigger || !menuIsOpen()) return;
+    const anchor = actionTrigger.getBoundingClientRect(),
+      panel = $("alarmsCard").getBoundingClientRect();
+    if (
+      !actionTrigger.isConnected ||
+      anchor.height === 0 ||
+      anchor.bottom < Math.max(0, panel.top) ||
+      anchor.top > Math.min(innerHeight, panel.bottom)
+    ) {
+      closeRoutineMenu();
+      return;
+    }
+    const box = routineActions.getBoundingClientRect(),
       pad = 12,
       gap = 8;
     const left = Math.max(
@@ -1358,9 +1375,6 @@
         : Math.max(pad, Math.min(above, innerHeight - box.height - pad));
     routineActions.style.left = left + "px";
     routineActions.style.top = top + "px";
-    routineActions
-      .querySelector("button:not(:disabled)")
-      ?.focus({ preventScroll: true });
   }
   routineActions.addEventListener("toggle", (e) => {
     if (e.newState === "closed" && !menuIsOpen()) {
@@ -1417,10 +1431,12 @@
     },
     true,
   );
+  // A scroll event can arrive after the menu opens. Keep the current anchor
+  // instead of dismissing a freshly opened menu for an already-finished scroll.
   document.addEventListener(
     "scroll",
     () => {
-      if (actionOwner) closeRoutineMenu();
+      if (actionOwner) positionRoutineMenu();
     },
     true,
   );

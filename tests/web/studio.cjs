@@ -881,7 +881,13 @@ const server = createServer(async (req, res) => {
     assert.equal((await storage(p)).length, 10);
     checks++;
     await p.locator(".routine-menu-trigger").last().click();
+    // A queued scroll event must not dismiss a newly opened menu.
+    await p
+      .locator("#alarmsCard")
+      .evaluate((el) => el.dispatchEvent(new Event("scroll")));
+    assert(await menu.isVisible());
     await p.keyboard.press("Escape");
+    await p.waitForTimeout(400);
     assert.equal(
       await p.locator("#alarmPickerToggle").getAttribute("aria-expanded"),
       "true",
