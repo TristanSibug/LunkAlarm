@@ -157,13 +157,13 @@
     <dialog id="sounds" class="dialog studio-dialog"><div class="dialog-top"><h2>Ringtone</h2><button class="icon-close" id="closeSounds" aria-label="Close ringtone picker">×</button></div><button class="sound-action" id="ownSound">Use my own file ↗</button><button class="sound-action" id="moreSounds">Find more ringtones online ↗</button><label class="sound-check"><input type="checkbox" id="soundChecker"> Sound checker</label><div id="soundChoices"></div></dialog>`,
   );
   $("setupCard").querySelector(".card-title").outerHTML =
-    '<div class="editor-heading"><div><h2 class="card-title" id="editorTitle">New alarm</h2></div><button id="cancelEdit" class="chip" hidden>Cancel edit</button></div>';
+    '<h2 class="visually-hidden" id="editorTitle">New alarm</h2>';
   document.querySelector(".tabs").hidden = true;
   document
     .querySelector(".tabs")
     .insertAdjacentHTML(
       "beforebegin",
-      '<div class="create-switch" role="group" aria-label="Create alarm or timer"><button id="newAlarm" type="button"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9M10 21h4"/></svg>Alarm</button><button id="newTimer" type="button"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3h12M6 21h12M7 3c0 6 5 6 5 9S7 15 7 21M17 3c0 6-5 6-5 9s5 3 5 9"/></svg>Timer</button></div><label class="field-label" for="alarmName">Alarm name <span class="optional">optional</span></label><input id="alarmName" class="text-input" maxlength="120" placeholder="What are you waking up for?"><div id="repeatControls"><div class="repeat-caption"><span class="field-label">Repeat</span><button id="daily" class="link-btn">Daily</button></div><div id="repeatDays" class="weekday-row"></div></div>',
+      '<div class="create-switch" role="group" aria-label="Create alarm or timer"><button id="newAlarm" type="button"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9M10 21h4"/></svg>Alarm</button><button id="newTimer" type="button"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3h12M6 21h12M7 3c0 6 5 6 5 9S7 15 7 21M17 3c0 6-5 6-5 9s5 3 5 9"/></svg>Timer</button><button id="cancelEdit" class="chip" hidden>Cancel edit</button></div><label class="field-label" for="alarmName">Alarm name <span class="optional">optional</span></label><input id="alarmName" class="text-input" maxlength="120" placeholder="What are you waking up for?"><div id="repeatControls"><div class="repeat-caption"><span class="field-label">Repeat</span><label class="daily-toggle"><input id="daily" type="checkbox">Daily</label></div><div id="repeatDays" class="weekday-row"></div></div>',
     );
   const legacy = document.createElement("div");
   legacy.hidden = true;
@@ -246,10 +246,14 @@
       );
   }
   function soundLabel() {
-    $("chooseSound").textContent =
-      (state.ringtoneId === "custom"
+    const name =
+      state.ringtoneId === "custom"
         ? state.customRingtone?.name
-        : findRingtone(state.ringtoneId).name) + "　⌄";
+        : findRingtone(state.ringtoneId).name;
+    $("chooseSound").innerHTML =
+      `<span class="sound-name">${esc(name || "Classic Beep")}</span><svg viewBox="0 0 24 24" width="18" height="18" fill="none" aria-hidden="true"><path d="m6 9 6 6 6-6" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
+    $("chooseSound").setAttribute("aria-haspopup", "dialog");
+    $("chooseSound").setAttribute("aria-controls", "sounds");
   }
   function play(tone, volume, fade, custom) {
     const previous = state.customRingtone;
@@ -333,10 +337,10 @@
             repeatUI();
           }),
       );
-    $("daily").setAttribute("aria-pressed", String(days.length === 7));
+    $("daily").checked = days.length === 7;
   }
-  $("daily").onclick = () => {
-    days = days.length === 7 ? [] : [0, 1, 2, 3, 4, 5, 6];
+  $("daily").onchange = () => {
+    days = $("daily").checked ? [0, 1, 2, 3, 4, 5, 6] : [];
     repeatUI();
   };
   function editor(type, id = null) {
@@ -460,6 +464,7 @@
     setAlarmPickerOpen(true);
   }
   renderAlarmList = () => {
+    closeRoutineMenu();
     updateAlarmsSidebar();
     renderFocusAgenda();
     const list = $("alarmList");
@@ -479,7 +484,7 @@
       for (const a of group) {
         const li = document.createElement("li");
         li.className = "routine-card" + (!a.enabled ? " is-off" : "");
-        li.innerHTML = `<div class="routine-top"><button class="routine-edit" aria-label="Edit ${esc(a.name || "alarm")}"><span class="routine-name">${esc(a.name || (type === "timer" ? "Timer" : "Alarm"))}</span><span class="routine-time ${type === "timer" ? "remaining" : ""}" data-target="${a.targetMs}">${type === "timer" ? formatRemaining(a.targetMs - trueNow()) : formatClockTime(new Date(2000, 0, 1, a.hour, a.minute))}</span></button>${type === "time" ? `<button class="routine-toggle" aria-label="Enable ${esc(a.name || "alarm")}" role="switch" aria-checked="${a.enabled}" ${a.ringing ? "disabled" : ""}></button>` : ""}</div><div class="routine-footer"><span>${type === "timer" ? '<span class="remaining" data-target="' + a.targetMs + '">' + formatRemaining(a.targetMs - trueNow()) + "</span> remaining" : a.days.length === 7 ? "Daily" : a.days.length ? ["S", "M", "T", "W", "T", "F", "S"].map((d, i) => `<span class="day-dot ${a.days.includes(i) ? "chosen" : ""}">${d}</span>`).join("") : "Once"}</span><details class="routine-menu"><summary aria-label="Options for ${esc(a.name || "alarm")}">•••</summary><div><button data-action="delete" ${a.ringing ? "disabled" : ""}>Delete</button><button data-action="duplicate">Duplicate</button></div></details></div><div class="routine-tests">${
+        li.innerHTML = `<div class="routine-top"><button class="routine-edit" aria-label="Edit ${esc(a.name || "alarm")}"><span class="routine-name">${esc(a.name || (type === "timer" ? "Timer" : "Alarm"))}</span><span class="routine-time ${type === "timer" ? "remaining" : ""}" data-target="${a.targetMs}">${type === "timer" ? formatRemaining(a.targetMs - trueNow()) : formatClockTime(new Date(2000, 0, 1, a.hour, a.minute))}</span></button>${type === "time" ? `<button class="routine-toggle" aria-label="Enable ${esc(a.name || "alarm")}" role="switch" aria-checked="${a.enabled}" ${a.ringing ? "disabled" : ""}></button>` : ""}</div><div class="routine-footer"><span>${type === "timer" ? '<span class="remaining" data-target="' + a.targetMs + '">' + formatRemaining(a.targetMs - trueNow()) + "</span> remaining" : a.days.length === 7 ? "Daily" : a.days.length ? ["S", "M", "T", "W", "T", "F", "S"].map((d, i) => `<span class="day-dot ${a.days.includes(i) ? "chosen" : ""}">${d}</span>`).join("") : "Once"}</span><button type="button" class="routine-menu-trigger" aria-label="Options for ${esc(a.name || "alarm")}" aria-haspopup="true" aria-expanded="false" aria-controls="routineActions">•••</button></div><div class="routine-tests">${
           Object.keys(testNames)
             .filter((k) => a.tests[k])
             .map((k) => esc(testNames[k]))
@@ -492,21 +497,8 @@
             if (a.enabled) a.targetMs = nextTime(a.hour, a.minute, a.days);
           }),
         );
-        li.querySelector('[data-action="delete"]').onclick = () =>
-          persist(() => {
-            state.alarms = state.alarms.filter((x) => x.id !== a.id);
-          });
-        li.querySelector('[data-action="duplicate"]').onclick = () =>
-          persist(() => {
-            const copy = structuredClone(a);
-            copy.id = newId();
-            copy.ringing = false;
-            copy.targetMs =
-              type === "timer"
-                ? trueNow() + copy.duration * 1000
-                : nextTime(copy.hour, copy.minute, copy.days);
-            state.alarms.push(copy);
-          });
+        li.querySelector(".routine-menu-trigger").onclick = (e) =>
+          openRoutineMenu(a, e.currentTarget);
         list.append(li);
       }
     }
@@ -1289,6 +1281,144 @@
   };
   desktopWorkspace.addEventListener("change", updateAlarmsSidebar);
 
+  // Close only on a complete backdrop click, preserving drags that start inside.
+  for (const id of ["sounds", "themeDialog", "testSettings", "onlineDialog"]) {
+    const dialog = $(id);
+    let beganOutside = false;
+    const outside = (e) => {
+      const r = dialog.getBoundingClientRect();
+      return (
+        e.clientX < r.left ||
+        e.clientX > r.right ||
+        e.clientY < r.top ||
+        e.clientY > r.bottom
+      );
+    };
+    dialog.addEventListener("pointerdown", (e) => {
+      beganOutside = e.target === dialog && outside(e);
+    });
+    dialog.addEventListener("click", (e) => {
+      if (e.detail && beganOutside && e.target === dialog && outside(e))
+        dialog.close();
+      beganOutside = false;
+    });
+  }
+  document.body.insertAdjacentHTML(
+    "beforeend",
+    '<div id="routineActions" class="routine-actions" popover="manual" aria-label="Alarm actions"><button type="button" data-action="delete">Delete</button><button type="button" data-action="duplicate">Duplicate</button></div>',
+  );
+  const routineActions = $("routineActions");
+  const nativeActionPopover = typeof routineActions.showPopover === "function";
+  let actionOwner = null,
+    actionTrigger = null;
+  function menuIsOpen() {
+    return (
+      (nativeActionPopover && routineActions.matches(":popover-open")) ||
+      routineActions.dataset.open === "true"
+    );
+  }
+  function closeRoutineMenu() {
+    if (actionTrigger) actionTrigger.setAttribute("aria-expanded", "false");
+    if (nativeActionPopover && routineActions.matches(":popover-open"))
+      routineActions.hidePopover();
+    delete routineActions.dataset.open;
+    actionOwner = null;
+    actionTrigger = null;
+  }
+  function openRoutineMenu(alarm, trigger) {
+    const wasSame = actionTrigger === trigger && menuIsOpen();
+    closeRoutineMenu();
+    if (wasSame) return;
+    actionOwner = alarm;
+    actionTrigger = trigger;
+    trigger.setAttribute("aria-expanded", "true");
+    routineActions.querySelector('[data-action="delete"]').disabled =
+      alarm.ringing;
+    if (nativeActionPopover) routineActions.showPopover();
+    else routineActions.dataset.open = "true";
+    const anchor = trigger.getBoundingClientRect(),
+      box = routineActions.getBoundingClientRect(),
+      pad = 12,
+      gap = 8;
+    const left = Math.max(
+      pad,
+      Math.min(anchor.right - box.width, innerWidth - box.width - pad),
+    );
+    const below = anchor.bottom + gap,
+      above = anchor.top - box.height - gap;
+    const top =
+      below + box.height <= innerHeight - pad
+        ? below
+        : Math.max(pad, Math.min(above, innerHeight - box.height - pad));
+    routineActions.style.left = left + "px";
+    routineActions.style.top = top + "px";
+    routineActions
+      .querySelector("button:not(:disabled)")
+      ?.focus({ preventScroll: true });
+  }
+  routineActions.addEventListener("toggle", (e) => {
+    if (e.newState === "closed" && !menuIsOpen()) {
+      actionTrigger?.setAttribute("aria-expanded", "false");
+      actionTrigger = null;
+      actionOwner = null;
+    }
+  });
+  routineActions.querySelector('[data-action="delete"]').onclick = () => {
+    const alarm = actionOwner;
+    if (!alarm || alarm.ringing) return;
+    closeRoutineMenu();
+    persist(() => {
+      state.alarms = state.alarms.filter((a) => a.id !== alarm.id);
+    });
+  };
+  routineActions.querySelector('[data-action="duplicate"]').onclick = () => {
+    const alarm = actionOwner;
+    if (!alarm) return;
+    closeRoutineMenu();
+    persist(() => {
+      const copy = structuredClone(alarm);
+      copy.id = newId();
+      copy.ringing = false;
+      copy.targetMs =
+        copy.type === "timer"
+          ? trueNow() + copy.duration * 1000
+          : nextTime(copy.hour, copy.minute, copy.days);
+      state.alarms.push(copy);
+    });
+  };
+  document.addEventListener(
+    "pointerdown",
+    (e) => {
+      if (
+        actionTrigger &&
+        !routineActions.contains(e.target) &&
+        !actionTrigger.contains(e.target)
+      )
+        closeRoutineMenu();
+    },
+    true,
+  );
+  document.addEventListener(
+    "keydown",
+    (e) => {
+      if (e.key === "Escape" && menuIsOpen()) {
+        const trigger = actionTrigger;
+        closeRoutineMenu();
+        trigger?.focus({ preventScroll: true });
+        e.preventDefault();
+        e.stopImmediatePropagation();
+      }
+    },
+    true,
+  );
+  document.addEventListener(
+    "scroll",
+    () => {
+      if (actionOwner) closeRoutineMenu();
+    },
+    true,
+  );
+  window.addEventListener("resize", closeRoutineMenu);
   // One gesture produces one transition; trackpad momentum cannot bounce views.
   let navigationBusy = false,
     wheelTotal = 0,
@@ -1299,6 +1429,7 @@
     if (navigationBusy) return Promise.resolve();
     if (open === alarmPickerOpen) return Promise.resolve();
     stopVolumePreview();
+    closeRoutineMenu();
     navigationBusy = true;
     return Promise.resolve(transitionView(open)).finally(() =>
       setTimeout(() => {
@@ -1319,13 +1450,20 @@
         e.ctrlKey ||
         e.metaKey ||
         Math.abs(e.deltaX) > Math.abs(e.deltaY) ||
-        document.querySelector("dialog[open]") ||
-        navigationBusy
+        document.querySelector("dialog[open]")
       )
         return;
+      if (navigationBusy) {
+        e.preventDefault();
+        return;
+      }
+      const editorBounds = $("setupCard").getBoundingClientRect();
+      const inClockSide = desktopWorkspace.matches
+        ? e.clientX < editorBounds.left
+        : e.clientY < editorBounds.top;
       const allowed = !alarmPickerOpen
         ? e.deltaY > 0
-        : e.deltaY < 0 && clockArea.contains(e.target);
+        : e.deltaY < 0 && inClockSide;
       if (!allowed) {
         wheelTotal = 0;
         return;
@@ -1344,7 +1482,7 @@
         setAlarmPickerOpen(!alarmPickerOpen);
       }
     },
-    { passive: false },
+    { passive: false, capture: true },
   );
   function volumeUI() {
     $("alarmVolume").value = Math.round(level * 100);
@@ -1356,130 +1494,30 @@
   $("clockAlarmsToggle").textContent = "Alarms & timers";
   $("alarmsToggle").setAttribute("aria-label", "Expand alarms and timers");
   updateClockActions();
-  // Theme families mirror the mobile palette; every choice closes the picker.
-  const additions = [
-    [
-      "eggshell-white",
-      "Eggshell White",
-      "#f7f3e8",
-      "#fffefa",
-      "#28343c",
-      "#636b70",
-      "#566a78",
-      "#6d6252",
-    ],
-    [
-      "linen",
-      "Linen",
-      "#f5efe5",
-      "#fffcf6",
-      "#302921",
-      "#766858",
-      "#986020",
-      "#b34938",
-    ],
-    [
-      "sea-glass",
-      "Sea Glass",
-      "#eaf3ef",
-      "#f9fffc",
-      "#173c37",
-      "#526d67",
-      "#237268",
-      "#346d8e",
-    ],
-    [
-      "heritage",
-      "Heritage",
-      "#f9efd4",
-      "#fffdf5",
-      "#032d3f",
-      "#52626b",
-      "#7d0500",
-      "#032d3f",
-    ],
-    [
-      "ember",
-      "Ember",
-      "#1b1110",
-      "#2b1d1a",
-      "#ffeee3",
-      "#c3a49a",
-      "#ffbb74",
-      "#ef876d",
-    ],
-    [
-      "midnight-cherry",
-      "Midnight Cherry",
-      "#260f19",
-      "#fff3f6",
-      "#fff2f6",
-      "#caa6b5",
-      "#9ecbf5",
-      "#ff8d87",
-    ],
-    [
-      "forest",
-      "Forest",
-      "#0b1714",
-      "#142720",
-      "#e4f2e9",
-      "#9bb5a4",
-      "#9dcc88",
-      "#59c7a5",
-    ],
-    [
-      "deep-ocean",
-      "Deep Ocean",
-      "#081a24",
-      "#102b38",
-      "#e1f5fb",
-      "#99b9c6",
-      "#79d2de",
-      "#82b0f7",
-    ],
-    [
-      "cobalt-coral",
-      "Cobalt & Coral",
-      "#101c3d",
-      "#1d3057",
-      "#f2f6ff",
-      "#a8b8d6",
-      "#92bdff",
-      "#ff8a85",
-    ],
-    [
-      "signal-blue",
-      "Signal Blue",
-      "#032d3f",
-      "#be0d1f",
-      "#f1f7fa",
-      "#e8d7e1",
-      "#d2e7f2",
-      "#699db8",
-    ],
-    [
-      "amethyst",
-      "Amethyst",
-      "#171123",
-      "#251d36",
-      "#f1eaff",
-      "#b3a3cb",
-      "#c5a2ff",
-      "#f0a4ce",
-    ],
-  ];
+  // Use iOS palette values and the same radial-gradient opacity, radius and layering.
   const preferredTheme = loadSaved("wake.studio.theme", state.themeId);
-  for (const [id, name, bg, card, text, muted, a, b] of additions) {
-    THEMES.push({ id, name, bg, text, a, b });
-    const style = document.createElement("style");
-    style.textContent = `:root[data-theme="${id}"]{color-scheme:${["eggshell-white", "linen", "sea-glass", "heritage"].includes(id) ? "light" : "dark"};--bg:${bg};--card:${id === "midnight-cherry" ? "#3d1c2a" : card};--text:${text};--muted:${muted};--accent:${a};--accent-2:${b};--dialog-bg:${id === "midnight-cherry" ? "#3d1c2a" : card};--field:${["eggshell-white", "linen", "sea-glass", "heritage"].includes(id) ? "#00000008" : "#00000035"};--glow-a:${a}20;--glow-b:${b}14;--on-accent:${["eggshell-white", "linen", "sea-glass", "heritage"].includes(id) ? "#ffffff" : "#160f12"};--code-bg:${card};--overlay-bg:${bg}f5;--card-border:${text}20;}`;
-    document.head.append(style);
-  }
-  THEMES.splice(
-    THEMES.findIndex((t) => t.id === "vscode-blue"),
-    1,
-  );
+  const themeTokens = document.createElement("style");
+  themeTokens.id = "mobileThemeTokens";
+  themeTokens.textContent = THEMES.map(
+    ({
+      id,
+      bg,
+      card,
+      text,
+      muted,
+      a,
+      b,
+      isLight,
+    }) => `:root[data-theme="${id}"]{
+    color-scheme:${isLight ? "light" : "dark"};--bg:${bg};--card:${card};--text:${text};--muted:${muted};
+    --accent:${a};--accent-2:${b};--dialog-bg:${card};--field:rgba(0,0,0,${isLight ? 0.045 : 0.25});
+    --ambient-a:color-mix(in srgb,${a} ${isLight ? 12 : 22}%,transparent);--ambient-b:color-mix(in srgb,${b} 17%,transparent);
+    --soft:color-mix(in srgb,${text} 6.5%,transparent);--hover:color-mix(in srgb,${text} 10%,transparent);
+    --card-border:color-mix(in srgb,${text} 10%,transparent);--on-accent:${isLight ? "#fff" : "#160f12"};
+    --day-accent:${id === "cobalt-coral" ? b : a};--code-bg:${card};--overlay-bg:${bg}f5;--clock-glow:none;
+  }`,
+  ).join("");
+  document.head.append(themeTokens);
   const order = [
     "light",
     "eggshell-white",

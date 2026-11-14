@@ -1528,19 +1528,211 @@ document.addEventListener('visibilitychange', () => {
      bg = background, text = text color, a and b = the two accent colors
    --------------------------------------------------------- */
 
+// Palette values mirror ios/LunkAlarm/Views/AlarmTheme.swift.
 const THEMES = [
-  { id: 'sunrise',     name: 'Sunrise (default)', bg: '#0a0c16', text: '#f4f2ff', a: '#ffa94d', b: '#ff6b7a' },
-  { id: 'oled',        name: 'OLED Black',        bg: '#000000', text: '#f2f2f5', a: '#ffa94d', b: '#ff6b7a' },
-  { id: 'dark',        name: 'Dark',              bg: '#1a1b1f', text: '#ececf1', a: '#ffa94d', b: '#ff6b7a' },
-  { id: 'light',       name: 'Light',             bg: '#f3f2f8', text: '#1c1b2e', a: '#e8801c', b: '#e2505f' },
-  { id: 'tokyo-night', name: 'Tokyo Night',       bg: '#1a1b26', text: '#c0caf5', a: '#7aa2f7', b: '#bb9af7' },
-  { id: 'vscode-blue', name: 'VS Code Blue',      bg: '#002451', text: '#e8f0ff', a: '#5db0ff', b: '#3a86ff' },
-  { id: 'dracula',     name: 'Dracula',           bg: '#282a36', text: '#f8f8f2', a: '#bd93f9', b: '#ff79c6' },
-  { id: 'nord',        name: 'Nord',              bg: '#2e3440', text: '#eceff4', a: '#88c0d0', b: '#81a1c1' },
+  {
+    "id": "sunrise",
+    "name": "Sunrise",
+    "bg": "#0a0c16",
+    "card": "#171923",
+    "text": "#f4f2ff",
+    "muted": "#9a9bb8",
+    "a": "#ffa94d",
+    "b": "#ff6b7a",
+    "isLight": false
+  },
+  {
+    "id": "oled",
+    "name": "OLED Black",
+    "bg": "#000000",
+    "card": "#0c0c0e",
+    "text": "#f2f2f5",
+    "muted": "#9a9aa3",
+    "a": "#ffa94d",
+    "b": "#ff6b7a",
+    "isLight": false
+  },
+  {
+    "id": "dark",
+    "name": "Dark",
+    "bg": "#17181c",
+    "card": "#212329",
+    "text": "#ececf1",
+    "muted": "#9a9ba6",
+    "a": "#ffa94d",
+    "b": "#ff6b7a",
+    "isLight": false
+  },
+  {
+    "id": "light",
+    "name": "Light",
+    "bg": "#f3f2fa",
+    "card": "#ffffff",
+    "text": "#1c1b2e",
+    "muted": "#5b5c76",
+    "a": "#c4520a",
+    "b": "#d6336c",
+    "isLight": true
+  },
+  {
+    "id": "tokyo-night",
+    "name": "Tokyo Night",
+    "bg": "#1a1b26",
+    "card": "#24283b",
+    "text": "#c0caf5",
+    "muted": "#8c93bf",
+    "a": "#7aa2f7",
+    "b": "#bb9af7",
+    "isLight": false
+  },
+  {
+    "id": "dracula",
+    "name": "Dracula",
+    "bg": "#282a36",
+    "card": "#303241",
+    "text": "#f8f8f2",
+    "muted": "#a7a5bd",
+    "a": "#bd93f9",
+    "b": "#ff79c6",
+    "isLight": false
+  },
+  {
+    "id": "nord",
+    "name": "Nord",
+    "bg": "#2e3440",
+    "card": "#3b4252",
+    "text": "#eceff4",
+    "muted": "#a4b1c4",
+    "a": "#88c0d0",
+    "b": "#81a1c1",
+    "isLight": false
+  },
+  {
+    "id": "linen",
+    "name": "Linen",
+    "bg": "#f5efe5",
+    "card": "#fffcf6",
+    "text": "#302921",
+    "muted": "#766858",
+    "a": "#986020",
+    "b": "#b34938",
+    "isLight": true
+  },
+  {
+    "id": "sea-glass",
+    "name": "Sea Glass",
+    "bg": "#eaf3ef",
+    "card": "#f9fffc",
+    "text": "#173c37",
+    "muted": "#526d67",
+    "a": "#237268",
+    "b": "#346d8e",
+    "isLight": true
+  },
+  {
+    "id": "forest",
+    "name": "Forest",
+    "bg": "#0b1714",
+    "card": "#142720",
+    "text": "#e4f2e9",
+    "muted": "#9bb5a4",
+    "a": "#9dcc88",
+    "b": "#59c7a5",
+    "isLight": false
+  },
+  {
+    "id": "ember",
+    "name": "Ember",
+    "bg": "#1b1110",
+    "card": "#2b1d1a",
+    "text": "#ffeee3",
+    "muted": "#c3a49a",
+    "a": "#ffbb74",
+    "b": "#ef876d",
+    "isLight": false
+  },
+  {
+    "id": "amethyst",
+    "name": "Amethyst",
+    "bg": "#171123",
+    "card": "#251d36",
+    "text": "#f1eaff",
+    "muted": "#b3a3cb",
+    "a": "#c5a2ff",
+    "b": "#f0a4ce",
+    "isLight": false
+  },
+  {
+    "id": "deep-ocean",
+    "name": "Deep Ocean",
+    "bg": "#081a24",
+    "card": "#102b38",
+    "text": "#e1f5fb",
+    "muted": "#99b9c6",
+    "a": "#79d2de",
+    "b": "#82b0f7",
+    "isLight": false
+  },
+  {
+    "id": "eggshell-white",
+    "name": "Eggshell White",
+    "bg": "#f7f3e8",
+    "card": "#fffefa",
+    "text": "#28343c",
+    "muted": "#636b70",
+    "a": "#566a78",
+    "b": "#6d6252",
+    "isLight": true
+  },
+  {
+    "id": "heritage",
+    "name": "Heritage",
+    "bg": "#f9efd4",
+    "card": "#fffdf5",
+    "text": "#032d3f",
+    "muted": "#52626b",
+    "a": "#7d0500",
+    "b": "#032d3f",
+    "isLight": true
+  },
+  {
+    "id": "signal-blue",
+    "name": "Signal Blue",
+    "bg": "#032d3f",
+    "card": "#be0d1f",
+    "text": "#f1f7fa",
+    "muted": "#e8d7e1",
+    "a": "#d2e7f2",
+    "b": "#699db8",
+    "isLight": false
+  },
+  {
+    "id": "cobalt-coral",
+    "name": "Cobalt & Coral",
+    "bg": "#101c3d",
+    "card": "#1d3057",
+    "text": "#f2f6ff",
+    "muted": "#a8b8d6",
+    "a": "#92bdff",
+    "b": "#ff8a85",
+    "isLight": false
+  },
+  {
+    "id": "midnight-cherry",
+    "name": "Midnight Cherry",
+    "bg": "#260f19",
+    "card": "#3d1c2a",
+    "text": "#fff2f6",
+    "muted": "#caa6b5",
+    "a": "#9ecbf5",
+    "b": "#ff8d87",
+    "isLight": false
+  }
 ];
 
 // Switches to a theme and remembers the choice.
 function applyTheme(id) {
+  if (id === 'vscode-blue') id = 'deep-ocean';
   // If the saved id is not in the list (for example, an old version), use the default.
   if (!THEMES.some((t) => t.id === id)) id = 'sunrise';
   state.themeId = id;

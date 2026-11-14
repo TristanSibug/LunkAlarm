@@ -114,7 +114,7 @@ const server = createServer(async (req, res) => {
     await p.locator("#alarmName").fill("Morning edited");
     await p.locator("#setBtn").click();
     assert.equal((await storage(p))[0].id, a.id);
-    await p.locator(".routine-menu summary").click();
+    await p.locator(".routine-menu-trigger").first().click();
     await p.locator("[data-action=duplicate]").click();
     assert.equal((await storage(p)).length, 2);
     checks++;
@@ -617,7 +617,7 @@ const server = createServer(async (req, res) => {
     );
     checks++;
     // Wheel-up over either panel must never collapse the workspace.
-    for (const id of ["editorTitle", "alarmsHeading"]) {
+    for (const id of ["newAlarm", "alarmsHeading"]) {
       await p.locator("#" + id).hover();
       await p.mouse.wheel(0, -200);
       await p.waitForTimeout(150);
@@ -645,7 +645,7 @@ const server = createServer(async (req, res) => {
       "true",
     );
     checks++;
-    // Day controls stay circular and legible across panel/window widths.
+    // Day boxes stay legible across panel/window widths.
     for (const width of [1600, 1366, 1024, 390, 320]) {
       await p.setViewportSize({ width, height: 1000 });
       const sizes = await p.locator(".day-choice").evaluateAll((bs) =>
@@ -662,7 +662,7 @@ const server = createServer(async (req, res) => {
       );
       assert(
         sizes.every(
-          (d) => Math.abs(d.w - d.h) < 1 && d.font >= 13 && d.weight === "500",
+          (d) => d.w > 0 && d.h >= 40 && d.font >= 13 && d.weight === "500",
         ),
       );
       assert(
@@ -725,6 +725,197 @@ const server = createServer(async (req, res) => {
     assert.notEqual(await p.locator("#clockHM").textContent(), "--:--");
     await close(p);
     checks++;
+
+    // Backdrop clicks dismiss pickers without changing test activation.
+    p = await fresh();
+    await workspace(p);
+    assert(
+      await p.locator("#editorTitle").evaluate((el) => {
+        const r = el.getBoundingClientRect();
+        return r.height <= 1 && r.width <= 1;
+      }),
+    );
+    for (const [trigger, dialog] of [
+      ["#themeBtn", "#themeDialog"],
+      ["#chooseSound", "#sounds"],
+      ["[data-test=typing]", "#testSettings"],
+    ]) {
+      await p.locator(trigger).click();
+      assert(await p.locator(dialog).evaluate((d) => d.open));
+      await p.mouse.click(7, 7);
+      await p.waitForFunction((id) => !document.querySelector(id).open, dialog);
+    }
+    assert.equal(
+      await p.locator("[data-test=typing]").getAttribute("aria-pressed"),
+      "false",
+    );
+    checks++;
+    // The sound chevron stays at the right edge instead of following the text.
+    const soundGeometry = await p.locator("#chooseSound").evaluate((el) => {
+      const b = el.getBoundingClientRect(),
+        arrow = el.querySelector("svg").getBoundingClientRect();
+      return { right: b.right - arrow.right, size: arrow.width };
+    });
+    assert(soundGeometry.right >= 10 && soundGeometry.right <= 20);
+    assert.equal(soundGeometry.size, 18);
+    checks++;
+    // Daily is a real checkbox and individual days have distinct filled states.
+    assert.equal(await p.locator("#daily").getAttribute("type"), "checkbox");
+    assert(await p.locator("#daily").isChecked());
+    await p.locator("#daily").uncheck();
+    assert.equal(await p.locator(".day-choice[aria-pressed=true]").count(), 0);
+    const unset = await p
+      .locator(".day-choice")
+      .first()
+      .evaluate((el) => getComputedStyle(el).backgroundColor);
+    await p.getByRole("button", { name: "Sunday", exact: true }).click();
+    const set = await p
+      .locator(".day-choice")
+      .first()
+      .evaluate((el) => getComputedStyle(el).backgroundColor);
+    assert.notEqual(set, unset);
+    assert.equal(await p.locator("#daily").isChecked(), false);
+    await p.locator("#daily").check();
+    assert.equal(await p.locator(".day-choice[aria-pressed=true]").count(), 7);
+    assert.equal(
+      await p
+        .locator(".day-choice")
+        .first()
+        .evaluate((el) => getComputedStyle(el).borderRadius),
+      "12px",
+    );
+    checks++;
+    await close(p);
+    // Native iOS palette values and both gradient overlays are copied exactly.
+    const nativeSource = await readFile(
+      path.resolve(__dirname, "../../ios/LunkAlarm/Views/AlarmTheme.swift"),
+      "utf8",
+    );
+    const paletteLines = nativeSource
+      .split("\n")
+      .filter(
+        (line) => /AlarmTheme\(id: "/.test(line) && line.includes("name:"),
+      );
+    const paletteHex = (line, key) => {
+      const m = line.match(
+        new RegExp(
+          key + ": (?:Color\\(hex: 0x([a-fA-F0-9]{6})\\)|\\.(white|black))",
+        ),
+      );
+      return "#" + (m[1] || (m[2] === "white" ? "ffffff" : "000000"));
+    };
+    p = await fresh();
+    for (const line of paletteLines) {
+      const id = line.match(/id: "([^"]+)"/)[1];
+      await p.locator("#themeBtn").click();
+      await p.locator(`#themeGrid [data-theme="${id}"]`).click();
+      const visuals = await p.evaluate(() => {
+        const s = getComputedStyle(document.documentElement);
+        return {
+          bg: s.getPropertyValue("--bg").trim(),
+          a: s.getPropertyValue("--accent").trim(),
+          b: s.getPropertyValue("--accent-2").trim(),
+          image: getComputedStyle(document.body).backgroundImage,
+        };
+      });
+      assert.equal(visuals.bg, paletteHex(line, "background"));
+      assert.equal(visuals.a, paletteHex(line, "accent"));
+      assert.equal(visuals.b, paletteHex(line, "accent2"));
+      if (["oled", "dark"].includes(id)) assert.equal(visuals.image, "none");
+      else {
+        assert(visuals.image.includes("radial-gradient"));
+        assert(visuals.image.includes("1600px"));
+        assert(visuals.image.includes("/ 0.17"));
+        assert(
+          visuals.image.includes(
+            line.includes("isLight: true") ? "/ 0.12" : "/ 0.22",
+          ),
+        );
+      }
+    }
+    assert.equal(paletteLines.length, 18);
+    checks++;
+    await close(p);
+    // Bottom-card actions escape the scroll panel and stay fully clickable.
+    const alarms = Array.from({ length: 9 }, (_, i) => ({
+      id: "bottom-" + i,
+      type: "time",
+      name: "Alarm " + i,
+      targetMs: Date.now() + 3600000,
+      hour: 7,
+      minute: 0,
+      enabled: false,
+      days: [],
+    }));
+    p = await fresh({ "wake.alarms": alarms }, { width: 1280, height: 680 });
+    await workspace(p);
+    await p.locator(".routine-menu-trigger").last().scrollIntoViewIfNeeded();
+    await p.waitForTimeout(100);
+    await p.locator(".routine-menu-trigger").last().click();
+    const menu = p.locator("#routineActions"),
+      duplicate = menu.locator("[data-action=duplicate]");
+    assert(await duplicate.isVisible());
+    assert(
+      await duplicate.evaluate((el) => {
+        const r = el.getBoundingClientRect();
+        return (
+          r.top >= 0 &&
+          r.bottom <= innerHeight &&
+          document.elementFromPoint(r.x + r.width / 2, r.y + r.height / 2) ===
+            el
+        );
+      }),
+    );
+    assert.equal(
+      await menu.evaluate((el) => getComputedStyle(el).borderRadius),
+      await p
+        .locator(".routine-card")
+        .last()
+        .evaluate((el) => getComputedStyle(el).borderRadius),
+    );
+    await p.screenshot({ path: path.join(output, "bottom-card-actions.png") });
+    await p.keyboard.press("Tab");
+    assert(await duplicate.evaluate((el) => el === document.activeElement));
+    await duplicate.click();
+    assert.equal((await storage(p)).length, 10);
+    checks++;
+    await p.locator(".routine-menu-trigger").last().click();
+    await p.keyboard.press("Escape");
+    assert.equal(
+      await p.locator("#alarmPickerToggle").getAttribute("aria-expanded"),
+      "true",
+    );
+    assert(await menu.isHidden());
+    await p.locator(".routine-menu-trigger").last().click();
+    await p.mouse.click(10, 10);
+    assert(await menu.isHidden());
+    await p.locator(".routine-menu-trigger").last().click();
+    await menu.locator("[data-action=delete]").click();
+    assert.equal((await storage(p)).length, 9);
+    checks++;
+    // Blank space under/above the left clock responds; the right side does not.
+    await finishMotion();
+    await p.mouse.move(8, 20);
+    await p.mouse.wheel(0, -120);
+    await p.waitForFunction(() =>
+      document.documentElement.classList.contains("clock-focus"),
+    );
+    await finishMotion();
+    await p.mouse.move(1268, 670);
+    await p.mouse.wheel(0, 120);
+    await p.waitForFunction(
+      () => !document.documentElement.classList.contains("clock-focus"),
+    );
+    await finishMotion();
+    await p.mouse.move(1268, 20);
+    await p.mouse.wheel(0, -120);
+    await p.waitForTimeout(200);
+    assert.equal(
+      await p.locator("#alarmPickerToggle").getAttribute("aria-expanded"),
+      "true",
+    );
+    checks++;
+    await close(p);
 
     assert.deepEqual(errors, []);
     console.log(

@@ -1225,7 +1225,7 @@ html.clock-focus .clock-picker-toggle:hover {
   color: var(--accent-2);
 }
 
-/* A true circle at every width, with regular-size Inter labels. */
+/* Base weekday layout, extended by the native boxed treatment below. */
 .editor-meta .weekday-row {
   display: grid;
   grid-template-columns: repeat(7, minmax(0, 1fr));
@@ -1554,4 +1554,178 @@ html.clock-focus #footnote {
   ::view-transition-new(root) {
     animation: none !important;
   }
+}
+
+/* Remove the duplicate visual heading; keep the editor labelled for assistive tech. */
+.visually-hidden {
+  position: absolute !important;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+}
+#cancelEdit {
+  margin-left: auto;
+  padding: 8px 12px;
+  min-height: 36px;
+  border: 1px solid var(--card-border);
+  border-radius: 12px;
+  font-size: 12px;
+}
+#cancelEdit::after {
+  display: none;
+}
+.sound-select {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+}
+.sound-name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.sound-select > svg {
+  flex: none;
+  color: var(--muted);
+}
+
+/* Repeat controls match the iOS editor: dark unset boxes, filled selected boxes. */
+.editor-meta .weekday-row {
+  max-width: none;
+  gap: 6px;
+  justify-items: stretch;
+}
+.editor-meta .day-choice {
+  max-width: none;
+  height: 44px;
+  aspect-ratio: auto;
+  border-radius: 12px;
+  background: var(--field);
+  color: var(--muted);
+  font-size: 14px;
+  border-color: var(--card-border);
+}
+.editor-meta .day-choice[aria-pressed="true"] {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--on-accent);
+}
+.editor-meta .day-choice[aria-pressed="false"]:hover {
+  background: var(--hover);
+  color: var(--text);
+}
+.daily-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  color: var(--accent);
+  font-size: 13px;
+  cursor: pointer;
+}
+.daily-toggle input {
+  margin: 0;
+  accent-color: var(--accent);
+  width: 17px;
+  height: 17px;
+}
+@container alarm-setup (max-width:650px) {
+  .editor-meta {
+    grid-template-columns: 1fr;
+    gap: 20px;
+  }
+}
+
+/* A top-layer menu can escape the schedule's scroll container. */
+.routine-menu-trigger {
+  padding: 6px;
+  border: 0;
+  background: transparent;
+  color: var(--muted);
+  border-radius: 8px;
+  font-size: 16px;
+  line-height: 1;
+  cursor: pointer;
+}
+.routine-menu-trigger:hover {
+  background: var(--hover);
+  color: var(--text);
+}
+.routine-actions {
+  display: none;
+  position: fixed;
+  inset: auto;
+  margin: 0;
+  min-width: 156px;
+  padding: 6px;
+  border: 1px solid var(--card-border);
+  border-radius: 17px;
+  background: var(--dialog-bg);
+  color: var(--text);
+  box-shadow: 0 12px 35px #0004;
+  z-index: 1000;
+}
+.routine-actions:popover-open {
+  display: block;
+}
+.routine-actions[data-open="true"] {
+  display: block;
+}
+.routine-actions > button {
+  display: block;
+  width: 100%;
+  padding: 12px 14px;
+  border: 0;
+  border-radius: 11px;
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+  font-size: 13px;
+  text-align: left;
+  cursor: pointer;
+}
+.routine-actions > button:hover {
+  background: var(--hover);
+}
+.routine-actions > button[data-action="delete"] {
+  color: var(--accent-2);
+}
+
+/* Same mobile gradient radii, opacity, edge origins, and overlay order. */
+body {
+  background-image:
+    radial-gradient(
+      circle max(280px, 100vw) at 100% 100%,
+      var(--ambient-b),
+      transparent
+    ),
+    radial-gradient(
+      circle max(300px, 100vw) at 0 0,
+      var(--ambient-a),
+      transparent
+    );
+}
+:root[data-theme="oled"] body,
+:root[data-theme="dark"] body {
+  background-image: none;
+}
+:root[data-theme="midnight-cherry"] .routine-card,
+:root[data-theme="midnight-cherry"] .sudoku-board {
+  --text: #351624;
+  --muted: #735567;
+  --accent: #91445e;
+  --accent-2: #b23d61;
+  --field: rgba(0, 0, 0, 0.045);
+  --card-border: #3516241a;
+  background: #fff8fa;
+}
+.day-dot.chosen {
+  color: var(--day-accent, var(--accent));
+  border-color: var(--day-accent, var(--accent));
 }
