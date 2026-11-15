@@ -4,6 +4,29 @@ LunkAlarm is an alarm clock available as a **website**, a **native Android app**
 
 **[Open the website → alarm.reeeserve.online](https://alarm.reeeserve.online)** · **[Download mobile builds](https://github.com/TristanSibug/LunkAlarm/releases)**
 
+<p align="center">
+  <img src="docs/screenshots/website-workspace.png" alt="LunkAlarm website with the desktop clock, alarm editor, wake-up tests, and saved alarms" width="100%">
+</p>
+
+<p align="center"><em>Website · Desktop workspace</em></p>
+
+<p align="center">
+  <img src="docs/screenshots/ios-clock.png" alt="iOS large clock with the Sunrise theme" width="240">
+  <img src="docs/screenshots/ios-alarm-editor.png" alt="iOS alarm editor with repeat days and all six wake-up tests" width="240">
+  <img src="docs/screenshots/ios-stroop.png" alt="iOS Stroop practice with a color word and four colored answer buttons" width="240">
+</p>
+
+<p align="center"><em>iOS · Clock, alarm setup, and Stroop practice</em></p>
+
+<details>
+<summary>More screenshots · iOS themes</summary>
+
+<p align="center">
+  <img src="docs/screenshots/ios-themes.png" alt="iOS theme picker showing the available light and dark color palettes" width="320">
+</p>
+
+</details>
+
 ## Platforms
 
 | Platform | Get started | Requirements | Source and setup |
