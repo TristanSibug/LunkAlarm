@@ -2,7 +2,7 @@
 
 An alarm clock for the **web**, **Android**, and **iOS**, with a large clock, custom themes, ringtones, and optional wake-up tests.
 
-**[Open the website](https://alarm.reeeserve.online)** · **[Download the apps](https://github.com/TristanSibug/LunkAlarm/releases)**
+**[Open the website](https://alarm.tjesibug.online)** · **[Download the apps](https://github.com/TristanSibug/LunkAlarm/releases)**
 
 <p align="center">
   <img src="docs/screenshots/website-workspace.png" alt="LunkAlarm website with the desktop clock, alarm editor, wake-up tests, and saved alarms" width="100%">
@@ -57,7 +57,7 @@ Selected tests run in sequence. Running out of time restarts the sequence and re
 
 | Platform | Requirements | Open or download |
 | --- | --- | --- |
-| Website | A modern browser | [alarm.reeeserve.online](https://alarm.reeeserve.online) |
+| Website | A modern browser | [alarm.tjesibug.online](https://alarm.tjesibug.online) |
 | Android | Android 8.0 or later | [APK releases](https://github.com/TristanSibug/LunkAlarm/releases) |
 | iOS | iOS 26 or later | [IPA releases](https://github.com/TristanSibug/LunkAlarm/releases) |
 

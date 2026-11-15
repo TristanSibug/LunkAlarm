@@ -1,6 +1,14 @@
-# Deploy LunkAlarm to alarm.reeeserve.online
+# Deploy LunkAlarm to alarm.tjesibug.online
 
 The upload-ready website is the repository's **web/** folder. It includes the desktop clock workspace, recurring alarms, temporary timers, eighteen themes, offline ringtones, custom audio and six wake-up tests. It needs static hosting only. Vercel hosts it; your DNS provider points the subdomain to Vercel. Namecheap registration/hosting and DNS management are separate roles.
+
+## Move the existing website to the new domain
+
+For the existing LunkAlarm deployment, reuse the same Vercel project and production deployment. Open **Settings → Domains**, add `alarm.tjesibug.online`, and copy the exact DNS record Vercel supplies. At the DNS provider for **tjesibug.online**, create the `alarm` CNAME with that target and add any requested ownership-verification TXT record. Follow sections 3–4 below to check nameservers, DNS, and HTTPS. No app rebuild, registrar transfer, or whole-domain nameserver change is needed.
+
+Keep `alarm.reeeserve.online` active until the new address serves the app over HTTPS. Browser-saved alarms, preferences, and imported audio belong to each origin and do not automatically appear on the new domain. Before redirecting or removing the old address, give existing users time to recreate their alarms and preferences on the new one. Once the new address is working, the old domain can be configured to redirect to it in Vercel.
+
+The steps below describe a fresh deployment; an existing project can skip section 1.
 
 ## 1. Create a separate Vercel project
 
@@ -30,17 +38,17 @@ GitHub import is recommended. If deploying from a local computer with the Vercel
 Open the new alarm project's **Settings → Domains** and add:
 
 ```
-alarm.reeeserve.online
+alarm.tjesibug.online
 ```
 
 Vercel will show the DNS record required for **this project**. Use that exact destination, including any project-specific hostname. Do not guess a shared IP address or substitute a generic CNAME target from an old tutorial. If Vercel asks for a TXT ownership-verification record, add the exact host/value it provides too.
 
 ## 3. Add DNS at the provider that manages your nameservers
 
-In Namecheap, open **Domain List → Manage** next to `reeeserve.online` and check **Nameservers**.
+In Namecheap, open **Domain List → Manage** next to `tjesibug.online` and check **Nameservers**.
 
 - With **Namecheap BasicDNS/PremiumDNS/FreeDNS**, use **Advanced DNS → Host Records → Add New Record**.
-- With **Namecheap Web Hosting DNS**, use your hosting cPanel's **Zone Editor**. An editor asking for the full name should use `alarm.reeeserve.online`.
+- With **Namecheap Web Hosting DNS**, use your hosting cPanel's **Zone Editor**. An editor asking for the full name should use `alarm.tjesibug.online`.
 - With custom nameservers (for example, Cloudflare), edit DNS with that provider instead. Namecheap's Host Records page will not control those nameservers.
 
 The usual subdomain record in Namecheap's Host Records editor is:
@@ -59,7 +67,7 @@ Remove or replace an existing conflicting record for **alarm only** if needed. A
 Return to Vercel's Domains screen and refresh/check the domain. DNS propagation can take time. Once Vercel reports valid configuration and finishes provisioning HTTPS, open:
 
 ```
-https://alarm.reeeserve.online
+https://alarm.tjesibug.online
 ```
 
 Test on the final domain: click **Add alarm**, preview a ringtone, add a short timer, complete wake-up tests, change theme, and reload to confirm saved settings. Normal clicks and key presses activate browser audio; no separate sound button is needed. Browser data on the temporary `.vercel.app` address does not automatically transfer to the custom domain because browser storage is origin-specific.
