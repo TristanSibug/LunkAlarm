@@ -1,6 +1,6 @@
 {
-  "commit": "93790936730fe900797e5c5c1cc715d37032a232",
-  "run": "https://github.com/TristanSibug/LunkAlarm/actions/runs/43343419821",
+  "commit": "4d7a47582c982a3106093529c37b17161079047c",
+  "run": "https://github.com/TristanSibug/LunkAlarm/actions/runs/43690775076",
   "status": "success",
   "build": "success",
   "emulator": "success",
@@ -21,6 +21,13 @@
       "skipped": "0"
     },
     {
+      "name": "online.reeeserve.lunkalarm.core.StroopTest",
+      "tests": "8",
+      "failures": "0",
+      "errors": "0",
+      "skipped": "0"
+    },
+    {
       "name": "online.reeeserve.lunkalarm.core.ThemeContrastTest",
       "tests": "1",
       "failures": "0",
@@ -29,7 +36,7 @@
     },
     {
       "name": "online.reeeserve.lunkalarm.AlarmInteractionTest",
-      "tests": "20",
+      "tests": "22",
       "failures": "0",
       "errors": "0",
       "skipped": "0"
@@ -48,11 +55,16 @@
     "android-practice-math.png",
     "android-practice-mines.png",
     "android-practice-puzzle.png",
+    "android-practice-stroop.png",
     "android-practice-sudoku.png",
     "android-practice-typing.png",
     "android-puzzle-settings.png",
     "android-ringtone-sound-checker.png",
     "android-saved-alarms.png",
+    "android-six-test-tiles.png",
+    "android-stroop-alarm-timeout.png",
+    "android-stroop-practice.png",
+    "android-stroop-settings.png",
     "android-sudoku-game.png",
     "android-sudoku-settings.png",
     "android-swipe-delete.png",
