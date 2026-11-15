@@ -1,8 +1,8 @@
 # LunkAlarm
 
-LunkAlarm is an alarm clock available as a **website**, a **native Android app**, and a **native iOS app**. It combines a large clock, custom themes, ringtones, and optional wake-up tests.
+An alarm clock for the **web**, **Android**, and **iOS**, with a large clock, custom themes, ringtones, and optional wake-up tests.
 
-**[Open the website → alarm.reeeserve.online](https://alarm.reeeserve.online)** · **[Download mobile builds](https://github.com/TristanSibug/LunkAlarm/releases)**
+**[Open the website](https://alarm.reeeserve.online)** · **[Download the apps](https://github.com/TristanSibug/LunkAlarm/releases)**
 
 <p align="center">
   <img src="docs/screenshots/website-workspace.png" alt="LunkAlarm website with the desktop clock, alarm editor, wake-up tests, and saved alarms" width="100%">
@@ -27,106 +27,56 @@ LunkAlarm is an alarm clock available as a **website**, a **native Android app**
 
 </details>
 
-## Platforms
+## Features
 
-| Platform | Get started | Requirements | Source and setup |
-| --- | --- | --- | --- |
-| Website | [alarm.reeeserve.online](https://alarm.reeeserve.online) | A modern browser | [`web/`](web/) · [Deployment guide](docs/WEBSITE-DEPLOYMENT.md) |
-| Android | [Download the APK](https://github.com/TristanSibug/LunkAlarm/releases) | Android 8.0 or later | [`android/`](android/) · [Android guide](android/README.md) |
-| iOS | [Releases](https://github.com/TristanSibug/LunkAlarm/releases) · [IPA builds](https://github.com/TristanSibug/LunkAlarm/actions/workflows/ios.yml) | iOS 26 or later; Apple signing/provisioning | [`ios/`](ios/) · [iOS guide](ios/README.md) |
+Available on the website and both mobile apps:
 
-The Android app uses **Kotlin and Jetpack Compose**. The iOS app uses **SwiftUI and AlarmKit**. Both are native apps with their own system alarm integration. The standalone website runs directly in a browser.
+- Large clock with date, time zone, and 12/24-hour display.
+- Named or unnamed alarms with daily or selected-weekday repeats, plus temporary countdown timers.
+- Edit, duplicate, enable, disable, and delete saved alarms. Completed timers disappear automatically.
+- Eighteen themes, bundled ringtones, imported audio, sound previews, and adjustable volume with optional gradual fade-in.
 
-The repository also retains the earlier native C# / WPF Windows implementation in `src/`. A native macOS app remains future work.
+Your alarms and preferences stay on the current device or browser. No account is required, and data does not sync between platforms.
 
-## Mobile app features
+## Wake-up tests
 
-- A large clock-first screen with local date, time zone, and 12/24-hour display. Swipe up to view alarms and down to return to the clock.
-- Saved alarms with optional names, daily or selected-weekday repeats, editing, duplication, and swipe-to-delete with haptic feedback.
-- Active countdowns alongside saved alarms. Completed countdowns disappear; At a time alarms stay until deleted.
-- Floating Add alarm / Save changes buttons, time and duration wheels, and always-visible wake-up test tiles.
-- Eighteen app-owned mobile themes, ten offline ringtones, sound previews, audio-file imports, a volume slider, and optional gradual fade-in.
-- Configurable timed typing and math tests, automatic math answer submission, an answering sound switch, and progress resets when a test times out. Both mobile apps also include puzzle, Minesweeper and Sudoku tests, with platform-specific options described below.
-- Native alarm scheduling so a scheduled alarm does not depend on keeping the clock screen open.
+Combine any of the six tests below. Configure each test’s difficulty or length and time limit, then use **Try** to practice before enabling it.
 
-### Mobile wake-up tests
-
-Both native apps have six wake-up test tiles, including Stroop. Tapping a tile opens settings; Set / Unset changes activation while other selected tests stay enabled. Each test has a **Try** button for a practice run you can exit anytime without scheduling an alarm. Test settings use fixed buttons and bounded **− / +** controls instead of looping wheels.
-
-| Wake-up test | Options | Time limit |
-| --- | --- | --- |
-| Typing | 4–10 code characters | 15 / 20 / 25 / 30 seconds |
-| Math | 1–8 problems; any combination of +, −, ×, ÷; built-in or native keypad | 5 / 10 / 15 seconds per question |
-| Puzzle | 6 / 8 / 10 randomized jigsaw pieces | 15–40 seconds in five-second steps |
-| Minesweeper | Easy 5×5, Medium 7×7, Hard 9×9 | 15–40 seconds in five-second steps |
-| Sudoku | 4×4 easy/hard and 6×6 easy/hard | 60 / 120 / 180 / 240 seconds |
-| Stroop | 3–8 rounds; color-word and answer-button distractions | 3 / 4 / 5 / 6 seconds per round |
-
-### iOS 1.8.1 and Android 1.3.0
-
-The floating **+** menu offers **Alarm** and **Timer**, each with its own editor and optional name. Active timers appear first under **Timers**; saved alarms appear under **Alarms**. Empty sections are hidden, and completed timers disappear.
-
-- **Wake-up tests** are always visible. Tapping a tile opens its settings; **Set / Unset** alone changes whether it is enabled. Closing with × or swiping down preserves that state. Each test has an isolated **Try** mode.
-- **Math:** choose any combination of addition, subtraction, multiplication and division. Subtraction stays non-negative and division uses whole-number answers. Native keypad answers clear immediately after a correct or incorrect submission, with keyboard focus retained.
-- **Minesweeper:** tap to reveal and hold hidden squares to flag. Holding a revealed number does nothing. **I'm done** enables only at the exact flag count and validates flagged positions; extra flags disable confirmation.
-- **Ringtones:** the picker stays open after selection, with an internal **Sound checker** checkbox. The vibration checkbox sits beside alarm volume. On iOS, it controls in-app playback only; on Android it also applies during active alarm-service playback.
-- **Themes:** selecting a theme closes its picker. Most backgrounds have subtle gradients; OLED Black and Dark remain flat. Midnight Cherry has pale alarm cards with dark text and clearer Sudoku cells; Heritage cards are lighter, Cobalt & Coral weekday rings use coral, and Signal Blue swatches include red. VS Code Blue selections migrate to Deep Ocean.
-- **Editors:** remove the stale “Alarm set for…” message beneath the test tiles.
-
-Tests run in sequence. Timeouts restart the configured sequence and restore audio; hitting a mine or confirming incorrect flags does the same. Minesweeper boards have a safe opening and can be solved from clues, and every Sudoku has one solution. Existing alarm delivery uses AlarmKit on iOS and AlarmManager on Android.
-
-See the [iOS guide](ios/README.md) and [Android guide](android/README.md) for installation, signing and platform behavior. IPA files require signing/provisioning before installation.
-
-The [Android 1.3.0 build](https://github.com/TristanSibug/LunkAlarm/actions/runs/43328992753) passed **30 core tests, 20 emulator UI tests, the denied-permission check, and lint**. Its **LunkAlarm-Android** artifact contains the installable APK.
-
-The [iOS 1.8.1 build](https://github.com/TristanSibug/LunkAlarm/actions/runs/43332158870) passed **33 core tests and all 23 simulator UI tests**, including native-keypad clearing and inert Minesweeper number holds. Its **LunkAlarm-iOS** artifact contains the unsigned IPA and UI previews.
-
-Alarms, themes, and imported sounds are saved locally on each device. There is no account requirement or cross-device synchronization. The website and mobile apps have separate saved data, and some features differ by platform.
-
-### Android 1.3.1: permanent signing baseline
-
-Future distributable Android builds use a permanent private key, with a public certificate pin and fail-closed checks. The pipeline includes a real update-installation check for data retention. See [Android signing setup](android/SIGNING.md) for the required repository secret and private backup.
-
-Older development-signed APKs require one final reinstall to move to this baseline. Updates from 1.3.1 onward reuse the permanent identity and retain app data.
-
-The [verified Android 1.3.1 build](https://github.com/TristanSibug/LunkAlarm/actions/runs/43343419821) passed **6 signing-safety tests, 30 core tests, 20 native UI tests, the denied-permission check, and the upgrade/data-retention check**. Its **LunkAlarm-Android** artifact contains the certificate-verified APK.
-
-## Install the mobile apps
-
-**Android:** Download the `.apk` from [Releases](https://github.com/TristanSibug/LunkAlarm/releases), or extract `artifacts/LunkAlarm-Android-1.3.1.apk` from the **LunkAlarm-Android** artifact in the latest [Android build](https://github.com/TristanSibug/LunkAlarm/actions/workflows/android.yml). Open it on your phone, and allow installation from your browser or file manager if Android asks. In LunkAlarm, open **Alarm access** and enable alarms, notifications, and full-screen alarms where available. Overall sound level uses your device's alarm volume.
-
-**iOS:** Download the `.ipa` from [Releases](https://github.com/TristanSibug/LunkAlarm/releases) when attached, or extract it from a successful **Native iOS app** Actions build. The cloud-generated IPA is unsigned and needs signing/provisioning through AltStore Classic/AltServer or another compatible signing tool before installation. GitHub hosting does not replace Apple's signing requirements. See the [iOS guide](ios/README.md) for setup and build instructions.
-
-These are development/test builds, separate from App Store or Google Play distribution. Test a short alarm with the phone locked before relying on it overnight. System permissions, volume, Focus/Do Not Disturb, force-stop behavior, and device battery settings affect alarm behavior; the platform guides explain the differences.
-
-## Use and deploy the website
-
-Use **[alarm.reeeserve.online](https://alarm.reeeserve.online)** directly, without installing an app. Keep the page open, sound available, and the device awake: browsers can delay background tabs, and the website cannot wake a sleeping device.
-
-The desktop website now includes recurring weekday alarms, separate temporary timers, optional names, editing and duplication, and six wake-up tests with practice runs. The website adds a Stroop color test with 3–8 rounds and 3, 4, 5 or 6 seconds per round. Choose the word’s ink color using color-name buttons that shuffle between rounds. Their backgrounds deliberately mismatch their labels. The spacious workspace places the clock beside the editor and an always-visible alarms/timers panel. The clock view shows upcoming items as plain text. Click the chevron or the space below the date/time zone, or scroll down to open the workspace; scroll up anywhere on the left clock side to return. Scrolling over the editor or schedule panel leaves the workspace open. Underlined Alarm/Timer tabs and iOS-style boxed weekdays with a Daily checkbox keep the editor clear. Time and duration fields support the mouse wheel, arrow keys and direct entry. The play button beside **Alarm volume** previews sound directly. Internet time sync runs automatically without a badge. Test settings use fixed choices, math supports all four operations with automatic answer clearing, and the ringtone picker includes a **Sound checker**.
-
-Eighteen grouped themes use the mobile palettes with localized corner gradients. **Theme → Clock font** offers Inter (default), Rounded, Monospace, Serif and Digital; only the clock digits change. While editing, Cancel sits beside Save changes. Theme, ringtone and test-settings dialogs close when clicking outside. The rounded Delete/Duplicate menu stays visible for bottom alarms in long lists.
-
-Saved website alarms migrate in the same browser and origin. Completed timers disappear; saved alarms remain, with one-time alarms switched off after completion. Recurring alarms advance to their next selected day. Custom sounds are stored with each new alarm. This is a browser app: mobile lock-screen scheduling and vibration are native-app features.
-
-Website development lives on [`website/desktop-studio`](https://github.com/TristanSibug/LunkAlarm/tree/website/desktop-studio). The original website is preserved on [`website/rollback-before-desktop-update`](https://github.com/TristanSibug/LunkAlarm/tree/website/rollback-before-desktop-update). These branches do not change the mobile releases.
-
-To deploy your own copy with Vercel, use **Root Directory `web`** and **Framework Preset Other**. No build/install command, database, Supabase connection, or environment variables are required. Add your domain in Vercel and configure the DNS records Vercel provides. See the [Namecheap + Vercel deployment guide](docs/WEBSITE-DEPLOYMENT.md).
-
-## Source, builds, and tests
-
-| Directory | Contents |
+| Test | Challenge |
 | --- | --- |
-| [`web/`](web/) | Browser app and Vercel configuration |
-| [`ios/`](ios/) | Native SwiftUI app, AlarmKit integration, core/UI tests, and Xcode project |
-| [`android/`](android/) | Native Compose app, Android alarm service, core/UI tests, and Gradle project |
-| [`src/Wake.Core/`](src/Wake.Core/) | Earlier Windows scheduling, persistence, challenges, and sound synthesis |
-| [`src/Wake.Windows/`](src/Wake.Windows/) | Earlier native WPF Windows app |
-| [`docs/`](docs/) | Deployment and Windows documentation |
+| Typing | Enter a case-sensitive code. |
+| Math | Solve addition, subtraction, multiplication, and division problems. |
+| Puzzle | Fit randomized jigsaw pieces together. |
+| Minesweeper | Reveal safe squares and flag the mines. |
+| Sudoku | Complete a 4×4 or 6×6 grid. |
+| Stroop | Identify the word’s ink color while ignoring its meaning and the colored buttons. Choices shuffle after each correct answer. |
 
-The **Website checks** workflow runs offline browser regressions, including desktop and phone layouts, alarm migration, game completion, and storage failures, and uploads UI previews. Vercel deploys the static `web/` directory from its configured production branch. Website checks and native builds have separate path filters.
+Selected tests run in sequence. Running out of time restarts the sequence and restores alarm sound.
 
-The **Native iOS app** workflow builds simulator/device targets, runs core and native UI tests, and uploads an unsigned IPA. The **Native Android app** workflow builds a signed development APK, runs core tests, Android lint, and emulator checks, and packages successful builds in its **LunkAlarm-Android** Actions artifact. GitHub Releases are uploaded manually by the maintainer. Each platform guide includes local build commands and installation details.
+## Get started
 
-MIT license. The supplied app's icon and original sound recipes are reused.
+| Platform | Requirements | Open or download |
+| --- | --- | --- |
+| Website | A modern browser | [alarm.reeeserve.online](https://alarm.reeeserve.online) |
+| Android | Android 8.0 or later | [APK releases](https://github.com/TristanSibug/LunkAlarm/releases) |
+| iOS | iOS 26 or later | [IPA releases](https://github.com/TristanSibug/LunkAlarm/releases) |
 
+**Website:** Keep the page open, sound enabled, and the device awake. Browsers can delay background tabs and cannot wake a sleeping device.
+
+**Android:** Install the APK and grant the requested alarm permissions. Updates from the permanently signed 1.3.1 baseline retain app data without uninstalling.
+
+**iOS:** The provided IPA is unsigned and requires signing/provisioning through a compatible sideloading tool. See the [iOS installation guide](ios/README.md).
+
+The native apps schedule alarms through Android’s AlarmManager and Apple’s AlarmKit, so scheduled alarms do not depend on leaving the clock screen open. Permissions, device volume, and system restrictions still apply; test a short alarm with the phone locked after setup.
+
+## Development
+
+| Source | Implementation | Guide |
+| --- | --- | --- |
+| [`web/`](web/) | Standalone HTML, CSS, and JavaScript | [Website deployment](docs/WEBSITE-DEPLOYMENT.md) |
+| [`android/`](android/) | Kotlin and Jetpack Compose | [Android setup and builds](android/README.md) |
+| [`ios/`](ios/) | SwiftUI and AlarmKit | [iOS setup and builds](ios/README.md) |
+
+[GitHub Actions](https://github.com/TristanSibug/LunkAlarm/actions) provides build artifacts and automated checks. GitHub Releases are uploaded manually. The earlier C# / WPF Windows implementation remains in [`src/`](src/).
+
+MIT license.
