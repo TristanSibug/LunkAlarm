@@ -1199,7 +1199,7 @@ const server = createServer(async (req, res) => {
       await close(p);
     }
 
-    // Stroop rounds always conflict with the ink, with fixed labels and decoy fills.
+    // Stroop rounds always conflict with the ink, with shuffled labels and decoy fills.
     p = await fresh({
       "wake.studio.tests": { stroopRounds: 99, stroopSeconds: 0 },
     });
@@ -1213,14 +1213,23 @@ const server = createServer(async (req, res) => {
             !colors.includes(round.ink) ||
             !colors.includes(round.word) ||
             round.ink === round.word ||
-            round.ink === previous ||
+            round.ink === previous?.ink ||
+            new Set(round.choiceOrder).size !== 4 ||
+            !round.choiceOrder.every((c) => colors.includes(c)) ||
+            (previous &&
+              (round.choiceOrder.some(
+                (c, i) => c === previous.choiceOrder[i],
+              ) ||
+                round.choiceOrder.indexOf(round.ink) ===
+                  previous.choiceOrder.indexOf(previous.ink))) ||
             new Set(round.buttonColors).size !== 4 ||
             round.buttonColors.some(
-              (color, n) => !colors.includes(color) || color === colors[n],
+              (color, n) =>
+                !colors.includes(color) || color === round.choiceOrder[n],
             )
           )
             return false;
-          previous = round.ink;
+          previous = round;
         }
         return true;
       }),
@@ -1263,8 +1272,8 @@ const server = createServer(async (req, res) => {
       "Stroop practice",
     );
     assert.deepEqual(
-      await p.locator("[data-stroop-choice]").allTextContents(),
-      ["Red", "Blue", "Green", "Yellow"],
+      (await p.locator("[data-stroop-choice]").allTextContents()).sort(),
+      ["Blue", "Green", "Red", "Yellow"],
     );
     let ink = await p.locator(".stroop-word").getAttribute("data-ink");
     // Picking a matching button background is wrong: the label names the answer.
@@ -1277,6 +1286,9 @@ const server = createServer(async (req, res) => {
     await p.screenshot({ path: path.join(output, "stroop-practice.png") });
     for (let i = 0; i < 8; i++) {
       const word = p.locator(".stroop-word");
+      const beforeOrder = await p
+        .locator("[data-stroop-choice]")
+        .evaluateAll((buttons) => buttons.map((b) => b.dataset.stroopChoice));
       ink = await word.getAttribute("data-ink");
       assert.notEqual((await word.textContent()).toLowerCase(), ink);
       const button = p.locator(`[data-stroop-choice="${ink}"]`);
@@ -1292,10 +1304,12 @@ const server = createServer(async (req, res) => {
           await p.locator(":focus").getAttribute("data-stroop-choice"),
           ink,
         );
-        assert.deepEqual(
-          await p.locator("[data-stroop-choice]").allTextContents(),
-          ["Red", "Blue", "Green", "Yellow"],
-        );
+        const afterOrder = await p
+          .locator("[data-stroop-choice]")
+          .evaluateAll((buttons) => buttons.map((b) => b.dataset.stroopChoice));
+        assert(afterOrder.every((color, i) => color !== beforeOrder[i]));
+        const nextInk = await word.getAttribute("data-ink");
+        assert.notEqual(afterOrder.indexOf(nextInk), beforeOrder.indexOf(ink));
       }
     }
     assert.equal(await p.locator("#finishMission").textContent(), "Try again");
@@ -1411,6 +1425,59 @@ const server = createServer(async (req, res) => {
     }
     await p.locator("#finishMission").click();
     assert.equal((await storage(p)).length, 0);
+    checks++;
+    await close(p);
+
+    // Fixed-order sessions from the previous build resume unchanged, then shuffle.
+    p = await fresh({
+      "wake.alarms": [
+        record({ stroop: true, stroopRounds: 3, stroopSeconds: 6 }),
+      ],
+    });
+    await p.waitForSelector(".stroop-word");
+    await p.evaluate(() => {
+      const saved = JSON.parse(localStorage.getItem("wake.studio.mission"));
+      saved.stroop = {
+        word: "blue",
+        ink: "red",
+        buttonColors: ["blue", "green", "yellow", "red"],
+      };
+      saved.done = 1;
+      saved.deadline = trueNow() + 6000;
+      localStorage.setItem("wake.studio.mission", JSON.stringify(saved));
+    });
+    await p.reload();
+    await p.waitForSelector(".stroop-word");
+    const legacyOrder = ["red", "blue", "green", "yellow"];
+    assert.deepEqual(
+      await p
+        .locator("[data-stroop-choice]")
+        .evaluateAll((buttons) => buttons.map((b) => b.dataset.stroopChoice)),
+      legacyOrder,
+    );
+    assert.equal(
+      await p.locator("#missionBody h3").textContent(),
+      "1 / 3 rounds",
+    );
+    await p.locator('[data-stroop-choice="red"]').click();
+    const shuffledOrder = await p
+      .locator("[data-stroop-choice]")
+      .evaluateAll((buttons) => buttons.map((b) => b.dataset.stroopChoice));
+    assert(shuffledOrder.every((color, i) => color !== legacyOrder[i]));
+    assert.notEqual(
+      shuffledOrder.indexOf(
+        await p.locator(".stroop-word").getAttribute("data-ink"),
+      ),
+      0,
+    );
+    await p.reload();
+    await p.waitForSelector(".stroop-word");
+    assert.deepEqual(
+      await p
+        .locator("[data-stroop-choice]")
+        .evaluateAll((buttons) => buttons.map((b) => b.dataset.stroopChoice)),
+      shuffledOrder,
+    );
     checks++;
     await close(p);
 

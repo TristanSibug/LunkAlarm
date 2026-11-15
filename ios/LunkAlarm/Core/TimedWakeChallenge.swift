@@ -120,7 +120,7 @@ public struct TimedWakeChallenge: Codable, Equatable, Sendable {
         guard phase == .stroop, let round = stroopRound else { return .incomplete }
         guard color == round.ink else { return .incorrect }
         stroopProgress = stroopAnswered + 1
-        if stroopPending { stroopRound = StroopRound.create(previousInk: round.ink) }
+        if stroopPending { stroopRound = StroopRound.create(previous: round) }
         renewDeadline(now: now); return .correct
     }
     private mutating func renewDeadline(now: Date) {

@@ -12,8 +12,8 @@ android {
         applicationId = "online.reeeserve.lunkalarm"
         minSdk = 26
         targetSdk = 36
-        versionCode = providers.gradleProperty("lunkVersionCode").orNull?.toInt() ?: 6
-        versionName = providers.gradleProperty("lunkVersionName").orNull ?: "1.4.0"
+        versionCode = providers.gradleProperty("lunkVersionCode").orNull?.toInt() ?: 7
+        versionName = providers.gradleProperty("lunkVersionName").orNull ?: "1.4.1"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
     buildFeatures { compose = true }

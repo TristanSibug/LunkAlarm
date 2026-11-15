@@ -32,7 +32,7 @@ import kotlin.math.min
                 fontWeight = FontWeight.Bold, letterSpacing = 2.sp, maxLines = 1, softWrap = false,
                 modifier = Modifier.semantics { contentDescription = "${round.word.label}, written in ${round.ink.label.lowercase()} ink" }.testTag("stroop-word"))
         }
-        StroopColor.entries.chunked(2).forEachIndexed { rowIndex, row ->
+        round.choiceOrder.chunked(2).forEachIndexed { rowIndex, row ->
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 row.forEachIndexed { column, color ->
                     val paint = round.buttonColors[rowIndex * 2 + column]

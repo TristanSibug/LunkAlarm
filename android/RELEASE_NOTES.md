@@ -1,11 +1,10 @@
-# LunkAlarm for Android 1.4.0 — Stroop wake-up test
+# LunkAlarm for Android 1.4.1 — Shuffled Stroop Choices
 
-- Add Stroop alongside Typing, Math, Puzzle, Minesweeper and Sudoku.
-- Choose 3–8 rounds and a 3, 4, 5 or 6-second limit for each round.
-- Answer the displayed word’s ink color while ignoring the word and mismatched button backgrounds. Answer labels stay in fixed positions.
-- Try Stroop in isolated practice before enabling it.
-- Retain round progress, colors and the deadline across app recreation; timeouts reset the selected tests and restore alarm sound.
-- Keep existing alarms and other test settings, with Stroop disabled for old records.
-- Use the same permanent signing identity as Android 1.3.1, so updates from that baseline preserve app data.
+- Shuffle Stroop answer positions between rounds so the layout cannot be memorized.
+- Move every color label and move the next correct answer away from the previous correct button.
+- Keep the current layout stable while answering and after reopening the app.
+- Retain the existing 3–8 round settings, 3 / 4 / 5 / 6-second limits, color distractions and practice mode.
+- Preserve saved progress and support rounds created by the previous version.
+- Retain the permanent signing identity and update-installation data preservation.
 
-Download the attached APK and install it over the permanently signed 1.3.1 build.
+Download the attached APK to update the permanently signed Android build.

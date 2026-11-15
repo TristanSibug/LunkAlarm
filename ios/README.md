@@ -149,18 +149,20 @@ Math supports any nonempty selection of addition, subtraction, multiplication an
 
 Ringtone selection stays open; Sound checker previews selections inside that picker. Themes dismiss on selection. VS Code Blue was removed (existing selections migrate to Deep Ocean); most backgrounds have subtle gradients except OLED Black and Dark. Midnight Cherry has pale alarm cards with dark text and a clearer Sudoku board; Heritage cards are lighter, Cobalt & Coral weekday circles use coral, and Signal Blue's swatches include red.
 
-
 ## iOS 1.8.1
 
 Remove stale scheduling confirmation text from the alarm/timer editor. Native math input clears its displayed answer synchronously after correct and incorrect submissions while keeping the keyboard focused. Minesweeper no longer opens adjacent squares when holding a number; holding a hidden square still flags/unflags it. Existing AlarmKit delivery is retained.
 
-
 ## iOS 1.9: Stroop wake-up test
 
-Stroop adds a sixth test, following Sudoku when multiple tests are selected. It offers 3–8 rounds and 3 / 4 / 5 / 6 seconds per round, with defaults of five rounds and five seconds. Choose the displayed word’s ink color using fixed Red / Blue / Green / Yellow answer labels. The word meaning and each button’s mismatched background color are distractions. The next round uses a different correct color to prevent repeated taps from passing consecutive rounds. The dark word panel keeps all four ink colors readable in every theme.
+Stroop adds a sixth test, following Sudoku when multiple tests are selected. It offers 3–8 rounds and 3 / 4 / 5 / 6 seconds per round, with defaults of five rounds and five seconds. Choose the displayed word’s ink color using Red / Blue / Green / Yellow answer labels that shuffle between rounds. The word meaning and each button’s mismatched background color are distractions. The next round uses a different correct color to prevent repeated taps from passing consecutive rounds. The dark word panel keeps all four ink colors readable in every theme.
 
 Correct answers advance and renew the per-round deadline. Wrong answers retry the current round without extending it. A timeout resets the complete selected test sequence and restores alarm sound through the existing AlarmKit timeout/recovery integration. Rounds, button colors, progress and the absolute deadline persist with the active alarm across restarts. Old alarms load with Stroop disabled and keep their existing settings. Duplicates retain their Stroop configuration.
 
 Tapping the Stroop tile opens its settings; Set / Unset controls activation independently of other tests. Try is isolated practice with the same timed game, an explicit exit, and Try again after completion. Six tiles use two rows on iPhone and one row where the available width permits it, retaining the existing tile style. The clock, time picker, ringtones and Android app are unchanged.
 
 The iOS workflow compiles simulator and device apps, exercises Stroop settings/practice and real-alarm timeout behavior in the simulator, and exports an unsigned IPA in its **LunkAlarm-iOS** artifact. Install through your existing signing/sideloading method. Physical-iPhone verification of short round timers and background/Lock Screen recovery is still required.
+
+## iOS 1.9.1: shuffled Stroop choices
+
+Every answer label changes position after a correct answer, and the next correct answer also moves away from the previous correct button. Ink/word conflicts and mismatched button backgrounds remain. Wrong attempts do not shuffle the current round or extend its timer. The saved order, colors, deadline and progress survive app restarts; sessions created by 1.9.0 retain their original order until the next round. Other wake-up tests, timers and AlarmKit delivery are unchanged.

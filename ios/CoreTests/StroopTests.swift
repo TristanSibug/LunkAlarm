@@ -2,16 +2,21 @@ import XCTest
 @testable import LunkAlarmCore
 
 final class StroopTests: XCTestCase {
-    func testWordsAndButtonColorsConflictWhileAnswerPositionsStayFixed() {
-        var previous: StroopColor?
+    func testWordsAndButtonColorsConflictWhileEveryChoiceMoves() {
+        var previous: StroopRound?
         for seed in UInt64(0)..<500 {
-            let round = StroopRound.create(previousInk: previous, seed: seed)
+            let round = StroopRound.create(previous: previous, seed: seed)
             XCTAssertTrue(round.valid)
             XCTAssertNotEqual(round.ink, round.word)
-            XCTAssertNotEqual(round.ink, previous)
+            XCTAssertNotEqual(round.ink, previous?.ink)
             XCTAssertEqual(Set(round.buttonColors), Set(StroopColor.allCases))
-            for (label, background) in zip(StroopColor.allCases, round.buttonColors) { XCTAssertNotEqual(label, background) }
-            previous = round.ink
+            for (label, background) in zip(round.choices, round.buttonColors) { XCTAssertNotEqual(label, background) }
+            XCTAssertEqual(Set(round.choices), Set(StroopColor.allCases))
+            if let previous {
+                XCTAssertTrue(zip(round.choices, previous.choices).allSatisfy { $0 != $1 })
+                XCTAssertNotEqual(round.choices.firstIndex(of: round.ink), previous.choices.firstIndex(of: previous.ink))
+            }
+            previous = round
         }
         XCTAssertEqual(StroopColor.allCases.map(\.name), ["Red", "Blue", "Green", "Yellow"])
     }
@@ -117,6 +122,23 @@ final class StroopTests: XCTestCase {
         XCTAssertFalse(decoded.stroopPending); XCTAssertEqual(decoded.stroopAnswered, 0)
         var state = SavedState(); state.alarms = [alarm]; state.challengeSession = SavedChallengeSession(owner: alarm.id, challenge: decoded)
         XCTAssertNoThrow(try state.validated())
+    }
+    func testLegacyStroopRoundKeepsItsLayoutUntilTheNextCorrectAnswer() throws {
+        let now = Date(timeIntervalSince1970: 1000)
+        var games = WakeGameOptions(); games.stroop = true
+        var payload = try JSONSerialization.jsonObject(with: JSONEncoder().encode(TimedWakeChallenge(typing: false, mathCount: 0, games: games, now: now))) as! [String: Any]
+        payload["stroopRound"] = ["word": "blue", "ink": "red", "buttonColors": ["blue", "green", "yellow", "red"]]
+        payload["stroopProgress"] = 1
+        var c = try JSONDecoder().decode(TimedWakeChallenge.self, from: JSONSerialization.data(withJSONObject: payload))
+        XCTAssertTrue(c.valid); XCTAssertEqual(c.stroopAnswered, 1)
+        let before = c.stroopRound!
+        XCTAssertEqual(before.choices, StroopColor.allCases)
+        XCTAssertEqual(c.submit(stroop: .red, now: now.addingTimeInterval(1)), .correct)
+        let after = c.stroopRound!
+        XCTAssertTrue(zip(after.choices, before.choices).allSatisfy { $0 != $1 })
+        XCTAssertNotEqual(after.choices.firstIndex(of: after.ink), before.choices.firstIndex(of: before.ink))
+        let restored = try JSONDecoder().decode(TimedWakeChallenge.self, from: JSONEncoder().encode(c))
+        XCTAssertEqual(restored.stroopRound, after)
     }
     func testCorruptStroopProgressAndRoundsAreRejected() throws {
         var games = WakeGameOptions(); games.stroop = true

@@ -603,7 +603,7 @@ final class AlarmInteractionTests: XCTestCase {
         XCTAssertEqual(app.staticTexts["stroopProgress"].label, "0 / 8 rounds")
         XCTAssertFalse(app.switches["challengeSoundToggle"].exists)
         let labels = ["red", "blue", "green", "yellow"]
-        let before = labels.map { app.buttons["stroop-choice-" + $0].frame }
+        var before = labels.map { app.buttons["stroop-choice-" + $0].frame }
         for color in labels {
             let button = app.buttons["stroop-choice-" + color]
             XCTAssertTrue(button.isHittable)
@@ -619,10 +619,14 @@ final class AlarmInteractionTests: XCTestCase {
             if index < 7 {
                 XCTAssertEqual(app.staticTexts["stroopProgress"].label, "\(index + 1) / 8 rounds")
                 XCTAssertNotEqual(stroopInk(app), ink)
-                for (color, frame) in zip(labels, before) {
-                    XCTAssertEqual(app.buttons["stroop-choice-" + color].frame.minX, frame.minX, accuracy: 1)
-                    XCTAssertEqual(app.buttons["stroop-choice-" + color].frame.minY, frame.minY, accuracy: 1)
+                let after = labels.map { app.buttons["stroop-choice-" + $0].frame }
+                for (old, new) in zip(before, after) {
+                    XCTAssertTrue(abs(old.minX - new.minX) > 1 || abs(old.minY - new.minY) > 1)
                 }
+                let oldAnswer = before[labels.firstIndex(of: ink)!]
+                let newAnswer = after[labels.firstIndex(of: stroopInk(app))!]
+                XCTAssertTrue(abs(oldAnswer.minX - newAnswer.minX) > 1 || abs(oldAnswer.minY - newAnswer.minY) > 1)
+                before = after
             }
         }
         XCTAssertTrue(app.buttons["retryPractice"].waitForExistence(timeout: 5))

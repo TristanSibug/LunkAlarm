@@ -797,16 +797,37 @@
     }
     return a;
   }
-  function makeStroop(previousInk) {
+  function stroopOrders(colors) {
+    return colors.length
+      ? colors.flatMap((color) =>
+          stroopOrders(colors.filter((c) => c !== color)).map((rest) => [
+            color,
+            ...rest,
+          ]),
+        )
+      : [[]];
+  }
+  function makeStroop(previous) {
     const colors = Object.keys(stroopColors),
-      available = colors.filter((color) => color !== previousInk),
+      previousOrder = previous?.choiceOrder ?? colors,
+      available = colors.filter((color) => color !== previous?.ink),
       ink = available[randomInt(0, available.length - 1)],
       words = colors.filter((color) => color !== ink),
+      orders = stroopOrders(colors).filter(
+        (order) =>
+          !previous ||
+          (order.every((color, i) => color !== previousOrder[i]) &&
+            order.indexOf(ink) !== previousOrder.indexOf(previous.ink)),
+      ),
+      choiceOrder = orders[randomInt(0, orders.length - 1)],
       offset = randomInt(1, colors.length - 1);
     return {
       ink,
       word: words[randomInt(0, words.length - 1)],
-      buttonColors: colors.map((_, i) => colors[(i + offset) % colors.length]),
+      choiceOrder,
+      buttonColors: choiceOrder.map(
+        (_, i) => choiceOrder[(i + offset) % colors.length],
+      ),
     };
   }
   function drawMission() {
@@ -875,12 +896,22 @@
   function drawStroop() {
     const m = mission,
       colors = Object.keys(stroopColors),
+      savedOrder = m.stroop?.choiceOrder ?? colors,
       focusedColor = document.activeElement?.dataset.stroopChoice;
     if (
       !stroopColors[m.stroop?.ink] ||
       !stroopColors[m.stroop?.word] ||
-      m.stroop.buttonColors?.length !== colors.length ||
-      !m.stroop.buttonColors.every((color) => stroopColors[color])
+      m.stroop.word === m.stroop.ink ||
+      !Array.isArray(savedOrder) ||
+      savedOrder.length !== colors.length ||
+      new Set(savedOrder).size !== colors.length ||
+      !savedOrder.every((color) => stroopColors[color]) ||
+      !Array.isArray(m.stroop.buttonColors) ||
+      m.stroop.buttonColors.length !== colors.length ||
+      new Set(m.stroop.buttonColors).size !== colors.length ||
+      !m.stroop.buttonColors.every(
+        (color, i) => stroopColors[color] && color !== savedOrder[i],
+      )
     ) {
       m.stroop = makeStroop();
       stash();
@@ -892,7 +923,7 @@
       `<h3>${m.done} / ${m.s.stroopRounds} rounds</h3>
       <p class="section-note">Choose the word’s ink color. Ignore the word and button colors.</p>
       <div class="stroop-stage"><div class="stroop-word" data-ink="${round.ink}" style="color:${stroopColors[round.ink].ink}" aria-label="${stroopColors[round.word].label}, written in ${stroopColors[round.ink].label.toLowerCase()} ink">${stroopColors[round.word].label.toUpperCase()}</div></div>
-      <div class="stroop-choices">${colors
+      <div class="stroop-choices">${(round.choiceOrder ?? colors)
         .map((color, i) => {
           const paint = stroopColors[round.buttonColors[i]];
           return `<button type="button" class="stroop-choice" data-stroop-choice="${color}" data-button-color="${round.buttonColors[i]}" style="--stroop-fill:${paint.fill};--stroop-text:${paint.text}">${stroopColors[color].label}</button>`;
@@ -917,7 +948,7 @@
           m.done++;
           $("missionHint").textContent = "";
           if (m.done === m.s.stroopRounds) return advance();
-          m.stroop = makeStroop(round.ink);
+          m.stroop = makeStroop(round);
           m.deadline = trueNow() + m.s.stroopSeconds * 1000;
           stash();
           drawStroop();

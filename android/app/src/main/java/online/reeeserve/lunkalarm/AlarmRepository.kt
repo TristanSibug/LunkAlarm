@@ -95,7 +95,7 @@ object AlarmJson {
             .put("solution", JSONArray(b.solution)).put("values", JSONArray(b.values))) }
         put("stroop", c.stroop); put("stroopRounds", c.stroopRounds); put("stroopSeconds", c.stroopSeconds); put("stroopAnswered", c.stroopAnswered)
         c.stroopRound?.let { r -> put("stroopRound", JSONObject().put("word", r.word.name).put("ink", r.ink.name)
-            .put("buttonColors", JSONArray(r.buttonColors.map { it.name }))) }
+            .put("buttonColors", JSONArray(r.buttonColors.map { it.name })).put("choiceOrder", JSONArray(r.choiceOrder.map { it.name }))) }
     }
     private fun JSONObject.ints(key: String): List<Int> = getJSONArray(key).let { a -> (0 until a.length()).map { a.getInt(it) } }
     private fun challenge(j: JSONObject): WakeChallenge {
@@ -116,7 +116,8 @@ object AlarmJson {
             sudokuBoard = j.optJSONObject("sudokuBoard")?.let { SudokuBoard(it.getInt("size"), it.ints("givens"), it.ints("solution"), it.ints("values")) },
             stroop = j.optBoolean("stroop", false), stroopRounds = j.optInt("stroopRounds", 5), stroopSeconds = j.optInt("stroopSeconds", 5), stroopAnswered = j.optInt("stroopAnswered", 0),
             stroopRound = j.optJSONObject("stroopRound")?.let { r -> StroopRound(StroopColor.valueOf(r.getString("word")), StroopColor.valueOf(r.getString("ink")),
-                r.getJSONArray("buttonColors").let { colors -> (0 until colors.length()).map { StroopColor.valueOf(colors.getString(it)) } }) }
+                r.getJSONArray("buttonColors").let { colors -> (0 until colors.length()).map { StroopColor.valueOf(colors.getString(it)) } },
+                r.optJSONArray("choiceOrder")?.let { colors -> (0 until colors.length()).map { StroopColor.valueOf(colors.getString(it)) } } ?: StroopColor.entries) }
         ).also {
             require(it.puzzlePieces in WakeTimers.pieces && it.puzzleSeconds in WakeTimers.puzzle && it.placedPieces.all { id -> id in 0 until it.puzzlePieces })
             require(it.total in 0..8 && it.remaining in 0..it.total && it.codeLength in 4..10 && it.code.length == it.codeLength)

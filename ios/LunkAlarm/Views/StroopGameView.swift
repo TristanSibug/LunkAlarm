@@ -20,7 +20,7 @@ struct StroopGameView: View {
                 .accessibilityLabel("\(round.word.name), written in \(round.ink.name.lowercased()) ink")
                 .accessibilityIdentifier("stroopWord")
             LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 12), count: 2), spacing: 12) {
-                ForEach(Array(StroopColor.allCases.enumerated()), id: \.element) { index, color in
+                ForEach(Array(round.choices.enumerated()), id: \.element) { index, color in
                     let paint = round.buttonColors[index]
                     Button {
                         AlarmHaptics.keypress()

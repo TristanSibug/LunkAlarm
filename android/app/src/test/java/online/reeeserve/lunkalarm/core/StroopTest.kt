@@ -8,13 +8,18 @@ import kotlin.random.Random
 
 class StroopTest {
     @Test fun roundsAlwaysUseConflictingWordsAndBackgroundsWithoutRepeatingTheAnswer() {
-        var previous: StroopColor? = null
+        var previous: StroopRound? = null
         repeat(500) { seed ->
             val round = StroopRound.create(previous, Random(seed))
-            round.validate(); assertNotEquals(round.word, round.ink); assertNotEquals(previous, round.ink)
+            round.validate(); assertNotEquals(round.word, round.ink); assertNotEquals(previous?.ink, round.ink)
             assertEquals(StroopColor.entries.toSet(), round.buttonColors.toSet())
-            StroopColor.entries.zip(round.buttonColors).forEach { (label, background) -> assertNotEquals(label, background) }
-            previous = round.ink
+            round.choiceOrder.zip(round.buttonColors).forEach { (label, background) -> assertNotEquals(label, background) }
+            assertEquals(StroopColor.entries.toSet(), round.choiceOrder.toSet())
+            previous?.let { old ->
+                assertTrue(round.choiceOrder.zip(old.choiceOrder).all { (a, b) -> a != b })
+                assertNotEquals(round.choiceOrder.indexOf(round.ink), old.choiceOrder.indexOf(old.ink))
+            }
+            previous = round
         }
         assertEquals(listOf("Red", "Blue", "Green", "Yellow"), StroopColor.entries.map { it.label })
     }
@@ -96,6 +101,23 @@ class StroopTest {
         assertFalse(restored.draft.stroop); assertFalse(restored.alarms.single().draft.stroop)
         assertFalse(restored.session!!.challenge.stroopPending); assertTrue(restored.session!!.challenge.puzzlePending)
         assertEquals(5, restored.draft.stroopRounds); assertEquals(5, restored.draft.stroopSeconds)
+    }
+    @Test fun legacyStroopRoundKeepsItsOrderUntilTheNextCorrectAnswer() {
+        val d = AlarmDraft(stroop = true)
+        val a = AlarmRecord.create(d, 100000, 1000, 1).copy(active = true)
+        val json = JSONObject(AlarmJson.encode(AppState(alarms = listOf(a), session = AlarmSession(a.id, WakeChallenge.create(d).start(1000)))))
+        json.getJSONObject("session").getJSONObject("challenge").put("stroopAnswered", 1)
+            .put("stroopRound", JSONObject("""{"word":"BLUE","ink":"RED","buttonColors":["BLUE","GREEN","YELLOW","RED"]}"""))
+        val state = AlarmJson.decode(json.toString())
+        val before = state.session!!.challenge.stroopRound!!
+        assertEquals(StroopColor.entries, before.choiceOrder)
+        val next = state.session!!.challenge.submitStroop(StroopColor.RED, 2000).challenge
+        val after = next.stroopRound!!
+        assertEquals(2, next.stroopAnswered)
+        assertTrue(after.choiceOrder.zip(before.choiceOrder).all { (a, b) -> a != b })
+        assertNotEquals(after.choiceOrder.indexOf(after.ink), before.choiceOrder.indexOf(before.ink))
+        val updated = state.copy(session = state.session!!.copy(challenge = next))
+        assertEquals(updated, AlarmJson.decode(AlarmJson.encode(updated)))
     }
     @Test fun corruptRoundsAndProgressAreRejected() {
         val d = AlarmDraft(stroop = true)

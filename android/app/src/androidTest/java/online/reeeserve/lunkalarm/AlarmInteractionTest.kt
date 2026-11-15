@@ -460,7 +460,7 @@ class AlarmInteractionTest {
         rule.onNodeWithTag("stroop-progress").assertTextEquals("0 / 8 rounds")
         rule.onNodeWithTag("challenge-code").assertDoesNotExist()
         assertTrue(repo.state.value.alarms.isEmpty()); assertNull(repo.state.value.session); assertFalse(AlarmService.isPlaying)
-        val frames = StroopColor.entries.map { rule.onNodeWithTag("stroop-choice-${it.name.lowercase()}").fetchSemanticsNode().boundsInRoot }
+        var frames = StroopColor.entries.map { rule.onNodeWithTag("stroop-choice-${it.name.lowercase()}").fetchSemanticsNode().boundsInRoot }
         for (color in StroopColor.entries) {
             val node = rule.onNodeWithTag("stroop-choice-${color.name.lowercase()}").assertIsDisplayed().fetchSemanticsNode()
             assertNotEquals(color.label + " background", node.config[androidx.compose.ui.semantics.SemanticsProperties.StateDescription])
@@ -475,10 +475,11 @@ class AlarmInteractionTest {
             if (i < 7) {
                 rule.onNodeWithTag("stroop-progress").assertTextEquals("${i + 1} / 8 rounds")
                 assertNotEquals(ink, stroopInk())
-                StroopColor.entries.forEachIndexed { index, color ->
-                    val frame = rule.onNodeWithTag("stroop-choice-${color.name.lowercase()}").fetchSemanticsNode().boundsInRoot
-                    assertEquals(frames[index].left, frame.left, 1f); assertEquals(frames[index].top, frame.top, 1f)
-                }
+                val after = StroopColor.entries.map { rule.onNodeWithTag("stroop-choice-${it.name.lowercase()}").fetchSemanticsNode().boundsInRoot }
+                frames.zip(after).forEach { (old, new) -> assertTrue(kotlin.math.abs(old.left - new.left) > 1f || kotlin.math.abs(old.top - new.top) > 1f) }
+                val oldAnswer = frames[ink.ordinal]; val newAnswer = after[stroopInk().ordinal]
+                assertTrue(kotlin.math.abs(oldAnswer.left - newAnswer.left) > 1f || kotlin.math.abs(oldAnswer.top - newAnswer.top) > 1f)
+                frames = after
             }
         }
         rule.onNodeWithTag("retry-practice").performClick()

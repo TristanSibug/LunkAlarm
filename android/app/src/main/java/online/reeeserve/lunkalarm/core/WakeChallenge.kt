@@ -107,7 +107,7 @@ data class WakeChallenge(
             return Submission(this, AnswerResult.INCOMPLETE)
         if (color != round.ink) return Submission(this, AnswerResult.INCORRECT)
         val next = copy(stroopAnswered = stroopAnswered + 1,
-            stroopRound = if (stroopAnswered + 1 < stroopRounds) StroopRound.create(previousInk = round.ink) else round)
+            stroopRound = if (stroopAnswered + 1 < stroopRounds) StroopRound.create(previous = round) else round)
         return Submission(next.renew(now), AnswerResult.CORRECT)
     }
     companion object {
