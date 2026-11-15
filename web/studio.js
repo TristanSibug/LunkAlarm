@@ -30,11 +30,14 @@
     sudoku: false,
     difficulty: 0,
     sudokuSeconds: 120,
+    stroop: false,
+    stroopRounds: 5,
+    stroopSeconds: 5,
   });
   function cleanTests(value) {
     const d = defaults(),
       v = value && typeof value === "object" ? value : {};
-    for (const k of ["typing", "math", "puzzle", "mines", "sudoku"])
+    for (const k of ["typing", "math", "puzzle", "mines", "sudoku", "stroop"])
       d[k] = v[k] === true;
     for (const [k, choices] of Object.entries({
       codeLength: [4, 5, 6, 7, 8, 9, 10],
@@ -47,6 +50,8 @@
       mineSeconds: [15, 20, 25, 30, 35, 40],
       difficulty: [0, 1, 2, 3],
       sudokuSeconds: [60, 120, 180, 240],
+      stroopRounds: [3, 4, 5, 6, 7, 8],
+      stroopSeconds: [3, 4, 5, 6],
     }))
       if (choices.includes(v[k])) d[k] = v[k];
     d.ops = Array.isArray(v.ops)
@@ -75,6 +80,7 @@
     puzzle: "Puzzle",
     mines: "Minesweeper",
     sudoku: "Sudoku",
+    stroop: "Stroop",
   };
   const glyph = {
     typing: "Aa",
@@ -83,6 +89,19 @@
       '<svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M4 5h6c-3-5 7-5 4 0h6v6c-5-3-5 7 0 4v6h-6c3-5-7-5-4 0H4v-6c5 3 5-7 0-4Z"/></svg>',
     mines: "☼",
     sudoku: "▦",
+    stroop:
+      '<svg viewBox="0 0 28 28" width="28" height="28" aria-hidden="true"><circle cx="8" cy="9" r="6" fill="#ff6778"/><circle cx="20" cy="9" r="6" fill="#6daaff"/><circle cx="14" cy="20" r="6" fill="#ffda6b"/></svg>',
+  };
+  const stroopColors = {
+    red: { label: "Red", ink: "#ff6778", fill: "#9c2138", text: "#ffffff" },
+    blue: { label: "Blue", ink: "#6daaff", fill: "#2154a0", text: "#ffffff" },
+    green: { label: "Green", ink: "#55dba9", fill: "#11734e", text: "#ffffff" },
+    yellow: {
+      label: "Yellow",
+      ink: "#ffda6b",
+      fill: "#f1c84f",
+      text: "#17130a",
+    },
   };
   function nextTime(hour, minute, repeatDays, now = trueNow()) {
     for (let i = 0; i < 8; i++) {
@@ -593,6 +612,10 @@
       ["difficulty", "Difficulty", [0, 1, 2, 3]],
       ["sudokuSeconds", "Time limit", [60, 120, 180, 240]],
     ],
+    stroop: [
+      ["stroopRounds", "Rounds", [3, 4, 5, 6, 7, 8]],
+      ["stroopSeconds", "Time per round", [3, 4, 5, 6]],
+    ],
   };
   function tiles() {
     $("testTiles").innerHTML = Object.keys(testNames)
@@ -728,7 +751,9 @@
               ? "puzzleSeconds"
               : k === "mines"
                 ? "mineSeconds"
-                : "sudokuSeconds"
+                : k === "stroop"
+                  ? "stroopSeconds"
+                  : "sudokuSeconds"
       ] *
         1000;
     if (k === "typing") m.code = makeCode(m.s.codeLength);
@@ -740,6 +765,7 @@
     }
     if (k === "mines") m.board = makeMine(m.s.size);
     if (k === "sudoku") m.board = makeSudoku(m.s.difficulty);
+    if (k === "stroop") m.stroop = makeStroop();
     stash();
     drawMission();
   }
@@ -770,6 +796,18 @@
       [a[i], a[j]] = [a[j], a[i]];
     }
     return a;
+  }
+  function makeStroop(previousInk) {
+    const colors = Object.keys(stroopColors),
+      available = colors.filter((color) => color !== previousInk),
+      ink = available[randomInt(0, available.length - 1)],
+      words = colors.filter((color) => color !== ink),
+      offset = randomInt(1, colors.length - 1);
+    return {
+      ink,
+      word: words[randomInt(0, words.length - 1)],
+      buttonColors: colors.map((_, i) => colors[(i + offset) % colors.length]),
+    };
   }
   function drawMission() {
     const m = mission;
@@ -832,6 +870,63 @@
     if (k === "puzzle") drawPuzzle();
     if (k === "mines") drawMine();
     if (k === "sudoku") drawSudoku();
+    if (k === "stroop") drawStroop();
+  }
+  function drawStroop() {
+    const m = mission,
+      colors = Object.keys(stroopColors),
+      focusedColor = document.activeElement?.dataset.stroopChoice;
+    if (
+      !stroopColors[m.stroop?.ink] ||
+      !stroopColors[m.stroop?.word] ||
+      m.stroop.buttonColors?.length !== colors.length ||
+      !m.stroop.buttonColors.every((color) => stroopColors[color])
+    ) {
+      m.stroop = makeStroop();
+      stash();
+    }
+    const round = m.stroop;
+    $("missionTimer").textContent =
+      Math.max(0, Math.ceil((m.deadline - trueNow()) / 1000)) + "s remaining";
+    $("missionBody").innerHTML =
+      `<h3>${m.done} / ${m.s.stroopRounds} rounds</h3>
+      <p class="section-note">Choose the word’s ink color. Ignore the word and button colors.</p>
+      <div class="stroop-stage"><div class="stroop-word" data-ink="${round.ink}" style="color:${stroopColors[round.ink].ink}" aria-label="${stroopColors[round.word].label}, written in ${stroopColors[round.ink].label.toLowerCase()} ink">${stroopColors[round.word].label.toUpperCase()}</div></div>
+      <div class="stroop-choices">${colors
+        .map((color, i) => {
+          const paint = stroopColors[round.buttonColors[i]];
+          return `<button type="button" class="stroop-choice" data-stroop-choice="${color}" data-button-color="${round.buttonColors[i]}" style="--stroop-fill:${paint.fill};--stroop-text:${paint.text}">${stroopColors[color].label}</button>`;
+        })
+        .join("")}</div>`;
+    $("missionBody")
+      .querySelectorAll("[data-stroop-choice]")
+      .forEach((button) => {
+        button.onclick = () => {
+          if (
+            mission !== m ||
+            m.steps[m.index] !== "stroop" ||
+            m.stroop !== round
+          )
+            return;
+          if (trueNow() >= m.deadline) return resetTests();
+          if (button.dataset.stroopChoice !== round.ink) {
+            $("missionHint").textContent =
+              "Try again. Choose the word’s ink color.";
+            return;
+          }
+          m.done++;
+          $("missionHint").textContent = "";
+          if (m.done === m.s.stroopRounds) return advance();
+          m.stroop = makeStroop(round.ink);
+          m.deadline = trueNow() + m.s.stroopSeconds * 1000;
+          stash();
+          drawStroop();
+        };
+      });
+    if (focusedColor)
+      $("missionBody")
+        .querySelector(`[data-stroop-choice="${focusedColor}"]`)
+        ?.focus({ preventScroll: true });
   }
   function drawPuzzle() {
     const m = mission,
@@ -1685,7 +1780,7 @@
     );
   });
   // Keep test generation inspectable by the browser regression runner without changing production scheduling.
-  window.LunkStudio = { nextTime, makeMine, makeSudoku, solutions };
+  window.LunkStudio = { nextTime, makeMine, makeSudoku, makeStroop, solutions };
   tick();
   startTicker();
 })();

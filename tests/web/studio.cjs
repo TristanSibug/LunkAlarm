@@ -225,6 +225,7 @@ const server = createServer(async (req, res) => {
     assert.equal(a.id, "legacy");
     assert.equal(a.enabled, false);
     assert(a.tests.typing && a.tests.math);
+    assert.equal(a.tests.stroop, false);
     checks++;
     await close(p);
     const record = (tests) => ({
@@ -1198,11 +1199,273 @@ const server = createServer(async (req, res) => {
       await close(p);
     }
 
+    // Stroop rounds always conflict with the ink, with fixed labels and decoy fills.
+    p = await fresh({
+      "wake.studio.tests": { stroopRounds: 99, stroopSeconds: 0 },
+    });
+    assert(
+      await p.evaluate(() => {
+        const colors = ["red", "blue", "green", "yellow"];
+        let previous;
+        for (let i = 0; i < 500; i++) {
+          const round = LunkStudio.makeStroop(previous);
+          if (
+            !colors.includes(round.ink) ||
+            !colors.includes(round.word) ||
+            round.ink === round.word ||
+            round.ink === previous ||
+            new Set(round.buttonColors).size !== 4 ||
+            round.buttonColors.some(
+              (color, n) => !colors.includes(color) || color === colors[n],
+            )
+          )
+            return false;
+          previous = round.ink;
+        }
+        return true;
+      }),
+    );
+    await workspace(p);
+    assert.equal(await p.locator(".test-tile").count(), 6);
+    await p.locator("[data-test=stroop]").click();
+    assert.equal(
+      await p
+        .locator("[data-setting=stroopRounds][aria-pressed=true]")
+        .getAttribute("data-value"),
+      "5",
+    );
+    assert.equal(
+      await p
+        .locator("[data-setting=stroopSeconds][aria-pressed=true]")
+        .getAttribute("data-value"),
+      "5",
+    );
+    assert.deepEqual(
+      await p.locator("[data-setting=stroopRounds]").allTextContents(),
+      ["3", "4", "5", "6", "7", "8"],
+    );
+    assert.deepEqual(
+      await p.locator("[data-setting=stroopSeconds]").allTextContents(),
+      ["3s", "4s", "5s", "6s"],
+    );
+    checks++;
+    await close(p);
+
+    p = await fresh({ "wake.studio.tests": { typing: true } });
+    await workspace(p);
+    await p.locator("[data-test=stroop]").click();
+    await p.locator('[data-setting=stroopRounds][data-value="8"]').click();
+    await p.locator('[data-setting=stroopSeconds][data-value="6"]').click();
+    await p.screenshot({ path: path.join(output, "stroop-settings.png") });
+    await p.locator("#tryTest").click();
+    assert.equal(
+      await p.locator("#missionTitle").textContent(),
+      "Stroop practice",
+    );
+    assert.deepEqual(
+      await p.locator("[data-stroop-choice]").allTextContents(),
+      ["Red", "Blue", "Green", "Yellow"],
+    );
+    let ink = await p.locator(".stroop-word").getAttribute("data-ink");
+    // Picking a matching button background is wrong: the label names the answer.
+    await p.locator(`[data-button-color="${ink}"]`).click();
+    assert.equal(
+      await p.locator("#missionBody h3").textContent(),
+      "0 / 8 rounds",
+    );
+    assert.match(await p.locator("#missionHint").textContent(), /Try again/);
+    await p.screenshot({ path: path.join(output, "stroop-practice.png") });
+    for (let i = 0; i < 8; i++) {
+      const word = p.locator(".stroop-word");
+      ink = await word.getAttribute("data-ink");
+      assert.notEqual((await word.textContent()).toLowerCase(), ink);
+      const button = p.locator(`[data-stroop-choice="${ink}"]`);
+      await button.focus();
+      await p.keyboard.press("Enter");
+      if (i < 7) {
+        assert.equal(
+          await p.locator("#missionBody h3").textContent(),
+          `${i + 1} / 8 rounds`,
+        );
+        assert.notEqual(await word.getAttribute("data-ink"), ink);
+        assert.equal(
+          await p.locator(":focus").getAttribute("data-stroop-choice"),
+          ink,
+        );
+        assert.deepEqual(
+          await p.locator("[data-stroop-choice]").allTextContents(),
+          ["Red", "Blue", "Green", "Yellow"],
+        );
+      }
+    }
+    assert.equal(await p.locator("#finishMission").textContent(), "Try again");
+    await p.locator("#finishMission").click();
+    assert.equal(
+      await p.locator("#missionBody h3").textContent(),
+      "0 / 8 rounds",
+    );
+    await p.locator("#exitPractice").click();
+    assert.equal(await p.locator("#setTest").textContent(), "Set");
+    assert.equal((await storage(p)).length, 0);
+    await p.locator("#setTest").click();
+    assert.equal(
+      await p.locator("[data-test=typing]").getAttribute("aria-pressed"),
+      "true",
+    );
+    await p.locator("#alarmName").fill("Stroop wake-up");
+    await p.locator("#setBtn").click();
+    const stroopAlarm = (await storage(p))[0];
+    assert.equal(stroopAlarm.tests.stroop, true);
+    assert.equal(stroopAlarm.tests.stroopRounds, 8);
+    assert.equal(stroopAlarm.tests.stroopSeconds, 6);
+    assert(
+      (await p.locator(".routine-tests").textContent()).includes("Stroop"),
+    );
+    await p
+      .getByRole("button", { name: "Options for Stroop wake-up", exact: true })
+      .click();
+    await p.locator("#routineActions [data-action=duplicate]").click();
+    assert.equal((await storage(p)).length, 2);
+    assert.deepEqual((await storage(p))[1].tests, stroopAlarm.tests);
+    await p.reload();
+    await workspace(p);
+    await p.locator("[data-test=stroop]").click();
+    assert.equal(await p.locator("#setTest").textContent(), "Unset");
+    await p.locator("#closeTest").click();
+    assert.equal(
+      await p.locator("[data-test=stroop]").getAttribute("aria-pressed"),
+      "true",
+    );
+    checks++;
+    await close(p);
+
+    // Real alarms retain rounds across reload and restart the entire sequence on expiry.
+    p = await fresh({
+      "wake.alarms": [
+        record({
+          math: true,
+          count: 1,
+          mathSeconds: 15,
+          stroop: true,
+          stroopRounds: 3,
+          stroopSeconds: 3,
+        }),
+      ],
+    });
+    await p.waitForSelector("#missionAnswer");
+    await p
+      .locator("#missionAnswer")
+      .fill(
+        String(
+          await p.evaluate(
+            () =>
+              JSON.parse(localStorage.getItem("wake.studio.mission")).answer,
+          ),
+        ),
+      );
+    await p.waitForSelector(".stroop-word");
+    const firstDeadline = await p.evaluate(
+      () => JSON.parse(localStorage.getItem("wake.studio.mission")).deadline,
+    );
+    ink = await p.locator(".stroop-word").getAttribute("data-ink");
+    await p.locator(`[data-stroop-choice="${ink}"]`).click();
+    savedMission = await p.evaluate(() =>
+      JSON.parse(localStorage.getItem("wake.studio.mission")),
+    );
+    assert.equal(savedMission.done, 1);
+    assert(savedMission.deadline > firstDeadline);
+    await p.reload();
+    await p.waitForSelector(".stroop-word");
+    assert.equal(
+      await p.locator("#missionBody h3").textContent(),
+      "1 / 3 rounds",
+    );
+    assert.deepEqual(
+      await p.evaluate(
+        () => JSON.parse(localStorage.getItem("wake.studio.mission")).stroop,
+      ),
+      savedMission.stroop,
+    );
+    ink = await p.locator(".stroop-word").getAttribute("data-ink");
+    await p.locator(`[data-button-color="${ink}"]`).click();
+    assert.equal(await p.locator("#answerSound").isChecked(), false);
+    await p.waitForSelector("#missionAnswer", { timeout: 7000 });
+    assert.equal(
+      await p.locator("#missionBody h3").textContent(),
+      "0 / 1 answered",
+    );
+    assert(await p.locator("#answerSound").isChecked());
+    await p
+      .locator("#missionAnswer")
+      .fill(
+        String(
+          await p.evaluate(
+            () =>
+              JSON.parse(localStorage.getItem("wake.studio.mission")).answer,
+          ),
+        ),
+      );
+    for (let i = 0; i < 3; i++) {
+      ink = await p.locator(".stroop-word").getAttribute("data-ink");
+      await p.locator(`[data-stroop-choice="${ink}"]`).click();
+    }
+    await p.locator("#finishMission").click();
+    assert.equal((await storage(p)).length, 0);
+    checks++;
+    await close(p);
+
+    for (const [viewport, theme] of [
+      [{ width: 320, height: 740 }, "light"],
+      [{ width: 390, height: 844 }, "midnight-cherry"],
+      [{ width: 1600, height: 1000 }, "deep-ocean"],
+    ]) {
+      p = await fresh({ "wake.theme": theme }, viewport, viewport.width < 1000);
+      await workspace(p);
+      await p.locator("[data-test=stroop]").click();
+      await p.locator('[data-setting=stroopSeconds][data-value="6"]').click();
+      await p.locator("#tryTest").click();
+      assert(
+        await p
+          .locator("#mission")
+          .evaluate((el) => el.scrollWidth <= el.clientWidth + 1),
+      );
+      assert(
+        await p
+          .locator(".stroop-choices")
+          .evaluate((el) => el.scrollWidth <= el.clientWidth),
+      );
+      assert.equal(await p.locator("[data-stroop-choice]").count(), 4);
+      assert(
+        await p.locator(".stroop-choice").evaluateAll((buttons) =>
+          buttons.every((button) => {
+            const style = getComputedStyle(button);
+            const luminance = (color) => {
+              const rgb = color
+                .match(/[\d.]+/g)
+                .slice(0, 3)
+                .map((n) => Number(n) / 255)
+                .map((n) =>
+                  n <= 0.04045 ? n / 12.92 : ((n + 0.055) / 1.055) ** 2.4,
+                );
+              return rgb[0] * 0.2126 + rgb[1] * 0.7152 + rgb[2] * 0.0722;
+            };
+            const a = luminance(style.color),
+              b = luminance(style.backgroundColor);
+            return (Math.max(a, b) + 0.05) / (Math.min(a, b) + 0.05) >= 4.5;
+          }),
+        ),
+        "Colored answer labels stay readable",
+      );
+      await p.screenshot({ path: path.join(output, `stroop-${theme}.png`) });
+      checks++;
+      await close(p);
+    }
+
     assert.deepEqual(errors, []);
     console.log(
       "PASS",
       checks,
-      "browser scenarios; desktop/mobile layouts, saved data, all five games, and quota handling.",
+      "browser scenarios; desktop/mobile layouts, saved data, all six games, and quota handling.",
     );
   } catch (error) {
     error.testContext = `After ${checks} completed browser scenarios`;
