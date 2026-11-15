@@ -1466,6 +1466,97 @@
     true,
   );
   window.addEventListener("resize", closeRoutineMenu);
+  // Give the editor enough horizontal space before allowing page-level overflow.
+  // Run inside the view update so the clock transition captures its final size.
+  const workspaceApp = $("mainApp"),
+    setupFields = document.querySelector(".setup-fields");
+  const fitClasses = [
+    "editor-fit",
+    "editor-spread",
+    "schedule-below",
+    "editor-page-flow",
+  ];
+  function fitDesktopEditor() {
+    const previousScroll = window.scrollY;
+    try {
+      fitDesktopEditorLayout();
+    } finally {
+      if (
+        desktopWorkspace.matches &&
+        alarmPickerOpen &&
+        window.scrollY !== previousScroll
+      )
+        window.scrollTo({ top: previousScroll, behavior: "instant" });
+      if (actionOwner) positionRoutineMenu();
+    }
+  }
+  function fitDesktopEditorLayout() {
+    workspaceApp.classList.remove(...fitClasses);
+    for (const key of ["--editor-width", "--clock-width", "--workspace-height"])
+      workspaceApp.style.removeProperty(key);
+    if (!desktopWorkspace.matches || !alarmPickerOpen) return;
+    const appStyle = getComputedStyle(workspaceApp),
+      available =
+        workspaceApp.clientWidth -
+        parseFloat(appStyle.paddingLeft) -
+        parseFloat(appStyle.paddingRight),
+      gap = parseFloat(appStyle.columnGap),
+      originalWidth = $("setupCard").getBoundingClientRect().width,
+      originalClockWidth = document
+        .querySelector(".clock-card")
+        .getBoundingClientRect().width,
+      clockWidth = Math.max(
+        220,
+        Math.min(originalClockWidth, available * 0.22),
+      );
+    workspaceApp.style.setProperty("--clock-width", `${originalClockWidth}px`);
+    workspaceApp.style.setProperty(
+      "--workspace-height",
+      `${$("setupCard").getBoundingClientRect().height}px`,
+    );
+    workspaceApp.classList.add("editor-fit");
+    const fits = () => setupFields.scrollHeight <= setupFields.clientHeight + 1;
+    workspaceApp.style.setProperty("--editor-width", `${originalWidth}px`);
+    if (fits()) return;
+    workspaceApp.style.setProperty("--clock-width", `${clockWidth}px`);
+    function tryWidths(maximum, spread) {
+      workspaceApp.classList.toggle("editor-spread", spread);
+      const start = spread ? 860 : Math.min(originalWidth, maximum);
+      if (start > maximum) return false;
+      for (let width = start; ; width = Math.min(width + 32, maximum)) {
+        workspaceApp.style.setProperty("--editor-width", `${width}px`);
+        if (fits()) return true;
+        if (width === maximum) return false;
+      }
+    }
+    const withSidebar = available - clockWidth - gap * 2 - 220;
+    if (tryWidths(withSidebar, false) || tryWidths(withSidebar, true)) return;
+    workspaceApp.classList.add("schedule-below");
+    const fullWidth = available - clockWidth - gap;
+    if (tryWidths(fullWidth, false) || tryWidths(fullWidth, true)) return;
+    // At small desktop sizes or high zoom, use the document rather than an inner scrollbar.
+    workspaceApp.classList.toggle("editor-spread", fullWidth >= 860);
+    workspaceApp.style.setProperty("--editor-width", `${fullWidth}px`);
+    workspaceApp.classList.add("editor-page-flow");
+  }
+  let fitFrame;
+  const scheduleEditorFit = () => {
+    cancelAnimationFrame(fitFrame);
+    fitFrame = requestAnimationFrame(fitDesktopEditor);
+  };
+  window.addEventListener("resize", scheduleEditorFit);
+  new MutationObserver(scheduleEditorFit).observe($("setupCard"), {
+    subtree: true,
+    childList: true,
+    attributes: true,
+    attributeFilter: ["hidden", "class"],
+  });
+  document.fonts.ready.then(scheduleEditorFit);
+  const updateWorkspaceView = applyAlarmPickerView;
+  applyAlarmPickerView = (open) => {
+    updateWorkspaceView(open);
+    fitDesktopEditor();
+  };
   // One gesture produces one transition; trackpad momentum cannot bounce views.
   let navigationBusy = false,
     wheelTotal = 0,

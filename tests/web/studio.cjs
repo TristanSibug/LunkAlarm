@@ -191,14 +191,18 @@ const server = createServer(async (req, res) => {
         assert(
           await p.locator("#setBtn").evaluate((el) => {
             const r = el.getBoundingClientRect();
-            return r.top >= 0 && r.bottom <= innerHeight;
+            return (
+              document.querySelector(".editor-page-flow") ||
+              (r.top >= 0 && r.bottom <= innerHeight)
+            );
           }),
           "Save button stays within desktop viewport",
         );
         assert(
-          await p.evaluate(
-            () => document.documentElement.scrollHeight <= innerHeight + 1,
-          ),
+          await p
+            .locator(".setup-fields")
+            .evaluate((el) => el.scrollHeight <= el.clientHeight + 1),
+          "Editor needs no internal scrolling",
         );
       }
     }
@@ -1197,6 +1201,147 @@ const server = createServer(async (req, res) => {
       checks++;
       await close(p);
     }
+
+    // The desktop editor grows into the schedule space until all controls fit.
+    for (const viewport of [
+      { width: 1920, height: 1080 },
+      { width: 1600, height: 900 },
+      { width: 1440, height: 900 },
+      { width: 1366, height: 768 },
+      { width: 1280, height: 720 },
+    ]) {
+      p = await fresh(
+        {
+          "wake.alarms": compactRecords,
+          "wake.studio.tests": {
+            typing: true,
+            math: true,
+            puzzle: true,
+            mines: true,
+            sudoku: true,
+          },
+        },
+        viewport,
+      );
+      await workspace(p);
+      for (const mode of ["Alarm", "Timer"]) {
+        await p.getByRole("button", { name: mode, exact: true }).click();
+        await p.waitForTimeout(100);
+        assert(
+          await p
+            .locator(".setup-fields")
+            .evaluate(
+              (el) =>
+                getComputedStyle(el).overflowY === "visible" &&
+                el.scrollHeight <= el.clientHeight + 1 &&
+                el.scrollWidth <= el.clientWidth + 1,
+            ),
+          `${mode} fits without an inner scrollbar at ${JSON.stringify(viewport)}`,
+        );
+        assert(
+          await p.locator("#setupCard").evaluate((card) => {
+            const fields = [
+              ...card.querySelectorAll(
+                "input:not([type=hidden]),button:not([hidden])",
+              ),
+            ].filter((el) => el.getClientRects().length);
+            const r = card.getBoundingClientRect();
+            return fields.every((el) => {
+              const b = el.getBoundingClientRect();
+              return (
+                b.top >= r.top &&
+                b.bottom <= r.bottom &&
+                b.left >= r.left &&
+                b.right <= r.right &&
+                b.bottom <= innerHeight
+              );
+            });
+          }),
+          `${mode} controls stay in the visible editor at ${JSON.stringify(viewport)}`,
+        );
+        assert(
+          await p.evaluate(
+            () => document.documentElement.scrollWidth <= innerWidth,
+          ),
+        );
+      }
+      if (viewport.width === 1366) {
+        await p.screenshot({
+          path: path.join(output, "desktop-editor-expanded.png"),
+        });
+        await p
+          .getByRole("button", { name: "Edit Morning routine", exact: true })
+          .click();
+        await p.waitForTimeout(100);
+        assert(await p.locator("#cancelEdit").isVisible());
+        assert(
+          await p
+            .locator(".setup-fields")
+            .evaluate((el) => el.scrollHeight <= el.clientHeight + 1),
+        );
+        await p.locator("#cancelEdit").click();
+        await p.locator("#alarmPickerToggle").click();
+        await p.waitForTimeout(600);
+        assert(
+          await p
+            .locator("html")
+            .evaluate((el) => el.classList.contains("clock-focus")),
+        );
+        assert.equal(await p.locator(".editor-fit").count(), 0);
+        await workspace(p);
+      }
+      checks++;
+      await close(p);
+    }
+    // Small desktops / high zoom scroll the document rather than clipping fields.
+    p = await fresh({}, { width: 1024, height: 768 });
+    await workspace(p);
+    assert(await p.locator(".editor-page-flow").count());
+    assert(
+      await p
+        .locator(".setup-fields")
+        .evaluate((el) => el.scrollHeight <= el.clientHeight + 1),
+    );
+    await p.locator("#setBtn").click();
+    assert.equal((await storage(p)).length, 1);
+    // Resizing into phone width clears every desktop sizing override.
+    await p.setViewportSize({ width: 390, height: 844 });
+    await p.waitForTimeout(150);
+    assert.equal(
+      await p
+        .locator(
+          ".editor-fit, .schedule-below, .editor-spread, .editor-page-flow",
+        )
+        .count(),
+      0,
+    );
+    assert.equal(
+      await p
+        .locator("#mainApp")
+        .evaluate((el) => el.style.getPropertyValue("--editor-width")),
+      "",
+    );
+    assert.equal(
+      await p
+        .locator(".setup-fields")
+        .evaluate((el) => getComputedStyle(el).display),
+      "contents",
+    );
+    checks++;
+    await close(p);
+    p = await fresh({}, { width: 1366, height: 768 }, true);
+    await workspace(p);
+    assert.equal(
+      await p
+        .locator(
+          ".editor-fit, .schedule-below, .editor-spread, .editor-page-flow",
+        )
+        .count(),
+      0,
+    );
+    assert(await p.locator("#timeInput").isVisible());
+    checks++;
+    await close(p);
 
     assert.deepEqual(errors, []);
     console.log(

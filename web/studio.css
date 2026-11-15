@@ -1994,3 +1994,113 @@ body {
     letter-spacing: -0.6px;
   }
 }
+
+/* Desktop editors borrow width from the schedule before stacking it below. */
+@media (min-width: 1000px) and (hover: hover) and (pointer: fine) {
+  html:not(.clock-focus) .app.editor-fit {
+    grid-template-columns: var(--clock-width) var(--editor-width) minmax(
+        220px,
+        1fr
+      );
+  }
+  .editor-fit .setup-fields {
+    overflow: visible;
+    padding-right: 0;
+  }
+  html:not(.clock-focus) .app.schedule-below {
+    height: auto;
+    min-height: 100dvh;
+    grid-template-columns: var(--clock-width) var(--editor-width);
+    grid-template-rows: 40px var(--workspace-height) auto auto auto;
+  }
+  html:not(.clock-focus):has(.schedule-below),
+  html:not(.clock-focus):has(.schedule-below) body {
+    height: auto;
+    overflow-y: auto;
+  }
+  html:not(.clock-focus) .schedule-below #alarmsCard {
+    grid-column: 2;
+    grid-row: 3;
+    overflow: visible;
+  }
+  .schedule-below .browser-tools {
+    grid-row: 4;
+  }
+  .schedule-below #footnote {
+    grid-row: 5;
+  }
+  html:not(.clock-focus) .app.editor-page-flow {
+    grid-template-rows: 40px auto auto auto auto;
+  }
+  .editor-page-flow .setup-fields {
+    flex: none;
+  }
+  .editor-spread .setup-fields {
+    display: grid;
+    grid-template-columns: minmax(0, 0.95fr) minmax(0, 1fr) minmax(0, 1.2fr);
+    column-gap: 24px;
+    align-content: start;
+  }
+  .editor-spread .create-switch,
+  .editor-spread .editor-meta {
+    grid-column: 1 / -1;
+  }
+  .editor-spread .panel {
+    grid-column: 1;
+    grid-row: 3;
+  }
+  .app.editor-spread #setupCard .sound-tests {
+    display: contents !important;
+  }
+  .editor-spread .sound-settings {
+    grid-column: 2;
+    grid-row: 3;
+  }
+  .editor-spread .wake-settings {
+    grid-column: 3;
+    grid-row: 3;
+  }
+  .editor-spread .panel,
+  .editor-spread .sound-settings,
+  .editor-spread .wake-settings {
+    margin-top: 26px;
+  }
+  .app.editor-spread #setupCard #panelTime > .field-label,
+  .app.editor-spread #setupCard #panelTimer > .field-label {
+    margin-top: 0;
+  }
+  .editor-spread .sound-settings {
+    border-left: 1px solid var(--card-border);
+    padding-left: 20px;
+  }
+  .editor-spread .editor-meta {
+    grid-template-columns: 1.1fr 1fr;
+  }
+  .editor-spread .time-stepper {
+    width: 64px;
+  }
+  .editor-spread .time-period {
+    width: 44px;
+  }
+  .editor-spread .custom-time-picker,
+  .editor-spread .timer-row {
+    gap: 8px;
+    padding-inline: 10px;
+  }
+}
+@media (min-width: 1000px) and (max-height: 800px) and (hover: hover) and (pointer: fine) {
+  html:not(.clock-focus) .app {
+    row-gap: 18px;
+  }
+  html:not(.clock-focus) #setupCard {
+    padding: 24px;
+  }
+  .editor-spread .create-switch {
+    margin-bottom: 16px;
+  }
+  .editor-spread .panel,
+  .editor-spread .sound-settings,
+  .editor-spread .wake-settings {
+    margin-top: 12px;
+  }
+}
