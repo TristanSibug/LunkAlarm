@@ -10,6 +10,7 @@ struct WakeChallengeContent: View {
     var place: (Int) -> Void
     var mine: (Int, Bool, Bool) -> Void
     var sudoku: (Int, Int) -> Void
+    var submitStroop: (StroopColor) -> WakeChallenge.DigitResult
     @State private var code = ""
     @State private var answer = ""
     @State private var hint = ""
@@ -21,6 +22,17 @@ struct WakeChallengeContent: View {
             case .puzzle: JigsawGameView(challenge: challenge, theme: theme, place: place).id(challenge.puzzleSeed)
             case .mines: if let board = challenge.mineBoard { MineGameView(board: board, theme: theme, action: mine).id(challenge.resetCount) }
             case .sudoku: if let board = challenge.sudokuBoard { SudokuGameView(board: board, theme: theme, action: sudoku).id(challenge.resetCount) }
+            case .stroop:
+                if let round = challenge.stroopRound {
+                    StroopGameView(round: round, answered: challenge.stroopAnswered, rounds: challenge.games.stroopRoundCount, theme: theme) { color in
+                        switch submitStroop(color) {
+                        case .correct: hint = ""
+                        case .incorrect: hint = "Try again. Choose the word’s ink color."; UINotificationFeedbackGenerator().notificationOccurred(.error)
+                        case .timedOut: hint = "Time’s up. Tests restarted."
+                        case .incomplete: break
+                        }
+                    }
+                }
             case .complete: EmptyView()
             }
             if !hint.isEmpty { Text(hint).font(.caption).foregroundStyle(theme.accent) }

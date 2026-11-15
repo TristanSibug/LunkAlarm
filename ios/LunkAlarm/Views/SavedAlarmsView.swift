@@ -75,6 +75,7 @@ struct SavedAlarmsView: View {
                             if alarm.wakeGames?.puzzle == true { Image(systemName: "puzzlepiece") }
                             if alarm.wakeGames?.mines == true { Image(systemName: "burst") }
                             if alarm.wakeGames?.sudoku == true { Image(systemName: "square.grid.3x3") }
+                            if alarm.wakeGames?.stroop == true { Image(systemName: "paintpalette") }
                             if alarm.mathCount > 0 { Label("\(alarm.mathCount)", systemImage: "plus.forwardslash.minus") }
                         }.font(.system(size: 11)).foregroundStyle(theme.muted)
                             .accessibilityIdentifier("alarmMetadata-\(alarm.id)")

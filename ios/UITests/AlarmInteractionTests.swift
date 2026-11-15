@@ -576,4 +576,82 @@ final class AlarmInteractionTests: XCTestCase {
         capture(app, name: "ios-native-math-cleared")
     }
 
+    @MainActor private func stroopInk(_ app: XCUIApplication) -> String {
+        let label = app.staticTexts["stroopWord"].label
+        let ink = label.components(separatedBy: "written in ").last?.components(separatedBy: " ").first ?? ""
+        XCTAssertTrue(["red", "blue", "green", "yellow"].contains(ink), label)
+        return ink
+    }
+    @MainActor func testStroopSettingsPracticeAndIndependentActivation() {
+        let app = launch(); openEditor(app); openTest(app, "typing")
+        app.buttons["testSettingsDone"].tap()
+        openTest(app, "stroop")
+        XCTAssertEqual(app.staticTexts["stroop-rounds-value"].label, "5")
+        for _ in 0..<2 { app.buttons["stroop-rounds-minus"].tap() }
+        XCTAssertEqual(app.staticTexts["stroop-rounds-value"].label, "3")
+        XCTAssertFalse(app.buttons["stroop-rounds-minus"].isEnabled)
+        for _ in 0..<5 { app.buttons["stroop-rounds-plus"].tap() }
+        XCTAssertEqual(app.staticTexts["stroop-rounds-value"].label, "8")
+        XCTAssertFalse(app.buttons["stroop-rounds-plus"].isEnabled)
+        for seconds in 3...6 {
+            app.buttons["stroop-timer-\(seconds)"].tap()
+            XCTAssertTrue(app.buttons["stroop-timer-\(seconds)"].isSelected)
+        }
+        capture(app, name: "ios-stroop-settings")
+        app.buttons["try-stroop"].tap()
+        XCTAssertTrue(app.staticTexts["stroopWord"].waitForExistence(timeout: 5))
+        XCTAssertEqual(app.staticTexts["stroopProgress"].label, "0 / 8 rounds")
+        XCTAssertFalse(app.switches["challengeSoundToggle"].exists)
+        let labels = ["red", "blue", "green", "yellow"]
+        let before = labels.map { app.buttons["stroop-choice-" + $0].frame }
+        for color in labels {
+            let button = app.buttons["stroop-choice-" + color]
+            XCTAssertTrue(button.isHittable)
+            XCTAssertNotEqual((button.value as? String)?.lowercased(), color + " background")
+        }
+        let word = app.staticTexts["stroopWord"].label.components(separatedBy: ",").first!.lowercased()
+        app.buttons["stroop-choice-" + word].tap()
+        XCTAssertEqual(app.staticTexts["stroopProgress"].label, "0 / 8 rounds")
+        capture(app, name: "ios-stroop-practice")
+        for index in 0..<8 {
+            let ink = stroopInk(app)
+            app.buttons["stroop-choice-" + ink].tap()
+            if index < 7 {
+                XCTAssertEqual(app.staticTexts["stroopProgress"].label, "\(index + 1) / 8 rounds")
+                XCTAssertNotEqual(stroopInk(app), ink)
+                for (color, frame) in zip(labels, before) {
+                    XCTAssertEqual(app.buttons["stroop-choice-" + color].frame.minX, frame.minX, accuracy: 1)
+                    XCTAssertEqual(app.buttons["stroop-choice-" + color].frame.minY, frame.minY, accuracy: 1)
+                }
+            }
+        }
+        XCTAssertTrue(app.buttons["retryPractice"].waitForExistence(timeout: 5))
+        app.buttons["retryPractice"].tap()
+        XCTAssertEqual(app.staticTexts["stroopProgress"].label, "0 / 8 rounds")
+        app.buttons["exitPractice"].tap()
+        XCTAssertTrue(app.buttons["testSettingsDone"].waitForExistence(timeout: 5))
+        XCTAssertEqual(app.buttons["testSettingsDone"].label, "Set")
+        app.buttons["testSettingsDone"].tap()
+        XCTAssertTrue(app.buttons["test-tile-stroop"].isSelected)
+        XCTAssertTrue(app.buttons["test-tile-typing"].isSelected)
+        capture(app, name: "ios-six-test-tiles")
+        openTest(app, "stroop")
+        XCTAssertEqual(app.buttons["testSettingsDone"].label, "Unset")
+        app.buttons["closeTestSettings"].tap()
+        XCTAssertTrue(app.buttons["test-tile-stroop"].isSelected)
+    }
+    @MainActor func testStroopRealAlarmTimeoutRestoresSoundAndResetsRounds() {
+        let app = XCUIApplication(); app.launchArguments = ["--ui-testing", "--ui-stroop-alarm"]; app.launch()
+        XCTAssertTrue(app.staticTexts["stroopWord"].waitForExistence(timeout: 10))
+        XCTAssertEqual(app.switches["challengeSoundToggle"].value as? String, "0")
+        app.buttons["stroop-choice-" + stroopInk(app)].tap()
+        XCTAssertEqual(app.staticTexts["stroopProgress"].label, "1 / 3 rounds")
+        let reset = XCTNSPredicateExpectation(predicate: NSPredicate(format: "label == '0 / 3 rounds'"), object: app.staticTexts["stroopProgress"])
+        wait(for: [reset], timeout: 10)
+        XCTAssertEqual(app.switches["challengeSoundToggle"].value as? String, "1")
+        capture(app, name: "ios-stroop-alarm-timeout")
+        for _ in 0..<3 { app.buttons["stroop-choice-" + stroopInk(app)].tap() }
+        XCTAssertTrue(app.descendants(matching: .any)["alarmSwipeHint"].waitForExistence(timeout: 10))
+    }
+
 }

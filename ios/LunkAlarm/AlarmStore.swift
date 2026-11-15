@@ -57,6 +57,13 @@ final class AlarmStore {
             alarm.typingCodeLength = 4
             state.alarms = [alarm]
         }
+        if uiTesting && ProcessInfo.processInfo.arguments.contains("--ui-stroop-alarm") {
+            var alarm = AlarmRecord(target: Date().addingTimeInterval(-1), isTimer: true,
+                ringtoneID: "classic-beep", soundFilename: "classic-beep.wav", soundName: "Classic Beep",
+                typing: false, mathCount: 0, status: .needsChallenge)
+            var games = WakeGameOptions(); games.stroop = true; games.stroopRounds = 3; games.stroopSeconds = 6
+            alarm.wakeGames = games; state.alarms = [alarm]
+        }
         if uiTesting && ProcessInfo.processInfo.arguments.contains("--ui-mixed-alarms") {
             var routine = AlarmRecord(target: Date().addingTimeInterval(3600), isTimer: false,
                 ringtoneID: "classic-beep", soundFilename: "classic-beep.wav", soundName: "Classic Beep", typing: false, mathCount: 0)
@@ -398,6 +405,9 @@ final class AlarmStore {
     func placePiece(_ piece: Int) { _ = updateChallenge { $0.placePiece(piece) } }
     func mineAction(cell: Int, flag: Bool, chord: Bool) { _ = updateChallenge { $0.mineAction(cell: cell, flag: flag, chord: chord) } }
     func sudokuAction(cell: Int, digit: Int) { _ = updateChallenge { $0.sudokuAction(cell: cell, digit: digit) } }
+    func submitStroop(_ color: StroopColor) -> WakeChallenge.DigitResult {
+        updateChallenge { $0.submit(stroop: color) }
+    }
     @discardableResult private func updateChallenge(_ action: (inout TimedWakeChallenge) -> WakeChallenge.DigitResult) -> WakeChallenge.DigitResult {
         guard var nextChallenge = challenge, let alarm = currentRecord, !finishing else { return .incomplete }
         let previous = nextChallenge

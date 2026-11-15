@@ -19,7 +19,8 @@ struct RingingView: View {
                         } else {
                             WakeChallengeContent(challenge: challenge, theme: store.theme, nativeMath: store.ringing?.nativeMathKeyboard == true,
                                 submitCode: store.submitCode, submitDigits: store.submitMathDigits, place: store.placePiece,
-                                mine: { store.mineAction(cell: $0, flag: $1, chord: $2) }, sudoku: { store.sudokuAction(cell: $0, digit: $1) })
+                                mine: { store.mineAction(cell: $0, flag: $1, chord: $2) }, sudoku: { store.sudokuAction(cell: $0, digit: $1) },
+                                submitStroop: store.submitStroop)
                         }
                     }
                     Text("Complete the tests to stop LunkAlarm. iOS also provides its own alarm controls.")

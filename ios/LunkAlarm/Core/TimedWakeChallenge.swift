@@ -1,6 +1,6 @@
 import Foundation
 
-public enum WakePhase: String, Codable, Sendable { case typing, math, puzzle, mines, sudoku, complete }
+public enum WakePhase: String, Codable, Sendable { case typing, math, puzzle, mines, sudoku, stroop, complete }
 
 public struct TimedWakeChallenge: Codable, Equatable, Sendable {
     private let typing: Bool
@@ -16,6 +16,9 @@ public struct TimedWakeChallenge: Codable, Equatable, Sendable {
     public private(set) var placedPieces: Set<Int> = []
     public private(set) var mineBoard: MineBoard?
     public private(set) var sudokuBoard: SudokuBoard?
+    public private(set) var stroopRound: StroopRound?
+    private var stroopProgress: Int?
+    public var stroopAnswered: Int { stroopProgress ?? 0 }
     public var code: String { challenge.code }
     public var typingPending: Bool { challenge.typingPending }
     public var remaining: Int { challenge.remaining }
@@ -26,9 +29,10 @@ public struct TimedWakeChallenge: Codable, Equatable, Sendable {
     private var minesConfirmed: Bool?
     public var minesPending: Bool { games.mines && (mineBoard?.complete != true || minesConfirmed == false) }
     public var sudokuPending: Bool { games.sudoku && sudokuBoard?.complete != true }
+    public var stroopPending: Bool { games.stroop == true && stroopAnswered < games.stroopRoundCount }
     public var phase: WakePhase {
         if typingPending { return .typing }; if remaining > 0 { return .math }; if puzzlePending { return .puzzle }
-        if minesPending { return .mines }; if sudokuPending { return .sudoku }; return .complete
+        if minesPending { return .mines }; if sudokuPending { return .sudoku }; if stroopPending { return .stroop }; return .complete
     }
     public var complete: Bool { phase == .complete }
     public var answered: Int { mathCount - remaining }
@@ -38,7 +42,9 @@ public struct TimedWakeChallenge: Codable, Equatable, Sendable {
         WakeTestOptions.valid(codeLength: codeLength, typingTime: typingTimeLimit, mathTime: mathTimeLimit) &&
         placedPieces.allSatisfy({ (0..<games.puzzlePieces).contains($0) }) &&
         (!games.mines || (mineBoard?.valid == true && mineBoard?.size == [5, 7, 9][games.mineDifficulty])) &&
-        (!games.sudoku || (sudokuBoard?.valid == true && sudokuBoard?.size == (games.sudokuDifficulty < 2 ? 4 : 6)))
+        (!games.sudoku || (sudokuBoard?.valid == true && sudokuBoard?.size == (games.sudokuDifficulty < 2 ? 4 : 6))) &&
+        (0...games.stroopRoundCount).contains(stroopAnswered) && (stroopRound?.valid ?? true) &&
+        (games.stroop != true || stroopRound != nil)
     }
     public init(typing: Bool, mathCount: Int, codeLength: Int = 8, typingTimeLimit: Int = 30, mathTimeLimit: Int = 10, games: WakeGameOptions = .init(), now: Date = Date(), seed: UInt64? = nil) {
         self.codeLength = min(10, max(4, codeLength)); self.typingTimeLimit = min(30, max(15, typingTimeLimit))
@@ -48,6 +54,8 @@ public struct TimedWakeChallenge: Codable, Equatable, Sendable {
         puzzleSeed = seed ?? .random(in: .min ... .max)
         mineBoard = self.games.mines ? MineBoard.create(difficulty: self.games.mineDifficulty, seed: seed ?? .random(in: .min ... .max)) : nil
         sudokuBoard = self.games.sudoku ? SudokuBoard.create(difficulty: self.games.sudokuDifficulty, seed: seed.map { $0 &+ 1 } ?? .random(in: .min ... .max)) : nil
+        stroopProgress = 0
+        stroopRound = self.games.stroop == true ? StroopRound.create(seed: seed.map { $0 &+ 2 }) : nil
         minesConfirmed = false
         renewDeadline(now: now)
     }
@@ -60,6 +68,7 @@ public struct TimedWakeChallenge: Codable, Equatable, Sendable {
         placedPieces = []; puzzleSeed = .random(in: .min ... .max)
         mineBoard = games.mines ? MineBoard.create(difficulty: games.mineDifficulty) : nil
         sudokuBoard = games.sudoku ? SudokuBoard.create(difficulty: games.sudokuDifficulty) : nil
+        stroopProgress = 0; stroopRound = games.stroop == true ? StroopRound.create() : nil
         resetCount += 1; renewDeadline(now: now)
     }
     @discardableResult public mutating func expireIfNeeded(now: Date = Date()) -> Bool {
@@ -106,10 +115,18 @@ public struct TimedWakeChallenge: Codable, Equatable, Sendable {
         board.enter(cell: cell, digit: digit); sudokuBoard = board
         if board.complete { renewDeadline(now: now) }; return .correct
     }
+    public mutating func submit(stroop color: StroopColor, now: Date = Date()) -> WakeChallenge.DigitResult {
+        if expireIfNeeded(now: now) { return .timedOut }
+        guard phase == .stroop, let round = stroopRound else { return .incomplete }
+        guard color == round.ink else { return .incorrect }
+        stroopProgress = stroopAnswered + 1
+        if stroopPending { stroopRound = StroopRound.create(previousInk: round.ink) }
+        renewDeadline(now: now); return .correct
+    }
     private mutating func renewDeadline(now: Date) {
         let seconds: Int = switch phase {
         case .typing: typingTimeLimit; case .math: mathTimeLimit; case .puzzle: games.puzzleSeconds
-        case .mines: games.mineSeconds; case .sudoku: games.sudokuSeconds; case .complete: 0
+        case .mines: games.mineSeconds; case .sudoku: games.sudokuSeconds; case .stroop: games.stroopTimeLimit; case .complete: 0
         }
         deadline = complete ? nil : now.addingTimeInterval(TimeInterval(seconds))
     }

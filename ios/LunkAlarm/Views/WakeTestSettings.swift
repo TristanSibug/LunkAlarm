@@ -1,16 +1,16 @@
 import SwiftUI
 
 enum WakeTest: String, Identifiable, CaseIterable {
-    case typing, math, puzzle, mines, sudoku
+    case typing, math, puzzle, mines, sudoku, stroop
     var id: String { rawValue }
-    var name: String { switch self { case .typing: "Typing"; case .math: "Math"; case .puzzle: "Puzzle"; case .mines: "Minesweeper"; case .sudoku: "Sudoku" } }
+    var name: String { switch self { case .typing: "Typing"; case .math: "Math"; case .puzzle: "Puzzle"; case .mines: "Minesweeper"; case .sudoku: "Sudoku"; case .stroop: "Stroop" } }
     var title: String { name + " test" }
     func enabled(_ s: AlarmSettings) -> Bool {
-        switch self { case .typing: s.typing; case .math: s.mathCount > 0; case .puzzle: s.wakeGames?.puzzle == true; case .mines: s.wakeGames?.mines == true; case .sudoku: s.wakeGames?.sudoku == true }
+        switch self { case .typing: s.typing; case .math: s.mathCount > 0; case .puzzle: s.wakeGames?.puzzle == true; case .mines: s.wakeGames?.mines == true; case .sudoku: s.wakeGames?.sudoku == true; case .stroop: s.wakeGames?.stroop == true }
     }
     func practice(_ s: AlarmSettings) -> TimedWakeChallenge {
         var games = s.wakeGames ?? .init()
-        games.puzzle = self == .puzzle; games.mines = self == .mines; games.sudoku = self == .sudoku
+        games.puzzle = self == .puzzle; games.mines = self == .mines; games.sudoku = self == .sudoku; games.stroop = self == .stroop
         return TimedWakeChallenge(typing: self == .typing, mathCount: self == .math ? max(1, s.mathCount) : 0,
             codeLength: s.typingCodeLength ?? 8, typingTimeLimit: s.typingTimeLimit ?? 30, mathTimeLimit: s.mathTimeLimit ?? 10, games: games, seed: self == .mines && ProcessInfo.processInfo.arguments.contains("--ui-mine-chord") && ProcessInfo.processInfo.arguments.contains("--ui-testing") ? 123 : nil)
     }
@@ -21,25 +21,29 @@ struct WakeTestSelector: View {
     let theme: AlarmTheme
     var stopPreview: () -> Void
     @State private var selected: WakeTest?
-        var body: some View {
-        HStack(spacing: 6) {
-            ForEach(WakeTest.allCases) { test in
-                let on = test.enabled(settings)
-                Button { selected = test } label: {
-                    VStack(spacing: 10) {
-                        WakeTestGlyph(test: test).frame(width: 36, height: 29)
-                        Text(test.name).font(.system(size: test == .mines ? 9 : 10, weight: .medium)).lineLimit(1).minimumScaleFactor(0.85)
-                            .foregroundStyle(theme.text)
-                    }.foregroundStyle(on ? theme.accent2 : theme.muted)
-                        .frame(maxWidth: .infinity).padding(.vertical, 18)
-                        .background(on ? theme.accent2.opacity(0.1) : theme.field, in: RoundedRectangle(cornerRadius: 13))
-                        .overlay(RoundedRectangle(cornerRadius: 13).stroke(on ? theme.accent2 : theme.border, lineWidth: on ? 1.5 : 1))
-                        .overlay(alignment: .topTrailing) { if on { Image(systemName: "checkmark").font(.system(size: 9, weight: .semibold)).foregroundStyle(theme.accent2).padding(5) } }
-                }.buttonStyle(.plain).accessibilityLabel(test.title).accessibilityValue(on ? "Enabled" : "Disabled")
-                    .accessibilityAddTraits(on ? .isSelected : []).accessibilityIdentifier("test-tile-" + test.id)
-            }
+    var body: some View {
+        ViewThatFits(in: .horizontal) {
+            HStack(spacing: 6) { tiles }
+            LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 6), count: 3), spacing: 8) { tiles }
         }
         .sheet(item: $selected) { test in WakeTestSettingsView(test: test, settings: $settings, theme: theme, stopPreview: stopPreview) }
+    }
+    private var tiles: some View {
+        ForEach(WakeTest.allCases) { test in
+            let on = test.enabled(settings)
+            Button { selected = test } label: {
+                VStack(spacing: 10) {
+                    WakeTestGlyph(test: test).frame(width: 36, height: 29)
+                    Text(test.name).font(.system(size: test == .mines ? 9 : 10, weight: .medium)).lineLimit(1).minimumScaleFactor(0.85)
+                        .foregroundStyle(theme.text)
+                }.foregroundStyle(on ? theme.accent2 : theme.muted)
+                    .frame(minWidth: 72, maxWidth: .infinity).padding(.vertical, 18)
+                    .background(on ? theme.accent2.opacity(0.1) : theme.field, in: RoundedRectangle(cornerRadius: 13))
+                    .overlay(RoundedRectangle(cornerRadius: 13).stroke(on ? theme.accent2 : theme.border, lineWidth: on ? 1.5 : 1))
+                    .overlay(alignment: .topTrailing) { if on { Image(systemName: "checkmark").font(.system(size: 9, weight: .semibold)).foregroundStyle(theme.accent2).padding(5) } }
+            }.buttonStyle(.plain).accessibilityLabel(test.title).accessibilityValue(on ? "Enabled" : "Disabled")
+                .accessibilityAddTraits(on ? .isSelected : []).accessibilityIdentifier("test-tile-" + test.id)
+        }
     }
 
 }
@@ -74,6 +78,7 @@ struct WakeTestGlyph: View {
                     context.stroke(p, with: .foreground, lineWidth: i % 2 == 0 ? 1.4 : 0.7)
                 }
             }.accessibilityHidden(true)
+        case .stroop: Image(systemName: "paintpalette").font(.system(size: 24)).accessibilityHidden(true)
         }
     }
 }
@@ -112,6 +117,7 @@ private struct WakeTestSettingsView: View {
                 case .puzzle: g.puzzle = on
                 case .mines: g.mines = on
                 case .sudoku: g.sudoku = on
+                case .stroop: g.stroop = on
                 }
                 settings.wakeGames = g; dismiss()
             }.buttonStyle(AccentButtonStyle(theme: theme)).padding(20).accessibilityIdentifier("testSettingsDone")
@@ -172,6 +178,11 @@ private struct WakeTestSettingsView: View {
                 } }
             }
             WakeChoiceSetting(title: "Time limit", value: game(\.sudokuSeconds), choices: WakeGameOptions.sudokuTimes, id: "sudoku-timer", theme: theme)
+        case .stroop:
+            HStack(alignment: .top, spacing: 12) {
+                optionCard { WakeCountSetting(title: "Rounds", value: game(\.stroopRoundCount), range: 3...8, footer: "3–8 rounds", id: "stroop-rounds", theme: theme) }.frame(maxWidth: .infinity)
+                optionCard { WakeChoiceSetting(title: "Time per round", value: game(\.stroopTimeLimit), choices: WakeGameOptions.stroopTimes, id: "stroop-timer", theme: theme, suffix: "", footer: "seconds") }.frame(maxWidth: .infinity)
+            }
         }
     }
     private func option(_ key: WritableKeyPath<AlarmSettings, Int?>, _ fallback: Int) -> Binding<Int> { Binding(get: { settings[keyPath: key] ?? fallback }, set: { settings[keyPath: key] = $0 }) }
@@ -274,7 +285,8 @@ private struct WakePracticeView: View {
                         WakeChallengeContent(challenge: challenge, theme: theme, nativeMath: settings.nativeMathKeyboard == true,
                             submitCode: { challenge.submit(code: $0) }, submitDigits: { challenge.submit(digits: $0) },
                             place: { _ = challenge.placePiece($0) }, mine: { _ = challenge.mineAction(cell: $0, flag: $1, chord: $2) },
-                            sudoku: { _ = challenge.sudokuAction(cell: $0, digit: $1) })
+                            sudoku: { _ = challenge.sudokuAction(cell: $0, digit: $1) },
+                            submitStroop: { challenge.submit(stroop: $0) })
                     }
                 }.padding(24).frame(maxWidth: 480).frame(maxWidth: .infinity)
             }.scrollDismissesKeyboard(.interactively)

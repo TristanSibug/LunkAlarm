@@ -23,15 +23,24 @@ public struct WakeGameOptions: Codable, Equatable, Sendable {
     public var sudoku = false
     public var sudokuDifficulty = 0
     public var sudokuSeconds = 120
-    public var hasTests: Bool { puzzle || mines || sudoku }
+    // Optional storage keeps alarms and sessions saved before Stroop decodable.
+    public var stroop: Bool?
+    public var stroopRounds: Int?
+    public var stroopSeconds: Int?
+    public var stroopRoundCount: Int { get { stroopRounds ?? 5 } set { stroopRounds = newValue } }
+    public var stroopTimeLimit: Int { get { stroopSeconds ?? 5 } set { stroopSeconds = newValue } }
+    public var hasTests: Bool { puzzle || mines || sudoku || stroop == true }
     public init() {}
     public var valid: Bool {
         (mathProblemCount == nil || (1...8).contains(mathProblemCount!)) && (mathOperations == nil || !(mathOperations?.isEmpty ?? true)) && [6, 8, 10].contains(puzzlePieces) && Self.gameTimes.contains(puzzleSeconds) &&
         (0...2).contains(mineDifficulty) && Self.gameTimes.contains(mineSeconds) &&
-        (0...3).contains(sudokuDifficulty) && Self.sudokuTimes.contains(sudokuSeconds)
+        (0...3).contains(sudokuDifficulty) && Self.sudokuTimes.contains(sudokuSeconds) &&
+        Self.stroopRoundChoices.contains(stroopRoundCount) && Self.stroopTimes.contains(stroopTimeLimit)
     }
     public static let gameTimes = [15, 20, 25, 30, 35, 40]
     public static let sudokuTimes = [60, 120, 180, 240]
+    public static let stroopRoundChoices = Array(3...8)
+    public static let stroopTimes = [3, 4, 5, 6]
 }
 
 public struct MineBoard: Codable, Equatable, Sendable {
