@@ -209,6 +209,7 @@ input[type="checkbox"] {
   margin: 10px 0 18px;
 }
 .test-tiles {
+  margin-top: 16px;
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 8px;

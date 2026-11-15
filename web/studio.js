@@ -174,7 +174,7 @@
       legacy.append(child);
   }
   document.querySelector(".wake-settings").innerHTML =
-    '<span class="field-label">Wake-up tests</span><p class="section-note">Optional · try any test before setting it.</p><div id="testTiles" class="test-tiles"></div><div id="selectedTests" class="selected-tests"></div>';
+    '<span class="field-label">Wake-up tests</span><div id="testTiles" class="test-tiles"></div><div id="selectedTests" class="selected-tests"></div>';
   const meta = document.createElement("div");
   meta.className = "editor-meta";
   const nameBlock = document.createElement("div");
