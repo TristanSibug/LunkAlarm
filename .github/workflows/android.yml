@@ -6,6 +6,11 @@ on:
   pull_request:
     paths: ['android/**', '.github/workflows/android.yml']
   workflow_dispatch:
+    inputs:
+      build_only:
+        description: Skip regression suites and only build/package
+        type: boolean
+        default: false
 permissions:
   contents: read
 concurrency:
@@ -17,6 +22,7 @@ jobs:
     timeout-minutes: 40
     env:
       LUNK_ANDROID_REQUIRE_SIGNING: "true"
+      BUILD_ONLY: ${{ inputs.build_only == true || contains(github.event.head_commit.message, '[build-only]') }}
     permissions:
       contents: write
     steps:
@@ -43,20 +49,27 @@ jobs:
           subprocess.run([sdk, 'platforms;android-36', 'build-tools;35.0.0'], input='y\n' * 100, text=True, check=True)
           PYSDK
       - name: Build independently signed upgrade fixture
+        if: env.BUILD_ONLY != 'true'
         run: |
           ./android/gradlew -p android :app:assembleDebug -PlunkVersionCode=4 -PlunkVersionName=upgrade-fixture --console plain
           cp android/app/build/outputs/apk/debug/app-debug.apk "$RUNNER_TEMP/lunkalarm-upgrade-fixture.apk"
-      - name: Build APK, run core tests and Android lint
+      - name: Build APK (core tests and lint in full mode)
         id: apk
         run: |
           set -o pipefail
-          ./android/gradlew -p android :app:assembleDebug :app:assembleDebugAndroidTest :app:testDebugUnitTest :app:lintDebug --console plain | tee artifacts/android-build.log
+          if [ "$BUILD_ONLY" = "true" ]; then
+            ./android/gradlew -p android :app:assembleDebug --console plain | tee artifacts/android-build.log
+          else
+            ./android/gradlew -p android :app:assembleDebug :app:assembleDebugAndroidTest :app:testDebugUnitTest :app:lintDebug --console plain | tee artifacts/android-build.log
+          fi
       - name: Enable emulator acceleration
+        if: env.BUILD_ONLY != 'true'
         run: |
           echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
           sudo udevadm control --reload-rules
           sudo udevadm trigger --name-match=kvm
       - name: Test native UI, denied permission, Doze delivery and failed unlock
+        if: env.BUILD_ONLY != 'true'
         id: emulator
         uses: reactivecircus/android-emulator-runner@v2
         with:

@@ -6,6 +6,11 @@ on:
   pull_request:
     paths: ['ios/**', '.github/workflows/ios.yml']
   workflow_dispatch:
+    inputs:
+      build_only:
+        description: Skip regression suites and only build/package
+        type: boolean
+        default: false
 permissions:
   contents: read
 concurrency:
@@ -13,6 +18,8 @@ concurrency:
   cancel-in-progress: true
 jobs:
   build:
+    env:
+      BUILD_ONLY: ${{ inputs.build_only == true || contains(github.event.head_commit.message, '[build-only]') }}
     runs-on: macos-15
     timeout-minutes: 50
     permissions:
@@ -27,12 +34,14 @@ jobs:
           sudo xcode-select -s "$xcode_path/Contents/Developer"
           xcodebuild -version
       - name: Test native scheduling and persistence
+        if: env.BUILD_ONLY != 'true'
         run: swift test --package-path ios
       - name: Check generated project
         run: |
           python3 ios/scripts/generate_project.py
           git diff --exit-code -- ios/LunkAlarm.xcodeproj
       - name: Build iPhone simulator app
+        if: env.BUILD_ONLY != 'true'
         id: simulator
         run: |
           set -o pipefail
@@ -49,6 +58,7 @@ jobs:
             -configuration Release -derivedDataPath artifacts/ios-device \
             CODE_SIGNING_ALLOWED=NO build | tee ios-device-build.log
       - name: Launch native app and capture simulator screen
+        if: env.BUILD_ONLY != 'true'
         id: launch
         timeout-minutes: 8
         run: |
@@ -62,6 +72,7 @@ jobs:
             xcrun simctl io "$device_id" screenshot artifacts/ios-clock.png
           } 2>&1 | tee ios-launch.log
       - name: Test native editing, countdowns, floating actions and swipe deletion
+        if: env.BUILD_ONLY != 'true'
         id: uiTests
         timeout-minutes: 30
         run: |
@@ -103,10 +114,12 @@ jobs:
               summary.write('### Xcode diagnostics\n\n```text\n' + '\n'.join(errors) + '\n```\n')
           PY
       - name: Package source and unsigned builds
-        if: always() && steps.simulator.outcome == 'success' && steps.device.outcome == 'success'
+        if: always() && steps.device.outcome == 'success' && (env.BUILD_ONLY == 'true' || steps.simulator.outcome == 'success')
         run: |
           git archive --format=zip --output=LunkAlarm-iOS-source.zip HEAD ios
-          ditto -c -k --sequesterRsrc --keepParent artifacts/ios-build/Build/Products/Debug-iphonesimulator/LunkAlarm.app LunkAlarm-iOS-Simulator.zip
+          if [ -d artifacts/ios-build/Build/Products/Debug-iphonesimulator/LunkAlarm.app ]; then
+            ditto -c -k --sequesterRsrc --keepParent artifacts/ios-build/Build/Products/Debug-iphonesimulator/LunkAlarm.app LunkAlarm-iOS-Simulator.zip
+          fi
           mkdir -p artifacts/unsigned/Payload
           cp -R artifacts/ios-device/Build/Products/Release-iphoneos/LunkAlarm.app artifacts/unsigned/Payload/
           cd artifacts/unsigned

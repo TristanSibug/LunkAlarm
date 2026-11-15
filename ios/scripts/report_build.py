@@ -19,6 +19,7 @@ if previous.exists():
 if screenshot.exists():
     shutil.copyfile(screenshot, previous)
 report = {
+    "buildOnly": os.environ.get("BUILD_ONLY") == "true",
     "commit": os.environ["GITHUB_SHA"],
     "run": f'https://github.com/{os.environ["GITHUB_REPOSITORY"]}/actions/runs/{os.environ["GITHUB_RUN_ID"]}',
     "status": os.environ["BUILD_STATUS"],

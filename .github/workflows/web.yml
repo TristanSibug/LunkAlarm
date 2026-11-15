@@ -6,6 +6,11 @@ on:
   pull_request:
     paths: ["web/**", "tests/web/**", ".github/workflows/web.yml"]
   workflow_dispatch:
+    inputs:
+      build_only:
+        description: Skip regression suites and only build/package
+        type: boolean
+        default: false
 permissions:
   contents: read
 concurrency:
@@ -13,17 +18,22 @@ concurrency:
   cancel-in-progress: true
 jobs:
   browser:
+    env:
+      BUILD_ONLY: ${{ inputs.build_only == true || contains(github.event.head_commit.message, '[build-only]') }}
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@v5
       - uses: actions/setup-node@v5
+        if: env.BUILD_ONLY != 'true'
         with:
           node-version: 22
           cache: npm
           cache-dependency-path: tests/web/package-lock.json
       - run: npm ci --prefix tests/web --ignore-scripts
+        if: env.BUILD_ONLY != 'true'
       - name: Install browser
+        if: env.BUILD_ONLY != 'true'
         working-directory: tests/web
         run: npx playwright install --with-deps chromium
       - name: Check website syntax
@@ -31,6 +41,7 @@ jobs:
           node --check web/app.js
           node --check web/studio.js
       - name: Browser regression tests
+        if: env.BUILD_ONLY != 'true'
         run: node tests/web/studio.cjs
       - uses: actions/upload-artifact@v4
         if: always()

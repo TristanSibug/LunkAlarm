@@ -4,6 +4,7 @@ import xml.etree.ElementTree as ET
 from pathlib import Path
 output=Path(sys.argv[1])
 report={
+    'buildOnly':os.environ.get('BUILD_ONLY')=='true',
     'commit':os.environ['GITHUB_SHA'],
     'run':f"https://github.com/{os.environ['GITHUB_REPOSITORY']}/actions/runs/{os.environ['GITHUB_RUN_ID']}",
     'status':os.environ['BUILD_STATUS'],
@@ -11,7 +12,7 @@ report={
     'emulator':os.environ.get('EMULATOR_STATUS'),
     'release':os.environ.get('RELEASE_STATUS'),
     'tests':[], 'errors':[], 'previews':[],
-    'upgrade': all(Path(f'artifacts/android-upgrade-{stage}.log').exists() and 'OK (1 test)' in Path(f'artifacts/android-upgrade-{stage}.log').read_text() for stage in ['seed','verify'])
+    'upgrade': None if os.environ.get('BUILD_ONLY')=='true' else all(Path(f'artifacts/android-upgrade-{stage}.log').exists() and 'OK (1 test)' in Path(f'artifacts/android-upgrade-{stage}.log').read_text() for stage in ['seed','verify'])
 }
 for pattern in ['android/app/build/test-results/testDebugUnitTest/TEST-*.xml','android/app/build/outputs/androidTest-results/connected/**/*.xml']:
     for path in sorted(Path('.').glob(pattern)):
