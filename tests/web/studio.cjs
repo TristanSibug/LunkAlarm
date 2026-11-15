@@ -1205,6 +1205,7 @@ const server = createServer(async (req, res) => {
     // The desktop editor grows into the schedule space until all controls fit.
     for (const viewport of [
       { width: 1920, height: 1080 },
+      { width: 1920, height: 900 },
       { width: 1600, height: 900 },
       { width: 1440, height: 900 },
       { width: 1366, height: 768 },
@@ -1253,12 +1254,38 @@ const server = createServer(async (req, res) => {
                 b.bottom <= r.bottom &&
                 b.left >= r.left &&
                 b.right <= r.right &&
-                b.bottom <= innerHeight
+                (document.querySelector(".editor-page-flow") ||
+                  b.bottom <= innerHeight)
               );
             });
           }),
           `${mode} controls stay in the visible editor at ${JSON.stringify(viewport)}`,
         );
+        assert(
+          await p
+            .locator(mode === "Alarm" ? "#panelTime" : "#panelTimer")
+            .evaluate((panel) => {
+              const time = panel.getBoundingClientRect();
+              const meta = document
+                .querySelector(".editor-meta")
+                .getBoundingClientRect();
+              const sound = document
+                .querySelector(".sound-settings")
+                .getBoundingClientRect();
+              const tests = document
+                .querySelector(".wake-settings")
+                .getBoundingClientRect();
+              return (
+                Math.abs(time.x - meta.x) <= 1 &&
+                Math.abs(time.width - meta.width) <= 1 &&
+                time.y >= meta.bottom &&
+                time.bottom <= sound.y &&
+                time.bottom <= tests.y
+              );
+            }),
+          `${mode} picker stays full-width above sound and wake-up tests at ${JSON.stringify(viewport)}`,
+        );
+        assert.equal(await p.locator(".editor-spread").count(), 0);
         assert(
           await p.evaluate(
             () => document.documentElement.scrollWidth <= innerWidth,

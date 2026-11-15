@@ -1470,12 +1470,7 @@
   // Run inside the view update so the clock transition captures its final size.
   const workspaceApp = $("mainApp"),
     setupFields = document.querySelector(".setup-fields");
-  const fitClasses = [
-    "editor-fit",
-    "editor-spread",
-    "schedule-below",
-    "editor-page-flow",
-  ];
+  const fitClasses = ["editor-fit", "schedule-below", "editor-page-flow"];
   function fitDesktopEditor() {
     const previousScroll = window.scrollY;
     try {
@@ -1519,10 +1514,8 @@
     workspaceApp.style.setProperty("--editor-width", `${originalWidth}px`);
     if (fits()) return;
     workspaceApp.style.setProperty("--clock-width", `${clockWidth}px`);
-    function tryWidths(maximum, spread) {
-      workspaceApp.classList.toggle("editor-spread", spread);
-      const start = spread ? 860 : Math.min(originalWidth, maximum);
-      if (start > maximum) return false;
+    function tryWidths(maximum) {
+      const start = Math.min(originalWidth, maximum);
       for (let width = start; ; width = Math.min(width + 32, maximum)) {
         workspaceApp.style.setProperty("--editor-width", `${width}px`);
         if (fits()) return true;
@@ -1530,12 +1523,12 @@
       }
     }
     const withSidebar = available - clockWidth - gap * 2 - 220;
-    if (tryWidths(withSidebar, false) || tryWidths(withSidebar, true)) return;
+    if (tryWidths(withSidebar)) return;
     workspaceApp.classList.add("schedule-below");
     const fullWidth = available - clockWidth - gap;
-    if (tryWidths(fullWidth, false) || tryWidths(fullWidth, true)) return;
-    // At small desktop sizes or high zoom, use the document rather than an inner scrollbar.
-    workspaceApp.classList.toggle("editor-spread", fullWidth >= 860);
+    if (tryWidths(fullWidth)) return;
+    // Keep the full-width time picker above sound/tests even in short windows.
+    // Use the document rather than changing that order or clipping the form.
     workspaceApp.style.setProperty("--editor-width", `${fullWidth}px`);
     workspaceApp.classList.add("editor-page-flow");
   }
