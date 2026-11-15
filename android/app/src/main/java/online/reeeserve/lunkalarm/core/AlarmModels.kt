@@ -14,6 +14,8 @@ object WakeTimers {
     val pieces = listOf(6, 8, 10)
     val mines = puzzle
     val sudoku = listOf(60, 120, 180, 240)
+    val stroopRounds = 3..8
+    val stroop = listOf(3, 4, 5, 6)
     fun nearest(value: Int, choices: List<Int>): Int {
         require(value in choices.first()..choices.last()) { "Invalid wake-up test timer." }
         return choices.minBy { kotlin.math.abs(it - value) }
@@ -29,7 +31,8 @@ data class AlarmDraft(
     val mines: Boolean = false, val mineDifficulty: Int = 0, val mineSeconds: Int = 30,
     val sudoku: Boolean = false, val sudokuDifficulty: Int = 0, val sudokuSeconds: Int = 60,
     val mathOperations: Set<MathOperation> = setOf(MathOperation.ADDITION), val mathProblemCount: Int = 3,
-    val vibrate: Boolean = false
+    val vibrate: Boolean = false,
+    val stroop: Boolean = false, val stroopRounds: Int = 5, val stroopSeconds: Int = 5
 ) {
     fun validate() {
         require(hour in 0..23 && minute in 0..59) { "Choose a valid time." }
@@ -38,6 +41,7 @@ data class AlarmDraft(
         require(puzzlePieces in WakeTimers.pieces && puzzleSeconds in WakeTimers.puzzle)
         require(mineDifficulty in 0..2 && mineSeconds in WakeTimers.mines && sudokuDifficulty in 0..3 && sudokuSeconds in WakeTimers.sudoku)
         require(mathOperations.isNotEmpty() && mathProblemCount in 1..8)
+        require(stroopRounds in WakeTimers.stroopRounds && stroopSeconds in WakeTimers.stroop)
         require(codeLength in 4..10 && typingSeconds in WakeTimers.typing && mathSeconds in WakeTimers.math)
     }
 }
@@ -47,7 +51,7 @@ data class AlarmRecord(
     val target: Long, val elapsedTarget: Long = 0, val boot: Int = -1,
     val enabled: Boolean = true, val active: Boolean = false, val error: String? = null
 ) {
-    val hasTests get() = draft.typing || draft.mathCount > 0 || draft.puzzle || draft.mines || draft.sudoku
+    val hasTests get() = draft.typing || draft.mathCount > 0 || draft.puzzle || draft.mines || draft.sudoku || draft.stroop
     val label get() = draft.name.ifBlank { if (draft.timer) "Timer" else "Alarm" }
     fun remaining(now: Long, elapsed: Long, bootCount: Int): Long =
         ((if (boot == bootCount && elapsedTarget > 0) elapsedTarget - elapsed else target - now)).coerceAtLeast(0)

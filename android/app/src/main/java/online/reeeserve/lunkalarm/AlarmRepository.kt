@@ -63,6 +63,7 @@ object AlarmJson {
         put("nativeMathKeyboard", d.nativeMathKeyboard); put("puzzle", d.puzzle); put("puzzlePieces", d.puzzlePieces); put("puzzleSeconds", d.puzzleSeconds)
         put("mines", d.mines); put("mineDifficulty", d.mineDifficulty); put("mineSeconds", d.mineSeconds)
         put("sudoku", d.sudoku); put("sudokuDifficulty", d.sudokuDifficulty); put("sudokuSeconds", d.sudokuSeconds)
+        put("stroop", d.stroop); put("stroopRounds", d.stroopRounds); put("stroopSeconds", d.stroopSeconds)
     }
     private fun draft(j: JSONObject): AlarmDraft = AlarmDraft(j.getBoolean("timer"), j.getString("name"), j.getInt("hour"), j.getInt("minute"),
         j.getInt("seconds"), j.getJSONArray("days").let { a -> (0 until a.length()).map { a.getInt(it) }.toSet() },
@@ -70,7 +71,8 @@ object AlarmJson {
         j.getInt("codeLength"), WakeTimers.nearest(j.getInt("typingSeconds"), WakeTimers.typing), j.getInt("mathCount"), WakeTimers.nearest(j.getInt("mathSeconds"), WakeTimers.math), j.optBoolean("nativeMathKeyboard", false),
         j.optBoolean("puzzle", false), WakeTimers.nearest(j.optInt("puzzlePieces", 8), WakeTimers.pieces), WakeTimers.nearest(j.optInt("puzzleSeconds", 30), WakeTimers.puzzle),
         j.optBoolean("mines", false), j.optInt("mineDifficulty", 0), j.optInt("mineSeconds", 30),
-        j.optBoolean("sudoku", false), j.optInt("sudokuDifficulty", 0), sudokuTime(j.optInt("sudokuSeconds", 60)), operations(j), j.optInt("mathProblemCount", j.optInt("mathCount", 3).takeIf { it > 0 } ?: 3), j.optBoolean("vibrate", false)).also { it.validate() }
+        j.optBoolean("sudoku", false), j.optInt("sudokuDifficulty", 0), sudokuTime(j.optInt("sudokuSeconds", 60)), operations(j), j.optInt("mathProblemCount", j.optInt("mathCount", 3).takeIf { it > 0 } ?: 3), j.optBoolean("vibrate", false),
+        j.optBoolean("stroop", false), j.optInt("stroopRounds", 5), j.optInt("stroopSeconds", 5)).also { it.validate() }
     private fun sudokuTime(value: Int): Int {
         require(value in 20..240)
         return WakeTimers.sudoku.minBy { kotlin.math.abs(it - value) }
@@ -91,6 +93,9 @@ object AlarmJson {
         put("sudoku", c.sudoku); put("sudokuDifficulty", c.sudokuDifficulty); put("sudokuSeconds", c.sudokuSeconds)
         c.sudokuBoard?.let { b -> put("sudokuBoard", JSONObject().put("size", b.size).put("givens", JSONArray(b.givens))
             .put("solution", JSONArray(b.solution)).put("values", JSONArray(b.values))) }
+        put("stroop", c.stroop); put("stroopRounds", c.stroopRounds); put("stroopSeconds", c.stroopSeconds); put("stroopAnswered", c.stroopAnswered)
+        c.stroopRound?.let { r -> put("stroopRound", JSONObject().put("word", r.word.name).put("ink", r.ink.name)
+            .put("buttonColors", JSONArray(r.buttonColors.map { it.name }))) }
     }
     private fun JSONObject.ints(key: String): List<Int> = getJSONArray(key).let { a -> (0 until a.length()).map { a.getInt(it) } }
     private fun challenge(j: JSONObject): WakeChallenge {
@@ -108,12 +113,17 @@ object AlarmJson {
             sudoku = j.optBoolean("sudoku", false), sudokuDifficulty = j.optInt("sudokuDifficulty", 0), sudokuSeconds = sudokuTime(j.optInt("sudokuSeconds", 60)),
             mathOperations = operations(j), operation = MathOperation.valueOf(j.optString("operation", "ADDITION")),
             minesConfirmed = j.optBoolean("minesConfirmed", mineBoard?.complete == true),
-            sudokuBoard = j.optJSONObject("sudokuBoard")?.let { SudokuBoard(it.getInt("size"), it.ints("givens"), it.ints("solution"), it.ints("values")) }
+            sudokuBoard = j.optJSONObject("sudokuBoard")?.let { SudokuBoard(it.getInt("size"), it.ints("givens"), it.ints("solution"), it.ints("values")) },
+            stroop = j.optBoolean("stroop", false), stroopRounds = j.optInt("stroopRounds", 5), stroopSeconds = j.optInt("stroopSeconds", 5), stroopAnswered = j.optInt("stroopAnswered", 0),
+            stroopRound = j.optJSONObject("stroopRound")?.let { r -> StroopRound(StroopColor.valueOf(r.getString("word")), StroopColor.valueOf(r.getString("ink")),
+                r.getJSONArray("buttonColors").let { colors -> (0 until colors.length()).map { StroopColor.valueOf(colors.getString(it)) } }) }
         ).also {
             require(it.puzzlePieces in WakeTimers.pieces && it.puzzleSeconds in WakeTimers.puzzle && it.placedPieces.all { id -> id in 0 until it.puzzlePieces })
             require(it.total in 0..8 && it.remaining in 0..it.total && it.codeLength in 4..10 && it.code.length == it.codeLength)
             require(it.typingSeconds in WakeTimers.typing && it.mathSeconds in WakeTimers.math && it.left in 1..144 && it.right in 1..144 && it.answer in 0..288 && it.mathOperations.isNotEmpty())
             require(it.mineDifficulty in 0..2 && it.mineSeconds in WakeTimers.mines && it.sudokuDifficulty in 0..3 && it.sudokuSeconds in WakeTimers.sudoku)
+            require(it.stroopRounds in WakeTimers.stroopRounds && it.stroopSeconds in WakeTimers.stroop && it.stroopAnswered in 0..it.stroopRounds)
+            require(!it.stroop || it.stroopRound != null); it.stroopRound?.validate()
             require(!it.mines || it.mineBoard?.size in listOf(it.mineDifficulty + 3, listOf(5, 7, 9)[it.mineDifficulty]))
             require(!it.sudoku || it.sudokuBoard?.size == if (it.sudokuDifficulty < 2) 4 else 6)
             it.mineBoard?.validate(); it.sudokuBoard?.validate()

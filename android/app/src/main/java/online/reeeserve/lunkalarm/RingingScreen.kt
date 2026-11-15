@@ -65,7 +65,7 @@ import online.reeeserve.lunkalarm.core.*
                     AccentButton("Unlock to start", theme, Modifier.testTag("unlock-tests"), click = activity::unlock)
                 } else if (alarm.hasTests) {
                     key(session.owner) { WakeChallengeContent(challenge, alarm.draft, theme, controller::submit, { controller.placePiece(it) },
-                        { cell, flag -> controller.mineAction(cell, flag) }, { cell, digit -> controller.sudokuAction(cell, digit) }) }
+                        { cell, flag -> controller.mineAction(cell, flag) }, { cell, digit -> controller.sudokuAction(cell, digit) }, controller::submitStroop) }
                 } else if (!alarm.hasTests) {
                     Spacer(Modifier.height(32.dp))
                     AccentButton("Stop alarm", theme, Modifier.testTag("stop-alarm")) { controller.finish() }
@@ -78,7 +78,8 @@ import online.reeeserve.lunkalarm.core.*
 }
 
 @Composable fun WakeChallengeContent(challenge: WakeChallenge, draft: AlarmDraft, theme: LunkTheme,
-    submit: (String, Boolean) -> AnswerResult, place: (Int) -> Unit, mine: (Int, Boolean) -> Unit, sudoku: (Int, Int) -> Unit) {
+    submit: (String, Boolean) -> AnswerResult, place: (Int) -> Unit, mine: (Int, Boolean) -> Unit, sudoku: (Int, Int) -> Unit,
+    stroop: (StroopColor) -> AnswerResult) {
     var code by remember(challenge.resets) { mutableStateOf("") }
     var answer by remember(challenge.resets) { mutableStateOf("") }
     var hint by remember(challenge.resets) { mutableStateOf("") }
@@ -132,6 +133,15 @@ import online.reeeserve.lunkalarm.core.*
         MinesweeperView(challenge.mineBoard!!, theme, mine)
     } else if (challenge.sudokuPending) {
         SudokuView(challenge.sudokuBoard!!, theme, sudoku)
+    } else if (challenge.stroopPending) {
+        StroopView(challenge, theme) { color ->
+            when (stroop(color)) {
+                AnswerResult.CORRECT -> hint = ""
+                AnswerResult.INCORRECT -> { hint = "Try again. Choose the word’s ink color."; haptic(view, true) }
+                AnswerResult.TIMED_OUT -> hint = "Time’s up. Tests restarted."
+                AnswerResult.INCOMPLETE -> Unit
+            }
+        }
     }
     if (hint.isNotEmpty()) Text(hint, color = theme.accent, fontSize = 12.sp)
 }

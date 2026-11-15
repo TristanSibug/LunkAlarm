@@ -81,6 +81,7 @@ class AlarmController(private val context: Context, val repository: AlarmReposit
     }
     fun mineAction(cell: Int, flag: Boolean) = gameAction { it.mineAction(cell, flag, SystemClock.elapsedRealtime()) }
     fun sudokuAction(cell: Int, digit: Int) = gameAction { it.sudokuAction(cell, digit, SystemClock.elapsedRealtime()) }
+    fun submitStroop(color: StroopColor) = gameAction { it.submitStroop(color, SystemClock.elapsedRealtime()) }
     private fun gameAction(action: (WakeChallenge) -> Submission): AnswerResult {
         val session = repository.state.value.session ?: return AnswerResult.INCOMPLETE
         if (!session.opened) return AnswerResult.INCOMPLETE

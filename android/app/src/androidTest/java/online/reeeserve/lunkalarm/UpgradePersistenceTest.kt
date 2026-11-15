@@ -22,7 +22,8 @@ class UpgradePersistenceTest {
         assertTrue(controller.save(AlarmDraft(name = "Keep my alarm", hour = at.hour, minute = at.minute,
             days = setOf(2, 4, 6), tone = "upgrade-sound", volume = .6f, gradual = true,
             typing = true, codeLength = 6, mathCount = 3, mathOperations = MathOperation.entries.toSet(),
-            mines = true, mineDifficulty = 1, sudoku = true, sudokuSeconds = 180, vibrate = true)))
+            mines = true, mineDifficulty = 1, sudoku = true, sudokuSeconds = 180, vibrate = true,
+            stroop = true, stroopRounds = 8, stroopSeconds = 4)))
         assertTrue(controller.save(AlarmDraft(timer = true, name = "Keep my timer", seconds = 7200)))
         assertEquals(2, repo.state.value.alarms.size)
         expected.writeText(AlarmJson.encode(repo.state.value))

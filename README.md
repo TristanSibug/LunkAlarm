@@ -28,7 +28,7 @@ The repository also retains the earlier native C# / WPF Windows implementation i
 
 ### Mobile wake-up tests
 
-Android has five wake-up test tiles; iOS adds Stroop as a sixth tile. Tapping a tile opens settings; Set / Unset changes activation while other selected tests stay enabled. Each test has a **Try** button for a practice run you can exit anytime without scheduling an alarm. Test settings use fixed buttons and bounded **− / +** controls instead of looping wheels.
+Both native apps have six wake-up test tiles, including Stroop. Tapping a tile opens settings; Set / Unset changes activation while other selected tests stay enabled. Each test has a **Try** button for a practice run you can exit anytime without scheduling an alarm. Test settings use fixed buttons and bounded **− / +** controls instead of looping wheels.
 
 | Wake-up test | Options | Time limit |
 | --- | --- | --- |
@@ -37,7 +37,7 @@ Android has five wake-up test tiles; iOS adds Stroop as a sixth tile. Tapping a 
 | Puzzle | 6 / 8 / 10 randomized jigsaw pieces | 15–40 seconds in five-second steps |
 | Minesweeper | Easy 5×5, Medium 7×7, Hard 9×9 | 15–40 seconds in five-second steps |
 | Sudoku | 4×4 easy/hard and 6×6 easy/hard | 60 / 120 / 180 / 240 seconds |
-| Stroop (iOS) | 3–8 rounds; color-word and answer-button distractions | 3 / 4 / 5 / 6 seconds per round |
+| Stroop | 3–8 rounds; color-word and answer-button distractions | 3 / 4 / 5 / 6 seconds per round |
 
 ### iOS 1.8.1 and Android 1.3.0
 

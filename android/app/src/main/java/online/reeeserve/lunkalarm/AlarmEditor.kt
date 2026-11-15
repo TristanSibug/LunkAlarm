@@ -195,7 +195,7 @@ import online.reeeserve.lunkalarm.core.*
                     OutlinedButton(onClick = { previewing = !previewing }, modifier = Modifier.weight(1f).heightIn(min = 60.dp)) { Text(if (previewing) "Stop preview" else "Preview sound", fontSize = 12.sp) }
                     OutlinedButton(onClick = {
                         if (!controller.scheduler.exactAllowed || !controller.scheduler.notificationsAllowed) { sheet = null; permissions() }
-                        else if (controller.save(draft.copy(timer = true, seconds = 5, typing = false, mathCount = 0, puzzle = false, mines = false, sudoku = false, name = ""), rememberDraft = false)) { sheet = null; previewing = false }
+                        else if (controller.save(draft.copy(timer = true, seconds = 5, typing = false, mathCount = 0, puzzle = false, mines = false, sudoku = false, stroop = false, name = ""), rememberDraft = false)) { sheet = null; previewing = false }
                     }, modifier = Modifier.weight(1f).heightIn(min = 60.dp).testTag("test-five-seconds")) { Text("Test a 5-second alarm", fontSize = 12.sp) }
                 }
                 Text("Start the test, then lock your phone to check the sound and gradual increase. Overall loudness uses your Android alarm volume.", color = theme.muted, fontSize = 12.sp)

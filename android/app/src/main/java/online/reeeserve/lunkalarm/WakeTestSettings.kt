@@ -10,6 +10,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.Palette
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -31,28 +32,37 @@ import online.reeeserve.lunkalarm.core.*
 
 enum class WakeTest(val title: String, val short: String) {
     TYPING("Typing test", "Typing"), MATH("Math test", "Math"), PUZZLE("Puzzle test", "Puzzle"),
-    MINES("Minesweeper test", "Minesweeper"), SUDOKU("Sudoku test", "Sudoku");
-    fun enabled(d: AlarmDraft) = when (this) { TYPING -> d.typing; MATH -> d.mathCount > 0; PUZZLE -> d.puzzle; MINES -> d.mines; SUDOKU -> d.sudoku }
+    MINES("Minesweeper test", "Minesweeper"), SUDOKU("Sudoku test", "Sudoku"), STROOP("Stroop test", "Stroop");
+    fun enabled(d: AlarmDraft) = when (this) { TYPING -> d.typing; MATH -> d.mathCount > 0; PUZZLE -> d.puzzle; MINES -> d.mines; SUDOKU -> d.sudoku; STROOP -> d.stroop }
     fun only(d: AlarmDraft) = d.copy(typing = this == TYPING, mathCount = if (this == MATH) d.mathCount.takeIf { it > 0 } ?: d.mathProblemCount else 0,
-        puzzle = this == PUZZLE, mines = this == MINES, sudoku = this == SUDOKU)
+        puzzle = this == PUZZLE, mines = this == MINES, sudoku = this == SUDOKU, stroop = this == STROOP)
 }
 
 @Composable fun WakeTestSelector(draft: AlarmDraft, theme: LunkTheme, open: (WakeTest) -> Unit) {
-    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(7.dp)) {
-        WakeTest.entries.forEach { test ->
-            val enabled = test.enabled(draft)
-            Box(Modifier.weight(1f).clip(RoundedCornerShape(12.dp))
-                .background(if (enabled) theme.accent2.copy(alpha = .1f) else theme.field)
-                .border(if (enabled) 1.5.dp else 1.dp, if (enabled) theme.accent2 else theme.border, RoundedCornerShape(12.dp))
-                .clickable(role = Role.Button) { open(test) }
-                .semantics { contentDescription = test.title; selected = enabled }.testTag("test-tile-${test.name.lowercase()}")) {
-                Column(Modifier.fillMaxWidth().padding(top = 18.dp, bottom = 12.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(9.dp)) {
-                    TestGlyph(test, if (enabled) theme.accent2 else theme.muted, Modifier.size(if (test == WakeTest.TYPING) 36.dp else 25.dp, 25.dp))
-                    Text(test.short, color = theme.text, fontSize = if (test == WakeTest.MINES) 9.sp else 10.sp, maxLines = 1)
+    BoxWithConstraints(Modifier.fillMaxWidth()) {
+        val rows = WakeTest.entries.chunked(if (maxWidth >= 470.dp) 6 else 3)
+        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            rows.forEach { row ->
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(7.dp)) {
+                    row.forEach { test -> WakeTestTile(test, draft, theme) { open(test) } }
                 }
-                if (enabled) Icon(Icons.Default.Check, null, Modifier.align(Alignment.TopEnd).padding(3.dp).size(13.dp), tint = theme.accent2)
             }
         }
+    }
+}
+
+@Composable private fun RowScope.WakeTestTile(test: WakeTest, draft: AlarmDraft, theme: LunkTheme, open: () -> Unit) {
+    val enabled = test.enabled(draft)
+    Box(Modifier.weight(1f).clip(RoundedCornerShape(12.dp))
+        .background(if (enabled) theme.accent2.copy(alpha = .1f) else theme.field)
+        .border(if (enabled) 1.5.dp else 1.dp, if (enabled) theme.accent2 else theme.border, RoundedCornerShape(12.dp))
+        .clickable(role = Role.Button, onClick = open)
+        .semantics { contentDescription = test.title; selected = enabled }.testTag("test-tile-${test.name.lowercase()}")) {
+        Column(Modifier.fillMaxWidth().padding(top = 18.dp, bottom = 12.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(9.dp)) {
+            TestGlyph(test, if (enabled) theme.accent2 else theme.muted, Modifier.size(if (test == WakeTest.TYPING) 36.dp else 25.dp, 25.dp))
+            Text(test.short, color = theme.text, fontSize = if (test == WakeTest.MINES) 9.sp else 10.sp, maxLines = 1)
+        }
+        if (enabled) Icon(Icons.Default.Check, null, Modifier.align(Alignment.TopEnd).padding(3.dp).size(13.dp), tint = theme.accent2)
     }
 }
 
@@ -132,6 +142,10 @@ enum class WakeTest(val title: String, val short: String) {
                         }
                         ChoiceSetting("Time limit", draft.sudokuSeconds, WakeTimers.sudoku, "sudoku-timer", theme) { change(draft.copy(sudokuSeconds = it)) }
                     }
+                    WakeTest.STROOP -> Row(Modifier.height(IntrinsicSize.Min), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                        SettingBox(Modifier.weight(.42f), theme) { CountSetting("Rounds", draft.stroopRounds, WakeTimers.stroopRounds, "3–8 rounds", "stroop-rounds", theme) { change(draft.copy(stroopRounds = it)) } }
+                        SettingBox(Modifier.weight(.58f), theme) { ChoiceSetting("Time per round", draft.stroopSeconds, WakeTimers.stroop, "stroop-timer", theme, suffix = "", footer = "seconds") { change(draft.copy(stroopSeconds = it)) } }
+                    }
                 }
                 AccentButton(if (test.enabled(draft)) "Unset" else "Set", theme, Modifier.testTag("test-settings-done")) {
                     val enable = !test.enabled(draft)
@@ -141,6 +155,7 @@ enum class WakeTest(val title: String, val short: String) {
                         WakeTest.PUZZLE -> draft.copy(puzzle = enable)
                         WakeTest.MINES -> draft.copy(mines = enable)
                         WakeTest.SUDOKU -> draft.copy(sudoku = enable)
+                        WakeTest.STROOP -> draft.copy(stroop = enable)
                     }); setSettings(null)
                 }
             }
@@ -197,7 +212,8 @@ enum class WakeTest(val title: String, val short: String) {
 @Composable fun TestGlyph(test: WakeTest, color: Color, modifier: Modifier = Modifier) {
     if (test == WakeTest.TYPING || test == WakeTest.MATH) Box(modifier, contentAlignment = Alignment.Center) {
         Text(if (test == WakeTest.TYPING) "Aa" else "+=", color = color, fontSize = 20.sp, fontWeight = FontWeight.SemiBold, maxLines = 1, softWrap = false)
-    } else Canvas(modifier) {
+    } else if (test == WakeTest.STROOP) Icon(Icons.Default.Palette, null, modifier, tint = color)
+    else Canvas(modifier) {
         val w = size.width; val h = size.height; val stroke = Stroke(1.5.dp.toPx())
         when (test) {
             WakeTest.MINES -> {
@@ -245,7 +261,8 @@ enum class WakeTest(val title: String, val short: String) {
                     submit = { text, typing -> (if (typing) challenge.submitCode(text, SystemClock.elapsedRealtime()) else challenge.submitDigits(text, SystemClock.elapsedRealtime())).also { challenge = it.challenge }.result },
                     place = { challenge = challenge.placePiece(it, SystemClock.elapsedRealtime()).challenge },
                     mine = { cell, flag -> challenge = challenge.mineAction(cell, flag, SystemClock.elapsedRealtime()).challenge },
-                    sudoku = { cell, digit -> challenge = challenge.sudokuAction(cell, digit, SystemClock.elapsedRealtime()).challenge })
+                    sudoku = { cell, digit -> challenge = challenge.sudokuAction(cell, digit, SystemClock.elapsedRealtime()).challenge },
+                    stroop = { color -> challenge.submitStroop(color, SystemClock.elapsedRealtime()).also { challenge = it.challenge }.result })
             }
         }
     }

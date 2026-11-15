@@ -363,7 +363,7 @@ class AlarmInteractionTest {
         }
         rule.onNodeWithTag("save-alarm").performClick()
         rule.waitUntil { repo.state.value.alarms.size == 1 }
-        assertTrue(repo.state.value.alarms.single().draft.let { it.typing && it.mathCount > 0 && it.puzzle && it.mines && it.sudoku })
+        assertTrue(repo.state.value.alarms.single().draft.let { it.typing && it.mathCount > 0 && it.puzzle && it.mines && it.sudoku && it.stroop })
         assertNull(repo.state.value.session)
     }
     @Test fun q_minesweeperAndSudokuShareTheRealAlarmCompletionPath() {
@@ -435,6 +435,84 @@ class AlarmInteractionTest {
         rule.onNodeWithTag("alarms-heading").assertExists()
         capture("android-alarms-and-timers")
         assertEquals("Tea", repo.state.value.alarms.first { it.draft.timer }.draft.name)
+    }
+
+    private fun stroopInk(): StroopColor {
+        val description = rule.onNodeWithTag("stroop-word").fetchSemanticsNode().config[androidx.compose.ui.semantics.SemanticsProperties.ContentDescription].first()
+        return StroopColor.valueOf(description.substringAfter("written in ").substringBefore(" ink").uppercase())
+    }
+    @Test fun u_stroopPracticeHasFiniteSettingsColoredChoicesAndIndependentActivation() {
+        openEditor()
+        rule.onNodeWithTag("editor-form").performScrollToNode(hasTestTag("wake-tests"))
+        rule.onNodeWithTag("test-tile-typing").performScrollTo().performClick()
+        rule.onNodeWithTag("test-settings-done").performClick()
+        rule.onNodeWithTag("test-tile-stroop").performScrollTo().performClick()
+        rule.onNodeWithTag("stroop-rounds-value").assertTextEquals("5")
+        repeat(2) { rule.onNodeWithTag("stroop-rounds-minus").performClick() }
+        rule.onNodeWithTag("stroop-rounds-value").assertTextEquals("3")
+        rule.onNodeWithTag("stroop-rounds-minus").assertIsNotEnabled()
+        repeat(5) { rule.onNodeWithTag("stroop-rounds-plus").performClick() }
+        rule.onNodeWithTag("stroop-rounds-value").assertTextEquals("8")
+        rule.onNodeWithTag("stroop-rounds-plus").assertIsNotEnabled()
+        for (seconds in 3..6) rule.onNodeWithTag("stroop-timer-$seconds").performClick().assertIsSelected()
+        capture("android-stroop-settings")
+        rule.onNodeWithTag("try-stroop").performClick()
+        rule.onNodeWithTag("stroop-progress").assertTextEquals("0 / 8 rounds")
+        rule.onNodeWithTag("challenge-code").assertDoesNotExist()
+        assertTrue(repo.state.value.alarms.isEmpty()); assertNull(repo.state.value.session); assertFalse(AlarmService.isPlaying)
+        val frames = StroopColor.entries.map { rule.onNodeWithTag("stroop-choice-${it.name.lowercase()}").fetchSemanticsNode().boundsInRoot }
+        for (color in StroopColor.entries) {
+            val node = rule.onNodeWithTag("stroop-choice-${color.name.lowercase()}").assertIsDisplayed().fetchSemanticsNode()
+            assertNotEquals(color.label + " background", node.config[androidx.compose.ui.semantics.SemanticsProperties.StateDescription])
+        }
+        val word = rule.onNodeWithTag("stroop-word").fetchSemanticsNode().config[androidx.compose.ui.semantics.SemanticsProperties.Text].first().text.lowercase()
+        rule.onNodeWithTag("stroop-choice-$word").performClick()
+        rule.onNodeWithTag("stroop-progress").assertTextEquals("0 / 8 rounds")
+        capture("android-stroop-practice")
+        repeat(8) { i ->
+            val ink = stroopInk()
+            rule.onNodeWithTag("stroop-choice-${ink.name.lowercase()}").performClick()
+            if (i < 7) {
+                rule.onNodeWithTag("stroop-progress").assertTextEquals("${i + 1} / 8 rounds")
+                assertNotEquals(ink, stroopInk())
+                StroopColor.entries.forEachIndexed { index, color ->
+                    val frame = rule.onNodeWithTag("stroop-choice-${color.name.lowercase()}").fetchSemanticsNode().boundsInRoot
+                    assertEquals(frames[index].left, frame.left, 1f); assertEquals(frames[index].top, frame.top, 1f)
+                }
+            }
+        }
+        rule.onNodeWithTag("retry-practice").performClick()
+        rule.onNodeWithTag("stroop-progress").assertTextEquals("0 / 8 rounds")
+        rule.onNodeWithTag("exit-practice").performClick()
+        rule.onNodeWithTag("test-settings-done").assertTextEquals("Set").performClick()
+        rule.onNodeWithTag("test-tile-stroop").assertIsSelected()
+        rule.onNodeWithTag("test-tile-typing").assertIsSelected()
+        capture("android-six-test-tiles")
+        rule.onNodeWithTag("test-tile-stroop").performClick()
+        rule.onNodeWithTag("test-settings-done").assertTextEquals("Unset")
+        rule.onNodeWithTag("close-test-settings").performClick()
+        rule.onNodeWithTag("save-alarm").performClick()
+        val saved = repo.state.value.alarms.single().draft
+        assertTrue(saved.stroop && saved.typing); assertEquals(8, saved.stroopRounds); assertEquals(6, saved.stroopSeconds)
+    }
+    @Test fun v_stroopTimeoutRestartsTheRealAlarmAndSoundThenAllowsCompletion() {
+        mission(AlarmDraft(stroop = true, stroopRounds = 3, stroopSeconds = 6, volume = .2f))
+        rule.onNodeWithTag("stroop-progress").assertTextEquals("0 / 3 rounds")
+        rule.onNodeWithTag("stroop-choice-${stroopInk().name.lowercase()}").performScrollTo().performClick()
+        rule.waitUntil(5000) { repo.state.value.session?.challenge?.stroopAnswered == 1 }
+        val session = repo.state.value.session!!
+        assertFalse(session.sound)
+        assertEquals(repo.state.value, AlarmJson.decode(AlarmJson.encode(repo.state.value)))
+        rule.onNodeWithTag("stroop-choice-${session.challenge.stroopRound!!.word.name.lowercase()}").performScrollTo().performClick()
+        assertEquals(session.challenge.deadline, repo.state.value.session!!.challenge.deadline)
+        assertEquals(1, repo.state.value.session!!.challenge.stroopAnswered)
+        rule.waitUntil(10000) { repo.state.value.session?.challenge?.resets == 1 && AlarmService.isPlaying }
+        assertTrue(repo.state.value.session!!.sound)
+        rule.onNodeWithTag("stroop-progress").assertTextEquals("0 / 3 rounds")
+        capture("android-stroop-alarm-timeout")
+        repeat(3) { rule.onNodeWithTag("stroop-choice-${stroopInk().name.lowercase()}").performScrollTo().performClick() }
+        rule.waitUntil(10000) { repo.state.value.session == null && !AlarmService.isPlaying }
+        assertTrue(repo.state.value.alarms.isEmpty())
     }
 
 }

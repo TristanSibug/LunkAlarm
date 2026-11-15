@@ -25,17 +25,20 @@ data class WakeChallenge(
     val mines: Boolean = false, val mineDifficulty: Int = 0, val mineSeconds: Int = 30, val mineBoard: MineBoard? = null,
     val sudoku: Boolean = false, val sudokuDifficulty: Int = 0, val sudokuSeconds: Int = 60, val sudokuBoard: SudokuBoard? = null,
     val mathOperations: Set<MathOperation> = setOf(MathOperation.ADDITION), val operation: MathOperation = MathOperation.ADDITION,
-    val minesConfirmed: Boolean = false
+    val minesConfirmed: Boolean = false,
+    val stroop: Boolean = false, val stroopRounds: Int = 5, val stroopSeconds: Int = 5,
+    val stroopAnswered: Int = 0, val stroopRound: StroopRound? = null
 ) {
     val puzzlePending get() = puzzle && placedPieces.size < puzzlePieces
     val minesPending get() = mines && (!minesConfirmed || mineBoard?.complete != true)
     val answer get() = operation.answer(left, right)
     val sudokuPending get() = sudoku && sudokuBoard?.complete != true
-    val complete get() = !typingPending && remaining == 0 && !puzzlePending && !minesPending && !sudokuPending
+    val stroopPending get() = stroop && stroopAnswered < stroopRounds
+    val complete get() = !typingPending && remaining == 0 && !puzzlePending && !minesPending && !sudokuPending && !stroopPending
     val answered get() = total - remaining
     fun secondsLeft(now: Long): Int = if (deadline == 0L) 0 else ceil((deadline - now).coerceAtLeast(0) / 1000.0).toInt()
     fun start(now: Long): WakeChallenge = if (deadline == 0L && !complete) renew(now) else this
-    private fun renew(now: Long) = copy(deadline = if (complete) 0 else now + (if (typingPending) typingSeconds else if (remaining > 0) mathSeconds else if (puzzlePending) puzzleSeconds else if (minesPending) mineSeconds else sudokuSeconds) * 1000L)
+    private fun renew(now: Long) = copy(deadline = if (complete) 0 else now + (if (typingPending) typingSeconds else if (remaining > 0) mathSeconds else if (puzzlePending) puzzleSeconds else if (minesPending) mineSeconds else if (sudokuPending) sudokuSeconds else stroopSeconds) * 1000L)
     fun expire(now: Long): WakeChallenge {
         if (complete || deadline == 0L || now < deadline) return this
         return restart(now)
@@ -43,7 +46,8 @@ data class WakeChallenge(
     private fun restart(now: Long): WakeChallenge = create(AlarmDraft(typing = typing, mathCount = total, codeLength = codeLength,
             typingSeconds = typingSeconds, mathSeconds = mathSeconds, puzzle = puzzle, puzzlePieces = puzzlePieces, puzzleSeconds = puzzleSeconds,
             mines = mines, mineDifficulty = mineDifficulty, mineSeconds = mineSeconds,
-            sudoku = sudoku, sudokuDifficulty = sudokuDifficulty, sudokuSeconds = sudokuSeconds, mathOperations = mathOperations)).copy(resets = resets + 1).renew(now)
+            sudoku = sudoku, sudokuDifficulty = sudokuDifficulty, sudokuSeconds = sudokuSeconds, mathOperations = mathOperations,
+            stroop = stroop, stroopRounds = stroopRounds, stroopSeconds = stroopSeconds)).copy(resets = resets + 1).renew(now)
     fun submitCode(text: String, now: Long): Submission {
         val current = expire(now)
         if (current.resets != resets) return Submission(current, AnswerResult.TIMED_OUT)
@@ -95,6 +99,17 @@ data class WakeChallenge(
         val updated = board.enter(cell, digit); val next = copy(sudokuBoard = updated)
         return Submission(if (updated.complete) next.renew(now) else next, AnswerResult.CORRECT)
     }
+    fun submitStroop(color: StroopColor, now: Long): Submission {
+        val current = expire(now)
+        if (current.resets != resets) return Submission(current, AnswerResult.TIMED_OUT)
+        val round = stroopRound ?: return Submission(this, AnswerResult.INCOMPLETE)
+        if (deadline == 0L || typingPending || remaining > 0 || puzzlePending || minesPending || sudokuPending || !stroopPending)
+            return Submission(this, AnswerResult.INCOMPLETE)
+        if (color != round.ink) return Submission(this, AnswerResult.INCORRECT)
+        val next = copy(stroopAnswered = stroopAnswered + 1,
+            stroopRound = if (stroopAnswered + 1 < stroopRounds) StroopRound.create(previousInk = round.ink) else round)
+        return Submission(next.renew(now), AnswerResult.CORRECT)
+    }
     companion object {
         fun create(draft: AlarmDraft): WakeChallenge {
             val alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789"
@@ -106,7 +121,9 @@ data class WakeChallenge(
                 mines = draft.mines, mineDifficulty = draft.mineDifficulty, mineSeconds = draft.mineSeconds,
                 mineBoard = if (draft.mines) MineBoard.create(draft.mineDifficulty, Random.nextLong()) else null,
                 sudoku = draft.sudoku, sudokuDifficulty = draft.sudokuDifficulty, sudokuSeconds = draft.sudokuSeconds,
-                sudokuBoard = if (draft.sudoku) SudokuBoard.create(draft.sudokuDifficulty, Random.nextLong()) else null)
+                sudokuBoard = if (draft.sudoku) SudokuBoard.create(draft.sudokuDifficulty, Random.nextLong()) else null,
+                stroop = draft.stroop, stroopRounds = draft.stroopRounds, stroopSeconds = draft.stroopSeconds,
+                stroopRound = if (draft.stroop) StroopRound.create() else null)
         }
     }
 }
