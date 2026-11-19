@@ -46,7 +46,7 @@ The **Native Android app** GitHub Actions workflow runs the same build/core/lint
 
 Successful builds package `LunkAlarm-Android-1.10.0.apk`, `LunkAlarm-Android-source.zip` and `SHA256SUMS.txt` in the **LunkAlarm-Android** Actions artifact, alongside build logs, test reports and native screenshots. A generated `android-build-reports` branch exposes the latest result and previews. The workflow does not create, upload or replace GitHub Releases.
 
-Starting with 1.10.0, Android and iOS use the same version and share one release. After the website checks and both native builds succeed on the same main commit, push a tag such as `lunkalarm-v1.10.0`. The **Combined LunkAlarm release** workflow checks the exact build commit, versions and APK checksum, then publishes both installers and their checksums using the [shared release notes](../RELEASE_NOTES.md). An early tag fails publication until the required builds succeed; rerun that release job afterward. The `lunkalarm-v` prefix is separate from the older Windows `v*` release workflow.
+Starting with 1.10.0, Android and iOS use the same version and share one manually published release. Download both successful native build artifacts from the same main commit, extract `LunkAlarm-Android-1.10.0.apk` and `LunkAlarm-iOS-1.10.0-unsigned.ipa`, and attach them directly to one GitHub Release. Use **LunkAlarm 1.10.0 — Alarm Editing Fix**, the tag `lunkalarm-v1.10.0`, and the [shared release notes](../RELEASE_NOTES.md). The `lunkalarm-v` prefix avoids the older Windows `v*` release workflow. These mobile build workflows do not publish a release or push a tag.
 
 ## Version 1.1
 

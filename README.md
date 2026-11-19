@@ -77,6 +77,6 @@ The native apps schedule alarms through Android’s AlarmManager and Apple’s A
 | [`android/`](android/) | Kotlin and Jetpack Compose | [Android setup and builds](android/README.md) |
 | [`ios/`](ios/) | SwiftUI and AlarmKit | [iOS setup and builds](ios/README.md) |
 
-[GitHub Actions](https://github.com/TristanSibug/LunkAlarm/actions) provides build artifacts and automated checks. The combined release workflow publishes the Android APK, iOS IPA, and website link together. The earlier C# / WPF Windows implementation remains in [`src/`](src/).
+[GitHub Actions](https://github.com/TristanSibug/LunkAlarm/actions) provides build artifacts and automated checks. Releases are published manually, with the Android APK, iOS IPA, and website link together on one page. The earlier C# / WPF Windows implementation remains in [`src/`](src/).
 
 MIT license.
