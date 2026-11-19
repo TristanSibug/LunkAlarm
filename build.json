@@ -1,13 +1,56 @@
 {
-  "buildOnly": true,
-  "commit": "8643414ad0947a5fa46952ec64835b3dd80b08b2",
-  "run": "https://github.com/TristanSibug/LunkAlarm/actions/runs/43693935986",
+  "buildOnly": false,
+  "commit": "ff53f3df08a581c69181779c35ecb3d7aaad8f41",
+  "run": "https://github.com/TristanSibug/LunkAlarm/actions/runs/44574957677",
   "status": "success",
   "build": "success",
-  "emulator": "skipped",
+  "emulator": "success",
   "release": "manual",
-  "tests": [],
+  "tests": [
+    {
+      "name": "online.reeeserve.lunkalarm.core.AlarmCoreTest",
+      "tests": "20",
+      "failures": "0",
+      "errors": "0",
+      "skipped": "0"
+    },
+    {
+      "name": "online.reeeserve.lunkalarm.core.GridGamesTest",
+      "tests": "9",
+      "failures": "0",
+      "errors": "0",
+      "skipped": "0"
+    },
+    {
+      "name": "online.reeeserve.lunkalarm.core.StroopTest",
+      "tests": "9",
+      "failures": "0",
+      "errors": "0",
+      "skipped": "0"
+    },
+    {
+      "name": "online.reeeserve.lunkalarm.core.ThemeContrastTest",
+      "tests": "1",
+      "failures": "0",
+      "errors": "0",
+      "skipped": "0"
+    },
+    {
+      "name": "online.reeeserve.lunkalarm.AlarmInteractionTest",
+      "tests": "4",
+      "failures": "0",
+      "errors": "0",
+      "skipped": "0"
+    }
+  ],
   "errors": [],
-  "previews": [],
-  "upgrade": null
+  "previews": [
+    "android-edit-countdown.png",
+    "android-edit-seven-to-seven-thirty.png",
+    "android-empty-list.png",
+    "android-floating-add.png",
+    "android-saved-alarms.png",
+    "android-swipe-delete.png"
+  ],
+  "upgrade": true
 }
