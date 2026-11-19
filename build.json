@@ -1,13 +1,29 @@
 {
-  "buildOnly": true,
-  "commit": "8643414ad0947a5fa46952ec64835b3dd80b08b2",
-  "run": "https://github.com/TristanSibug/LunkAlarm/actions/runs/43693936056",
+  "buildOnly": false,
+  "commit": "5045dc61f7319cdac9b0353c21da07ff332e3c0b",
+  "run": "https://github.com/TristanSibug/LunkAlarm/actions/runs/44577312684",
   "status": "success",
-  "simulator": "skipped",
+  "simulator": "success",
   "device": "success",
-  "launch": "skipped",
-  "uiTests": "skipped",
+  "launch": "success",
+  "uiTests": "success",
   "errors": [],
-  "screenshot": null,
-  "uiPreviews": []
+  "screenshot": "ios-clock.png",
+  "uiTestSummary": [
+    "Test Case '-[LunkAlarmUITests.AlarmInteractionTests testBlankNameEditInPlaceAndExactDuplicate]' started.",
+    "Test Case '-[LunkAlarmUITests.AlarmInteractionTests testBlankNameEditInPlaceAndExactDuplicate]' passed (104.750 seconds).",
+    "Test Case '-[LunkAlarmUITests.AlarmInteractionTests testCountdownIsInYourAlarmsAndCanBeEdited]' started.",
+    "Test Case '-[LunkAlarmUITests.AlarmInteractionTests testCountdownIsInYourAlarmsAndCanBeEdited]' passed (68.453 seconds).",
+    "Test Case '-[LunkAlarmUITests.AlarmInteractionTests testFirstSheetEditsSavedAlarmTimeWithoutCreatingAnotherAlarm]' started.",
+    "Test Case '-[LunkAlarmUITests.AlarmInteractionTests testFirstSheetEditsSavedAlarmTimeWithoutCreatingAnotherAlarm]' passed (49.101 seconds).",
+    "\t Executed 3 tests, with 0 failures (0 unexpected) in 222.304 (222.316) seconds",
+    "\t Executed 3 tests, with 0 failures (0 unexpected) in 222.304 (222.318) seconds",
+    "\t Executed 3 tests, with 0 failures (0 unexpected) in 222.304 (222.321) seconds"
+  ],
+  "uiPreviews": [
+    "ios-ui-preview-1.png",
+    "ios-ui-preview-2.png",
+    "ios-ui-preview-3.png",
+    "ios-ui-preview-4.png"
+  ]
 }
