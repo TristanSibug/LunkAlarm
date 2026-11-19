@@ -25,7 +25,7 @@ jobs:
     env:
       BUILD_ONLY: ${{ inputs.build_only == true || contains(github.event.head_commit.message, '[build-only]') }}
       EDITING_CHECKS: ${{ inputs.editing_checks == true || contains(github.event.head_commit.message, '[alarm-editing-checks]') }}
-    runs-on: macos-15
+    runs-on: macos-15-intel
     timeout-minutes: 50
     permissions:
       contents: write
