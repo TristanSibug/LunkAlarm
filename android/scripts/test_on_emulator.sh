@@ -41,4 +41,8 @@ adb shell appops set online.reeeserve.lunkalarm SCHEDULE_EXACT_ALARM allow
 adb shell appops set online.reeeserve.lunkalarm USE_FULL_SCREEN_INTENT allow
 adb shell input keyevent KEYCODE_WAKEUP
 adb shell wm dismiss-keyguard
-./android/gradlew -p android :app:connectedDebugAndroidTest -Pandroid.testInstrumentationRunnerArguments.class=online.reeeserve.lunkalarm.AlarmInteractionTest -Pandroid.injected.androidTest.leaveApksInstalledAfterRun=true --console plain | tee artifacts/android-ui-test.log
+test_class="online.reeeserve.lunkalarm.AlarmInteractionTest"
+if [ "${EDITING_CHECKS:-false}" = "true" ]; then
+  test_class="${test_class}#b_blankNameEditExactDuplicateAndFloatingSave,${test_class}#b_firstEditorUpdatesSevenAmInPlaceAndPreservesOtherAlarms,${test_class}#c_swipeNavigationCountdownEditingAndDeleteGestures,${test_class}#j_timeWheelCanOpenKeyboardAndCommitTypedMinutes"
+fi
+./android/gradlew -p android :app:connectedDebugAndroidTest "-Pandroid.testInstrumentationRunnerArguments.class=$test_class" -Pandroid.injected.androidTest.leaveApksInstalledAfterRun=true --console plain | tee artifacts/android-ui-test.log

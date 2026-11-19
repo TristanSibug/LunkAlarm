@@ -110,6 +110,33 @@ class AlarmInteractionTest {
         assertEquals(left, rule.onNodeWithTag("alarms-heading").fetchSemanticsNode().boundsInRoot.left, 1f)
         capture("android-saved-alarms")
     }
+    @Test fun b_firstEditorUpdatesSevenAmInPlaceAndPreservesOtherAlarms() {
+        rule.runOnIdle {
+            assertTrue(controller.save(AlarmDraft(name = "Morning", hour = 7, minute = 0)))
+            assertTrue(controller.save(AlarmDraft(name = "Evening", hour = 19, minute = 0)))
+        }
+        val before = repo.state.value.alarms
+        val original = before.single { it.draft.name == "Morning" }
+        val other = before.single { it.draft.name == "Evening" }
+        rule.onNodeWithTag("view-alarms").performClick()
+        rule.onNodeWithTag("alarm-${original.id}").performClick()
+        rule.onNodeWithText("Edit alarm").assertExists()
+        rule.onNodeWithTag("editor-form").performScrollToNode(hasTestTag("time-minute"))
+        val field = device.findObject(androidx.test.uiautomator.By.clazz("android.widget.EditText").text("00"))
+        assertNotNull(field)
+        field.click(); field.text = "30"; device.pressEnter()
+        rule.onNodeWithTag("save-alarm").performClick()
+        rule.waitUntil(5000) { repo.state.value.alarms.any { it.id == original.id && it.draft.minute == 30 } }
+        val after = repo.state.value.alarms
+        assertEquals(2, after.size)
+        assertEquals(before.map { it.id }.toSet(), after.map { it.id }.toSet())
+        assertEquals(other, after.single { it.id == other.id })
+        val updated = after.single { it.id == original.id }
+        assertEquals(7, updated.draft.hour); assertEquals(30, updated.draft.minute)
+        assertEquals(original.draft.copy(minute = 30), updated.draft)
+        capture("android-edit-seven-to-seven-thirty")
+    }
+
     @Test fun c_swipeNavigationCountdownEditingAndDeleteGestures() {
         rule.onNodeWithTag("big-clock").performTouchInput { swipeUp() }
         rule.onNodeWithTag("your-alarms").assertExists()

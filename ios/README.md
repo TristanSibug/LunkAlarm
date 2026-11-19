@@ -7,7 +7,7 @@ The website in `web/` remains separately deployable. **Find more ringtones onlin
 ## What is included
 
 - A centered large clock on launch, local date/time zone, and 12/24-hour display. Swipe up to view alarms; the floating + opens the editor. Swipe down at the top of the alarm list or use Clock to return. Wheel/control interactions do not dismiss the page. VoiceOver exposes equivalent actions. Reduced Motion disables the transition.
-- Nineteen app-owned themes (the original fourteen, plus Eggshell White, Heritage, Signal Blue, Cobalt & Coral, and Midnight Cherry) that remain independent of the iPhone's light/dark setting.
+- Eighteen app-owned themes that remain independent of the iPhone's light/dark setting.
 - Apple's native heading-free time wheel with unpadded 12-hour hours and AM/PM rollover, plus duration wheels. Wake-up test settings use finite buttons and bounded −/+ controls; wake-up test tiles are always shown, and individual settings open in sheets. Duration presets are 5 min, 10 min, 30 min and 1 hour; trailing choices hide when space is limited.
 - Ten offline PCM ringtones rendered from the existing app's synthesizer recipes; six-second previews.
 - Import from Files: browser-downloadable audio smaller than 2 MB and shorter than 30 seconds, converted to mono PCM WAV in `Library/Sounds`. Each alarm remembers its selected sound and tests; importing a new sound does not change older alarms.
@@ -166,3 +166,9 @@ The iOS workflow compiles simulator and device apps, exercises Stroop settings/p
 ## iOS 1.9.1: shuffled Stroop choices
 
 Every answer label changes position after a correct answer, and the next correct answer also moves away from the previous correct button. Ink/word conflicts and mismatched button backgrounds remain. Wrong attempts do not shuffle the current round or extend its timer. The saved order, colors, deadline and progress survive app restarts; sessions created by 1.9.0 retain their original order until the next round. Other wake-up tests, timers and AlarmKit delivery are unchanged.
+
+## 1.10.0: editing and combined release
+
+The editor presents one identifiable context containing both the alarm ID and mode. Editing a saved alarm as the first sheet after launch now retains its identity instead of opening a new-alarm save path. Regression coverage checks 7:00 → 7:30, repeated edits, canceling a later change, and deliberate duplication. Wake-up-test audio and sound controls are unchanged.
+
+The [combined release](https://github.com/TristanSibug/LunkAlarm/releases/latest) contains `LunkAlarm-iOS-1.10.0-unsigned.ipa` alongside the Android APK and website link. The IPA still needs signing/provisioning. The shared [release notes](../RELEASE_NOTES.md) describe this version; the combined release workflow requires successful native builds and website checks at the same commit before publication.

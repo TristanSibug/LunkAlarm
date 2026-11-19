@@ -6,9 +6,8 @@ struct ContentView: View {
     @Environment(\.openURL) private var openURL
     @State private var pickerOpen = false
     @State private var themeOpen = false
-    @State private var editorOpen = false
+    @State private var editor: AlarmEditorPresentation?
     @State private var ringingOpen = false
-    @State private var editingID: UUID?
     @Namespace private var clockSpace
 
     var body: some View {
@@ -20,9 +19,11 @@ struct ContentView: View {
                     ZStack {
                     if pickerOpen {
                         SavedAlarmsView(store: store, returnToClock: { pickerOpen = false }, add: { mode in
-                            editingID = nil; store.state.settings.alarmName = ""; store.state.settings.mode = mode; editorOpen = true
+                            store.state.settings.alarmName = ""; store.state.settings.mode = mode
+                            editor = AlarmEditorPresentation(editingID: nil, mode: mode)
                         }, edit: { alarm in
-                            store.loadEditor(alarm); editingID = alarm.id; editorOpen = true
+                            store.loadEditor(alarm)
+                            editor = AlarmEditorPresentation(editingID: alarm.id, mode: alarm.isTimer ? .timer : .time)
                         })
                             .transition(.move(edge: .bottom).combined(with: .opacity))
                     } else {
@@ -47,14 +48,14 @@ struct ContentView: View {
                 .animation(reduceMotion ? nil : .spring(response: 0.48, dampingFraction: 0.88), value: pickerOpen)
         }
         .sheet(isPresented: $themeOpen) { themeSheet }
-        .sheet(isPresented: $editorOpen) {
-            SheetShell(title: editingID == nil ? (store.state.settings.mode == .timer ? "New timer" : "New alarm") : (store.state.settings.mode == .timer ? "Edit timer" : "Edit alarm"), theme: store.theme, scrolls: false, showsDone: false) {
-                AlarmEditorView(store: store, editingID: editingID, onAdded: { editorOpen = false })
+        .sheet(item: $editor) { presentation in
+            SheetShell(title: presentation.title, theme: store.theme, scrolls: false, showsDone: false) {
+                AlarmEditorView(store: store, editingID: presentation.editingID, onAdded: { editor = nil })
             }
         }
         .onChange(of: store.ringing?.id, initial: true) { _, id in
             guard let id else { ringingOpen = false; return }
-            editorOpen = false; themeOpen = false
+            editor = nil; themeOpen = false
             Task { @MainActor in
                 try? await Task.sleep(for: .milliseconds(500))
                 if store.ringing?.id == id { ringingOpen = true }
@@ -122,6 +123,15 @@ struct ContentView: View {
             }
         }
     }
+}
+
+// Sheet identity and edit target travel together, including the first sheet
+// presented after launch. A separate Boolean can present stale/nil edit state.
+private struct AlarmEditorPresentation: Identifiable {
+    let id = UUID()
+    let editingID: UUID?
+    let mode: AlarmMode
+    var title: String { (editingID == nil ? "New " : "Edit ") + (mode == .timer ? "timer" : "alarm") }
 }
 
 struct ClockFaceView: View {

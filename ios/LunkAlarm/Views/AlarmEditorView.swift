@@ -3,7 +3,7 @@ import UniformTypeIdentifiers
 
 struct AlarmEditorView: View {
     @Bindable var store: AlarmStore
-    var editingID: UUID? = nil
+    let editingID: UUID?
     var onAdded: (() -> Void)? = nil
     @State private var ringtoneOpen = false
     @State private var onlineOpen = false

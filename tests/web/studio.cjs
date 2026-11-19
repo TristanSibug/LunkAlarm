@@ -114,7 +114,9 @@ const server = createServer(async (req, res) => {
     await p.getByRole("button", { name: "Edit Morning", exact: true }).click();
     await p.locator("#alarmName").fill("Morning edited");
     await p.locator("#setBtn").click();
+    assert.equal((await storage(p)).length, 1);
     assert.equal((await storage(p))[0].id, a.id);
+    assert.equal((await storage(p))[0].name, "Morning edited");
     await p.locator(".routine-menu-trigger").first().click();
     await p.locator("[data-action=duplicate]").click();
     assert.equal((await storage(p)).length, 2);
@@ -228,6 +230,73 @@ const server = createServer(async (req, res) => {
     assert.equal(a.tests.stroop, false);
     checks++;
     await close(p);
+    // First editor after reload must update a saved time alarm in place on
+    // both desktop and touch layouts, without touching another saved alarm.
+    for (const [viewport, touch] of [
+      [{ width: 1600, height: 1000 }, false],
+      [{ width: 390, height: 844 }, true],
+    ]) {
+      const original = {
+        id: "morning-seven",
+        type: "time",
+        name: "Morning",
+        hour: 7,
+        minute: 0,
+        days: [0, 1, 2, 3, 4, 5, 6],
+        enabled: true,
+        targetMs: Date.now() + 86400000,
+        ringtoneId: "classic-beep",
+        tests: { typing: false, math: false },
+        volume: 0.6,
+        gradual: true,
+      };
+      const other = {
+        ...original,
+        id: "evening-seven",
+        name: "Evening",
+        hour: 19,
+      };
+      p = await fresh({ "wake.alarms": [original, other] }, viewport, touch);
+      await workspace(p);
+      const before = await storage(p);
+      await p
+        .getByRole("button", { name: "Edit Morning", exact: true })
+        .click();
+      assert.equal(await p.locator("#setBtn").textContent(), "Save changes");
+      if (touch) await p.locator("#timeInput").fill("07:30");
+      else {
+        await p.locator("#alarmMinute").fill("30");
+        await p.locator("#timeAM").click();
+      }
+      await p.locator("#setBtn").click();
+      let after = await storage(p);
+      assert.equal(after.length, 2);
+      assert.deepEqual(
+        after.map((a) => a.id).sort(),
+        before.map((a) => a.id).sort(),
+      );
+      assert.deepEqual(
+        after.find((a) => a.id === other.id),
+        before.find((a) => a.id === other.id),
+      );
+      const updated = after.find((a) => a.id === original.id);
+      assert.equal(updated.hour, 7);
+      assert.equal(updated.minute, 30);
+      assert.equal(updated.volume, 0.6);
+      assert.equal(updated.gradual, true);
+      await p.reload();
+      await workspace(p);
+      await p
+        .getByRole("button", { name: "Edit Morning", exact: true })
+        .click();
+      assert.equal(await p.locator("#timeInput").inputValue(), "07:30");
+      await p.locator("#cancelEdit").click();
+      after = await storage(p);
+      assert.equal(after.length, 2);
+      assert.equal(after.find((a) => a.id === original.id).minute, 30);
+      checks++;
+      await close(p);
+    }
     const record = (tests) => ({
       id: "ring",
       targetMs: Date.now() - 1000,

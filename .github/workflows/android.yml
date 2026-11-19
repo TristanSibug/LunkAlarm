@@ -11,6 +11,10 @@ on:
         description: Skip regression suites and only build/package
         type: boolean
         default: false
+      editing_checks:
+        description: Run only the alarm-editing UI regressions
+        type: boolean
+        default: false
 permissions:
   contents: read
 concurrency:
@@ -23,6 +27,7 @@ jobs:
     env:
       LUNK_ANDROID_REQUIRE_SIGNING: "true"
       BUILD_ONLY: ${{ inputs.build_only == true || contains(github.event.head_commit.message, '[build-only]') }}
+      EDITING_CHECKS: ${{ inputs.editing_checks == true || contains(github.event.head_commit.message, '[alarm-editing-checks]') }}
     permissions:
       contents: write
     steps:
@@ -87,10 +92,10 @@ jobs:
         run: |
           "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --verbose --print-certs android/app/build/outputs/apk/debug/app-debug.apk > artifacts/android-signature.txt
           python3 android/scripts/verify_apk.py artifacts/android-signature.txt
-          cp android/app/build/outputs/apk/debug/app-debug.apk artifacts/LunkAlarm-Android-1.4.1.apk
+          cp android/app/build/outputs/apk/debug/app-debug.apk artifacts/LunkAlarm-Android-1.10.0.apk
           git archive --format=zip --output=artifacts/LunkAlarm-Android-source.zip HEAD android
           cd artifacts
-          sha256sum LunkAlarm-Android-1.4.1.apk > SHA256SUMS.txt
+          sha256sum LunkAlarm-Android-1.10.0.apk > SHA256SUMS.txt
       - name: Remove private signing material from runner
         if: always()
         run: python3 android/scripts/prepare_signing.py --cleanup

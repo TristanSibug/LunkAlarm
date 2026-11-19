@@ -1,0 +1,25 @@
+name: Combined LunkAlarm release
+on:
+  push:
+    tags: ['lunkalarm-v*']
+permissions:
+  contents: read
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+jobs:
+  release:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      actions: read
+      contents: write
+    steps:
+      - uses: actions/checkout@v5
+      - name: Check release integrity safeguards
+        run: python3 -m unittest discover -s .github/scripts/tests -v
+      - name: Publish verified APK and IPA together
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ github.ref_name }}
+        run: python3 .github/scripts/publish_release.py

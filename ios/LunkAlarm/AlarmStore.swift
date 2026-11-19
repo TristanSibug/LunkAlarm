@@ -64,6 +64,12 @@ final class AlarmStore {
             var games = WakeGameOptions(); games.stroop = true; games.stroopRounds = 3; games.stroopSeconds = 6
             alarm.wakeGames = games; state.alarms = [alarm]
         }
+        if uiTesting && ProcessInfo.processInfo.arguments.contains("--ui-saved-seven-am") {
+            var alarm = AlarmRecord(target: (try? AlarmRoutine.next(hour: 7, minute: 0, days: Array(1...7))) ?? Date().addingTimeInterval(3600), isTimer: false,
+                ringtoneID: "classic-beep", soundFilename: "classic-beep.wav", soundName: "Classic Beep", typing: false, mathCount: 0)
+            alarm.name = "Morning"; alarm.repeatDays = Array(1...7); alarm.clockHour = 7; alarm.clockMinute = 0
+            state.alarms = [alarm]
+        }
         if uiTesting && ProcessInfo.processInfo.arguments.contains("--ui-mixed-alarms") {
             var routine = AlarmRecord(target: Date().addingTimeInterval(3600), isTimer: false,
                 ringtoneID: "classic-beep", soundFilename: "classic-beep.wav", soundName: "Classic Beep", typing: false, mathCount: 0)

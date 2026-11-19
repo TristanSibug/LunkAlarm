@@ -205,12 +205,52 @@ final class AlarmInteractionTests: XCTestCase {
         name.tap(); name.typeText("Same alarm")
         saveEditor(app)
         XCTAssertEqual(app.buttons.matching(NSPredicate(format: "label == %@", "Edit Same alarm")).count, 1)
+        XCTAssertEqual(app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH 'editAlarm-' ")).count, 1)
         app.buttons["Options for Same alarm"].tap()
         app.buttons["Duplicate"].tap()
         let duplicated = XCTNSPredicateExpectation(predicate: NSPredicate(format: "count == 2"), object: app.buttons.matching(NSPredicate(format: "label == %@", "Edit Same alarm")))
         wait(for: [duplicated], timeout: 5)
         XCTAssertEqual(app.buttons.matching(NSPredicate(format: "label == %@", "Edit Same alarm")).count, 2)
         capture(app, name: "ios-compact-duplicates")
+    }
+
+    @MainActor func testFirstSheetEditsSavedAlarmTimeWithoutCreatingAnotherAlarm() {
+        let app = XCUIApplication()
+        app.launchArguments = ["--ui-testing", "--ui-saved-seven-am"]
+        app.launch()
+        XCTAssertTrue(app.descendants(matching: .any)["alarmSwipeHint"].waitForExistence(timeout: 10))
+        app.swipeUp(velocity: .fast)
+        let cards = app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH 'editAlarm-'"))
+        XCTAssertTrue(cards.firstMatch.waitForExistence(timeout: 5))
+        XCTAssertEqual(cards.count, 1)
+        let id = cards.firstMatch.identifier
+        // No New alarm sheet is opened first: this reproduces editing a saved
+        // alarm immediately after launch, when the old Boolean sheet lost its ID.
+        cards.firstMatch.tap()
+        XCTAssertTrue(app.navigationBars["Edit alarm"].waitForExistence(timeout: 5))
+        XCTAssertEqual(app.buttons["scheduleAlarm"].label, "Save changes")
+        let wheels = app.datePickers["alarmTimePicker"].pickerWheels
+        XCTAssertEqual((wheels.element(boundBy: 0).value as? String)?.filter(\.isNumber), "7")
+        wheels.element(boundBy: 1).adjust(toPickerWheelValue: "30")
+        saveEditor(app)
+        XCTAssertEqual(cards.count, 1)
+        XCTAssertEqual(cards.firstMatch.identifier, id)
+        cards.firstMatch.tap()
+        XCTAssertTrue(app.navigationBars["Edit alarm"].waitForExistence(timeout: 5))
+        XCTAssertEqual((wheels.element(boundBy: 1).value as? String)?.filter(\.isNumber), "30")
+        wheels.element(boundBy: 1).adjust(toPickerWheelValue: "45")
+        app.buttons["closeAlarmEditor"].tap()
+        let closed = XCTNSPredicateExpectation(predicate: NSPredicate(format: "exists == false"), object: app.buttons["closeAlarmEditor"])
+        wait(for: [closed], timeout: 5)
+        XCTAssertTrue(cards.firstMatch.waitForExistence(timeout: 5))
+        XCTAssertEqual(cards.count, 1)
+        cards.firstMatch.tap()
+        XCTAssertTrue(app.navigationBars["Edit alarm"].waitForExistence(timeout: 5))
+        XCTAssertEqual((wheels.element(boundBy: 1).value as? String)?.filter(\.isNumber), "30")
+        saveEditor(app)
+        XCTAssertEqual(cards.count, 1)
+        XCTAssertEqual(cards.firstMatch.identifier, id)
+        capture(app, name: "ios-edit-seven-to-seven-thirty")
     }
 
     @MainActor func testCountdownIsInYourAlarmsAndCanBeEdited() {

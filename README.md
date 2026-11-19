@@ -2,7 +2,7 @@
 
 An alarm clock for the **web**, **Android**, and **iOS**, with a large clock, custom themes, ringtones, and optional wake-up tests.
 
-**[Open the website](https://alarm.tjesibug.online)** · **[Download the apps](https://github.com/TristanSibug/LunkAlarm/releases)**
+**[Open the website](https://alarm.tjesibug.online)** · **[Download the apps](https://github.com/TristanSibug/LunkAlarm/releases/latest)**
 
 <p align="center">
   <img src="docs/screenshots/website-workspace.png" alt="LunkAlarm website with the desktop clock, alarm editor, wake-up tests, and saved alarms" width="100%">
@@ -58,8 +58,8 @@ Selected tests run in sequence. Running out of time restarts the sequence and re
 | Platform | Requirements | Open or download |
 | --- | --- | --- |
 | Website | A modern browser | [alarm.tjesibug.online](https://alarm.tjesibug.online) |
-| Android | Android 8.0 or later | [APK releases](https://github.com/TristanSibug/LunkAlarm/releases) |
-| iOS | iOS 26 or later | [IPA releases](https://github.com/TristanSibug/LunkAlarm/releases) |
+| Android | Android 8.0 or later | [APK releases](https://github.com/TristanSibug/LunkAlarm/releases/latest) |
+| iOS | iOS 26 or later | [IPA releases](https://github.com/TristanSibug/LunkAlarm/releases/latest) |
 
 **Website:** Keep the page open, sound enabled, and the device awake. Browsers can delay background tabs and cannot wake a sleeping device.
 
@@ -77,6 +77,6 @@ The native apps schedule alarms through Android’s AlarmManager and Apple’s A
 | [`android/`](android/) | Kotlin and Jetpack Compose | [Android setup and builds](android/README.md) |
 | [`ios/`](ios/) | SwiftUI and AlarmKit | [iOS setup and builds](ios/README.md) |
 
-[GitHub Actions](https://github.com/TristanSibug/LunkAlarm/actions) provides build artifacts and automated checks. GitHub Releases are uploaded manually. The earlier C# / WPF Windows implementation remains in [`src/`](src/).
+[GitHub Actions](https://github.com/TristanSibug/LunkAlarm/actions) provides build artifacts and automated checks. The combined release workflow publishes the Android APK, iOS IPA, and website link together. The earlier C# / WPF Windows implementation remains in [`src/`](src/).
 
 MIT license.

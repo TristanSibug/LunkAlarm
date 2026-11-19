@@ -11,6 +11,10 @@ on:
         description: Skip regression suites and only build/package
         type: boolean
         default: false
+      editing_checks:
+        description: Run only the alarm-editing UI regressions
+        type: boolean
+        default: false
 permissions:
   contents: read
 concurrency:
@@ -20,6 +24,7 @@ jobs:
   build:
     env:
       BUILD_ONLY: ${{ inputs.build_only == true || contains(github.event.head_commit.message, '[build-only]') }}
+      EDITING_CHECKS: ${{ inputs.editing_checks == true || contains(github.event.head_commit.message, '[alarm-editing-checks]') }}
     runs-on: macos-15
     timeout-minutes: 50
     permissions:
@@ -77,7 +82,13 @@ jobs:
         timeout-minutes: 30
         run: |
           set -o pipefail
-          xcodebuild test -project ios/LunkAlarm.xcodeproj -scheme LunkAlarm \
+          test_selection=()
+          if [ "$EDITING_CHECKS" = "true" ]; then
+            for test_name in testFirstSheetEditsSavedAlarmTimeWithoutCreatingAnotherAlarm testBlankNameEditInPlaceAndExactDuplicate testCountdownIsInYourAlarmsAndCanBeEdited; do
+              test_selection+=("-only-testing:LunkAlarmUITests/AlarmInteractionTests/$test_name")
+            done
+          fi
+          xcodebuild test "${test_selection[@]}" -project ios/LunkAlarm.xcodeproj -scheme LunkAlarm \
             -destination "platform=iOS Simulator,id=$LUNK_IOS_SIMULATOR_ID" \
             -configuration Debug -derivedDataPath artifacts/ios-build \
             -resultBundlePath artifacts/ios-ui-tests.xcresult \
@@ -123,7 +134,7 @@ jobs:
           mkdir -p artifacts/unsigned/Payload
           cp -R artifacts/ios-device/Build/Products/Release-iphoneos/LunkAlarm.app artifacts/unsigned/Payload/
           cd artifacts/unsigned
-          zip -qr ../../LunkAlarm-iOS-unsigned.ipa Payload
+          zip -qr ../../LunkAlarm-iOS-1.10.0-unsigned.ipa Payload
       - uses: actions/upload-artifact@v5
         if: always()
         with:
@@ -131,7 +142,7 @@ jobs:
           path: |
             LunkAlarm-iOS-source.zip
             LunkAlarm-iOS-Simulator.zip
-            LunkAlarm-iOS-unsigned.ipa
+            LunkAlarm-iOS-1.10.0-unsigned.ipa
             artifacts/ios-clock.png
             ios-build.log
             ios-device-build.log
