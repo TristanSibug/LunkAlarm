@@ -9,7 +9,7 @@ struct ContentView: View {
     @State private var themeOpen = false
     @State private var editor: AlarmEditorPresentation?
     @State private var ringingOpen = false
-    @State private var clockControls: UUID? = UUID()
+    @State private var clockControls: ClockControlsReveal? = ClockControlsReveal(duration: .seconds(5))
     @Namespace private var clockSpace
 
     var body: some View {
@@ -18,7 +18,7 @@ struct ContentView: View {
                 AlarmBackground(theme: store.theme)
                 ZStack {
                     if pickerOpen {
-                        SavedAlarmsView(store: store, returnToClock: { pickerOpen = false }, add: { mode in
+                        SavedAlarmsView(store: store, returnToClock: showClock, add: { mode in
                             store.state.settings.alarmName = ""; store.state.settings.mode = mode
                             editor = AlarmEditorPresentation(editingID: nil, mode: mode)
                         }, edit: { alarm in
@@ -35,7 +35,7 @@ struct ContentView: View {
                             .transition(.move(edge: .top).combined(with: .opacity))
                             .contentShape(Rectangle())
                             .gesture(AlarmNavigationSwipe(direction: .up, action: showAlarms))
-                            .gesture(AlarmNavigationSwipe(direction: .down, action: revealClockControls))
+                            .gesture(AlarmNavigationSwipe(direction: .down) { revealClockControls() })
                             .accessibilityAction(named: "View alarms") { showAlarms() }
                             .accessibilityAction(named: "Show clock controls") { revealClockControls() }
                     }
@@ -50,9 +50,9 @@ struct ContentView: View {
                 .animation(reduceMotion ? nil : .easeInOut(duration: 0.2), value: clockControls != nil)
         }
         .task(id: clockControls) {
-            guard clockControls != nil else { return }
-            do { try await Task.sleep(for: .seconds(5)) } catch { return }
-            guard !Task.isCancelled else { return }
+            guard let reveal = clockControls else { return }
+            do { try await Task.sleep(for: reveal.duration) } catch { return }
+            guard !Task.isCancelled, clockControls == reveal else { return }
             clockControls = nil
         }
         .onChange(of: scenePhase) { _, phase in
@@ -72,7 +72,7 @@ struct ContentView: View {
                 if store.ringing?.id == id { ringingOpen = true }
             }
         }
-        .fullScreenCover(isPresented: $ringingOpen) {
+        .fullScreenCover(isPresented: $ringingOpen, onDismiss: revealClockControlsOnReturn) {
             RingingView(store: store).interactiveDismissDisabled()
                 .preferredColorScheme(store.theme.isLight ? .light : .dark)
         }
@@ -89,9 +89,18 @@ struct ContentView: View {
         pickerOpen = true
     }
 
-    private func revealClockControls() {
-        guard !pickerOpen else { return }
-        clockControls = UUID()
+    private func showClock() {
+        pickerOpen = false
+        revealClockControlsOnReturn()
+    }
+
+    private func revealClockControlsOnReturn() {
+        revealClockControls(for: .milliseconds(2500))
+    }
+
+    private func revealClockControls(for duration: Duration = .seconds(5)) {
+        guard !pickerOpen, store.ringing == nil else { return }
+        clockControls = ClockControlsReveal(duration: duration)
     }
 
     private var toolbar: some View {
@@ -138,6 +147,11 @@ struct ContentView: View {
             }
         }
     }
+}
+
+private struct ClockControlsReveal: Equatable {
+    let id = UUID()
+    let duration: Duration
 }
 
 // Sheet identity and edit target travel together, including the first sheet

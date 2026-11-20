@@ -193,12 +193,12 @@ final class AlarmInteractionTests: XCTestCase {
         wait(for: [finished], timeout: 5)
         XCTAssertTrue(app.descendants(matching: .any)["alarmSwipeHint"].waitForExistence(timeout: 5))
     }
-    @MainActor func testClockControlsAppearOnLaunchAndRevealOnlyOnDownSwipe() {
+    @MainActor func testClockControlsAppearBrieflyOnLaunchSwipeAndClockReturn() {
         let app = launch()
         let theme = app.buttons["Theme"]
         XCTAssertTrue(theme.waitForExistence(timeout: 5))
         let hidden = XCTNSPredicateExpectation(predicate: NSPredicate(format: "exists == false"), object: theme)
-        wait(for: [hidden], timeout: 8)
+        wait(for: [hidden], timeout: 7)
 
         app.swipeDown(velocity: .fast)
         XCTAssertTrue(theme.waitForExistence(timeout: 5))
@@ -211,8 +211,15 @@ final class AlarmInteractionTests: XCTestCase {
         app.swipeUp(velocity: .fast)
         XCTAssertTrue(app.staticTexts["savedAlarmsTitle"].waitForExistence(timeout: 5))
         XCTAssertFalse(theme.exists)
-        returnToClock(app)
-        XCTAssertFalse(theme.exists)
+        app.buttons["Clock"].tap()
+        XCTAssertTrue(theme.waitForExistence(timeout: 2))
+        let hiddenAfterReturn = XCTNSPredicateExpectation(predicate: NSPredicate(format: "exists == false"), object: theme)
+        wait(for: [hiddenAfterReturn], timeout: 4)
+
+        app.swipeUp(velocity: .fast)
+        XCTAssertTrue(app.staticTexts["savedAlarmsTitle"].waitForExistence(timeout: 5))
+        app.swipeDown(velocity: .fast)
+        XCTAssertTrue(theme.waitForExistence(timeout: 2))
     }
 
     @MainActor func testSmartDuplicateCreatesOffsetAlarmWithTestsOnOriginalOnly() {

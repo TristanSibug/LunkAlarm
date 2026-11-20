@@ -84,7 +84,7 @@ jobs:
           set -o pipefail
           test_selection=()
           if [ "$EDITING_CHECKS" = "true" ]; then
-            for test_name in testFirstSheetEditsSavedAlarmTimeWithoutCreatingAnotherAlarm testClockControlsAppearOnLaunchAndRevealOnlyOnDownSwipe testSmartDuplicateCreatesOffsetAlarmWithTestsOnOriginalOnly; do
+            for test_name in testFirstSheetEditsSavedAlarmTimeWithoutCreatingAnotherAlarm testClockControlsAppearBrieflyOnLaunchSwipeAndClockReturn testSmartDuplicateCreatesOffsetAlarmWithTestsOnOriginalOnly; do
               test_selection+=("-only-testing:LunkAlarmUITests/AlarmInteractionTests/$test_name")
             done
           fi
@@ -134,7 +134,7 @@ jobs:
           mkdir -p artifacts/unsigned/Payload
           cp -R artifacts/ios-device/Build/Products/Release-iphoneos/LunkAlarm.app artifacts/unsigned/Payload/
           cd artifacts/unsigned
-          zip -qr ../../LunkAlarm-iOS-1.10.2-unsigned.ipa Payload
+          zip -qr ../../LunkAlarm-iOS-1.10.3-unsigned.ipa Payload
       - uses: actions/upload-artifact@v5
         if: always()
         with:
@@ -142,7 +142,7 @@ jobs:
           path: |
             LunkAlarm-iOS-source.zip
             LunkAlarm-iOS-Simulator.zip
-            LunkAlarm-iOS-1.10.2-unsigned.ipa
+            LunkAlarm-iOS-1.10.3-unsigned.ipa
             artifacts/ios-clock.png
             ios-build.log
             ios-device-build.log
