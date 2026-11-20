@@ -1,7 +1,7 @@
 {
   "buildOnly": true,
-  "commit": "2f40e327561e7f634b2daca6d8a311d7d801ec78",
-  "run": "https://github.com/TristanSibug/LunkAlarm/actions/runs/44774982228",
+  "commit": "c2c2de42715c3dbaa815d1f85a9ed76542bcd75d",
+  "run": "https://github.com/TristanSibug/LunkAlarm/actions/runs/44785575095",
   "status": "success",
   "simulator": "skipped",
   "device": "success",
