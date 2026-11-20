@@ -31,11 +31,6 @@ struct ContentView: View {
                             Spacer(minLength: 8)
                             clock(width: geometry.size.width, height: geometry.size.height * 0.66)
                             Spacer(minLength: 8)
-                            if geometry.size.height > 400 {
-                                Text("Scheduled by iOS. No need to keep this screen open.")
-                                    .font(.caption2).foregroundStyle(store.theme.muted).multilineTextAlignment(.center)
-                                    .padding(.horizontal, 24).padding(.bottom, 16)
-                            }
                         }.frame(maxWidth: .infinity, maxHeight: .infinity)
                             .transition(.move(edge: .top).combined(with: .opacity))
                             .contentShape(Rectangle())
@@ -45,9 +40,9 @@ struct ContentView: View {
                             .accessibilityAction(named: "Show clock controls") { revealClockControls() }
                     }
                 }.frame(maxWidth: .infinity, maxHeight: .infinity).clipped()
-            }.overlay(alignment: .top) {
+            }.overlay(alignment: .topTrailing) {
                 if !pickerOpen && clockControls != nil {
-                    toolbar.padding(.horizontal, 20).padding(.top, 12)
+                    toolbar.padding(.trailing, 20).padding(.top, 12)
                         .transition(.opacity)
                 }
             }.foregroundStyle(store.theme.text)
@@ -82,7 +77,7 @@ struct ContentView: View {
                 .preferredColorScheme(store.theme.isLight ? .light : .dark)
         }
         .alert("LunkAlarm", isPresented: Binding(get: { store.errorMessage != nil && store.ringing == nil }, set: { if !$0 { store.errorMessage = nil } })) {
-            if store.authorizationLabel == "Alarms disabled" {
+            if store.alarmAccessDenied {
                 Button("Open Settings") { if let url = URL(string: UIApplication.openSettingsURLString) { openURL(url) } }
             }
             Button("OK", role: .cancel) { store.errorMessage = nil }
@@ -101,12 +96,6 @@ struct ContentView: View {
 
     private var toolbar: some View {
         HStack(spacing: 8) {
-            HStack(spacing: 6) {
-                Circle().fill(store.authorizationLabel == "Alarms disabled" ? Color.orange : Color.green).frame(width: 7, height: 7)
-                Text(store.authorizationLabel).font(.system(size: 11)).lineLimit(1).minimumScaleFactor(0.8)
-            }.foregroundStyle(store.theme.muted).padding(.horizontal, 10).padding(.vertical, 8)
-                .background(store.theme.text.opacity(0.055), in: Capsule())
-            Spacer(minLength: 4)
             Button("Theme") { themeOpen = true }.buttonStyle(ChipStyle(theme: store.theme))
             Button(store.state.settings.use24Hour ? "24h" : "12h") { store.state.settings.use24Hour.toggle() }
                 .buttonStyle(ChipStyle(theme: store.theme)).accessibilityLabel("Switch clock format")

@@ -93,14 +93,7 @@ final class AlarmStore {
         }
         return nil
     }
-    var authorizationLabel: String {
-        return switch authorization {
-        case .authorized: "Alarms allowed"
-        case .denied: "Alarms disabled"
-        case .notDetermined: "iPhone system time"
-        @unknown default: "Check alarm access"
-        }
-    }
+    var alarmAccessDenied: Bool { authorization == .denied }
 
     @discardableResult private func commit(_ next: SavedState) -> Bool {
         guard !readOnly else { errorMessage = NativeAlarmError.readOnly.localizedDescription; return false }
