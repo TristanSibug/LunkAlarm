@@ -193,6 +193,56 @@ final class AlarmInteractionTests: XCTestCase {
         wait(for: [finished], timeout: 5)
         XCTAssertTrue(app.descendants(matching: .any)["alarmSwipeHint"].waitForExistence(timeout: 5))
     }
+    @MainActor func testClockControlsAppearOnLaunchAndRevealOnlyOnDownSwipe() {
+        let app = launch()
+        let theme = app.buttons["Theme"]
+        XCTAssertTrue(theme.waitForExistence(timeout: 5))
+        let hidden = XCTNSPredicateExpectation(predicate: NSPredicate(format: "exists == false"), object: theme)
+        wait(for: [hidden], timeout: 8)
+
+        app.swipeDown(velocity: .fast)
+        XCTAssertTrue(theme.waitForExistence(timeout: 5))
+        XCUIDevice.shared.press(.home)
+        app.activate()
+        XCTAssertFalse(theme.exists)
+
+        app.swipeDown(velocity: .fast)
+        XCTAssertTrue(theme.waitForExistence(timeout: 5))
+        app.swipeUp(velocity: .fast)
+        XCTAssertTrue(app.staticTexts["savedAlarmsTitle"].waitForExistence(timeout: 5))
+        XCTAssertFalse(theme.exists)
+        returnToClock(app)
+        XCTAssertFalse(theme.exists)
+    }
+
+    @MainActor func testSmartDuplicateCreatesOffsetAlarmWithTestsOnOriginalOnly() {
+        let app = XCUIApplication()
+        app.launchArguments = ["--ui-testing", "--ui-smart-duplicate"]
+        app.launch()
+        XCTAssertTrue(app.descendants(matching: .any)["alarmSwipeHint"].waitForExistence(timeout: 10))
+        app.swipeUp(velocity: .fast)
+        let cards = app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH 'editAlarm-'"))
+        XCTAssertTrue(cards.firstMatch.waitForExistence(timeout: 5))
+        let original = cards.firstMatch.identifier
+        app.buttons["Options for Morning"].tap()
+        app.buttons["Smart Duplicate"].tap()
+        XCTAssertTrue(app.navigationBars["Smart Duplicate"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.buttons["Original only"].exists)
+        XCTAssertTrue(app.buttons["All alarms"].exists)
+        app.buttons["Create 1 duplicate"].tap()
+        let closed = XCTNSPredicateExpectation(predicate: NSPredicate(format: "exists == false"), object: app.navigationBars["Smart Duplicate"])
+        wait(for: [closed], timeout: 5)
+        XCTAssertEqual(cards.count, 2)
+        XCTAssertTrue(app.buttons[original].exists)
+        let newCard = cards.allElementsBoundByIndex.first { $0.identifier != original }
+        XCTAssertNotNil(newCard)
+        newCard?.tap()
+        XCTAssertTrue(app.navigationBars["Edit alarm"].waitForExistence(timeout: 5))
+        let minute = app.datePickers["alarmTimePicker"].pickerWheels.element(boundBy: 1)
+        XCTAssertEqual(Int((minute.value as? String ?? "").filter(\.isNumber)), 5)
+        openTest(app, "typing")
+        XCTAssertEqual(app.buttons["testSettingsDone"].label, "Set")
+    }
     @MainActor func testBlankNameEditInPlaceAndExactDuplicate() {
         let app = launch()
         openEditor(app)
@@ -396,6 +446,7 @@ final class AlarmInteractionTests: XCTestCase {
         saveEditor(app)
         returnToClock(app)
         for name in ["Eggshell White", "Heritage", "Midnight Cherry", "Cobalt & Coral", "Signal Blue"] {
+            app.swipeDown(velocity: .fast)
             app.buttons["Theme"].tap()
             XCTAssertTrue(app.navigationBars["Theme"].waitForExistence(timeout: 5))
             XCTAssertTrue(app.scrollViews.firstMatch.waitForExistence(timeout: 5))

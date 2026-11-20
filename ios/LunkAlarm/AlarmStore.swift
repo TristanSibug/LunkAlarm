@@ -64,10 +64,12 @@ final class AlarmStore {
             var games = WakeGameOptions(); games.stroop = true; games.stroopRounds = 3; games.stroopSeconds = 6
             alarm.wakeGames = games; state.alarms = [alarm]
         }
-        if uiTesting && ProcessInfo.processInfo.arguments.contains("--ui-saved-seven-am") {
+        let smartDuplicateFixture = ProcessInfo.processInfo.arguments.contains("--ui-smart-duplicate")
+        if uiTesting && (ProcessInfo.processInfo.arguments.contains("--ui-saved-seven-am") || smartDuplicateFixture) {
             var alarm = AlarmRecord(target: (try? AlarmRoutine.next(hour: 7, minute: 0, days: Array(1...7))) ?? Date().addingTimeInterval(3600), isTimer: false,
                 ringtoneID: "classic-beep", soundFilename: "classic-beep.wav", soundName: "Classic Beep", typing: false, mathCount: 0)
             alarm.name = "Morning"; alarm.repeatDays = Array(1...7); alarm.clockHour = 7; alarm.clockMinute = 0
+            if smartDuplicateFixture { alarm.typing = true; alarm.enabled = false }
             state.alarms = [alarm]
         }
         if uiTesting && ProcessInfo.processInfo.arguments.contains("--ui-mixed-alarms") {
@@ -162,6 +164,46 @@ final class AlarmStore {
         defer { saving = false }
         do { _ = await persistDefinition(try alarm.duplicated(), replacing: nil) }
         catch { errorMessage = error.localizedDescription }
+    }
+    func smartDuplicate(_ id: UUID, count: Int, intervalMinutes: Int, copyTests: Bool) async -> Bool {
+        guard !readOnly, !saving, ringing?.id != id,
+              let alarm = state.alarms.first(where: { $0.id == id }) else { return false }
+        saving = true
+        defer { saving = false }
+        do {
+            let copies = try alarm.smartDuplicates(count: count, intervalMinutes: intervalMinutes, copyTests: copyTests).map(prepared)
+            var next = state
+            next.alarms.append(contentsOf: copies)
+            // Save ownership before scheduling so interruption cannot orphan an alert.
+            guard commit(next) else { return false }
+            do {
+                for copy in copies { try await install(copy) }
+                return true
+            } catch {
+                var rollback = state
+                var retained = false
+                for copy in copies {
+                    do {
+                        try stopNativeAlarms(copy, onlyAlerting: false)
+                        rollback.alarms.removeAll { $0.id == copy.id }
+                    } catch {
+                        var unresolved = copy
+                        unresolved.status = .notScheduled
+                        put(unresolved, in: &rollback)
+                        retained = true
+                    }
+                }
+                guard commit(rollback) else { return false }
+                if retained {
+                    errorMessage = "Some copies could not be canceled. Check the alarm list before trying again."
+                    return false
+                }
+                throw error
+            }
+        } catch {
+            errorMessage = error.localizedDescription
+            return false
+        }
     }
     private func prepared(_ original: AlarmRecord) -> AlarmRecord {
         var record = original

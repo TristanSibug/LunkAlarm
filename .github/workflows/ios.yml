@@ -12,7 +12,7 @@ on:
         type: boolean
         default: false
       editing_checks:
-        description: Run only the alarm-editing UI regressions
+        description: Run the focused alarm and clock UI checks
         type: boolean
         default: false
 permissions:
@@ -84,7 +84,7 @@ jobs:
           set -o pipefail
           test_selection=()
           if [ "$EDITING_CHECKS" = "true" ]; then
-            for test_name in testFirstSheetEditsSavedAlarmTimeWithoutCreatingAnotherAlarm testBlankNameEditInPlaceAndExactDuplicate testCountdownIsInYourAlarmsAndCanBeEdited; do
+            for test_name in testFirstSheetEditsSavedAlarmTimeWithoutCreatingAnotherAlarm testClockControlsAppearOnLaunchAndRevealOnlyOnDownSwipe testSmartDuplicateCreatesOffsetAlarmWithTestsOnOriginalOnly; do
               test_selection+=("-only-testing:LunkAlarmUITests/AlarmInteractionTests/$test_name")
             done
           fi
@@ -134,7 +134,7 @@ jobs:
           mkdir -p artifacts/unsigned/Payload
           cp -R artifacts/ios-device/Build/Products/Release-iphoneos/LunkAlarm.app artifacts/unsigned/Payload/
           cd artifacts/unsigned
-          zip -qr ../../LunkAlarm-iOS-1.10.0-unsigned.ipa Payload
+          zip -qr ../../LunkAlarm-iOS-1.10.1-unsigned.ipa Payload
       - uses: actions/upload-artifact@v5
         if: always()
         with:
@@ -142,7 +142,7 @@ jobs:
           path: |
             LunkAlarm-iOS-source.zip
             LunkAlarm-iOS-Simulator.zip
-            LunkAlarm-iOS-1.10.0-unsigned.ipa
+            LunkAlarm-iOS-1.10.1-unsigned.ipa
             artifacts/ios-clock.png
             ios-build.log
             ios-device-build.log

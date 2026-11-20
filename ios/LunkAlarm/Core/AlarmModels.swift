@@ -84,6 +84,51 @@ public struct AlarmRecord: Codable, Identifiable, Equatable, Sendable {
         } else { copy.target = try AlarmRoutine.next(hour: clockHour ?? calendar.component(.hour, from: target), minute: clockMinute ?? calendar.component(.minute, from: target), days: days, now: now, calendar: calendar) }
         return copy
     }
+    public static let smartDuplicateCounts = 1...4
+    public static let smartDuplicateIntervals = 2...8
+
+    public func smartDuplicates(count: Int, intervalMinutes: Int, copyTests: Bool,
+                                now: Date = Date(), calendar: Calendar = .current) throws -> [AlarmRecord] {
+        guard !isTimer, Self.smartDuplicateCounts.contains(count),
+              Self.smartDuplicateIntervals.contains(intervalMinutes), AlarmRoutine.validDays(repeatDays) else {
+            throw AlarmDataError.invalidSmartDuplicate
+        }
+        let hour = clockHour ?? calendar.component(.hour, from: target)
+        let minute = clockMinute ?? calendar.component(.minute, from: target)
+        let first = target > now ? target : try AlarmRoutine.next(hour: hour, minute: minute, days: days, now: now, calendar: calendar)
+
+        return try (1...count).map { index in
+            var copy = self
+            copy.id = UUID()
+            copy.challengeAlarmIDs = nil
+            copy.status = .scheduled
+            let offset = index * intervalMinutes
+            if days.isEmpty {
+                copy.target = first.addingTimeInterval(TimeInterval(offset * 60))
+                copy.clockHour = calendar.component(.hour, from: copy.target)
+                copy.clockMinute = calendar.component(.minute, from: copy.target)
+            } else {
+                let minutes = hour * 60 + minute + offset
+                let newHour = minutes / 60 % 24
+                let newMinute = minutes % 60
+                let shiftedDays = days.map { ($0 - 1 + minutes / 1440) % 7 + 1 }.sorted()
+                copy.clockHour = newHour
+                copy.clockMinute = newMinute
+                copy.repeatDays = shiftedDays
+                copy.target = try AlarmRoutine.next(hour: newHour, minute: newMinute, days: shiftedDays, now: now, calendar: calendar)
+            }
+            if !copyTests {
+                copy.typing = false
+                copy.mathCount = 0
+                copy.wakeGames = nil
+                copy.typingCodeLength = nil
+                copy.typingTimeLimit = nil
+                copy.mathTimeLimit = nil
+                copy.nativeMathKeyboard = nil
+            }
+            return copy
+        }
+    }
     public var days: [Int] { repeatDays ?? [] }
     public var challengeAlarmIDs: [UUID]?
     public var nativeAlarmIDs: [UUID] { [id] + (challengeAlarmIDs ?? []) }
@@ -135,13 +180,14 @@ public struct SavedState: Codable, Equatable, Sendable {
 }
 
 public enum AlarmDataError: LocalizedError {
-    case unsupportedVersion, invalidData, invalidDuration, invalidTime
+    case unsupportedVersion, invalidData, invalidDuration, invalidTime, invalidSmartDuplicate
     public var errorDescription: String? {
         switch self {
         case .unsupportedVersion: "This alarm data was saved by a newer app version. It has been left untouched."
         case .invalidData: "Saved alarm data could not be read safely. It has been left untouched."
         case .invalidDuration: "Choose a duration between one second and 99 hours, 59 minutes, 59 seconds."
         case .invalidTime: "Choose a valid hour and minute."
+        case .invalidSmartDuplicate: "Choose 1–4 copies and 2–8 minutes between alarms."
         }
     }
 }

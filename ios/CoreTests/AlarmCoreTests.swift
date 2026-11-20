@@ -3,6 +3,60 @@ import XCTest
 @testable import LunkAlarmCore
 
 final class AlarmCoreTests: XCTestCase {
+    func testSmartDuplicatesKeepOriginalAndSpaceOutCopiesWithOptionalTests() throws {
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = TimeZone(secondsFromGMT: 0)!
+        let now = calendar.date(from: DateComponents(year: 2026, month: 11, day: 20, hour: 6))!
+        let target = now.addingTimeInterval(3600)
+        var alarm = AlarmRecord(target: target, isTimer: false, ringtoneID: "classic-beep",
+                                soundFilename: "classic-beep.wav", soundName: "Classic Beep", typing: true, mathCount: 3)
+        alarm.name = "Morning"
+        alarm.repeatDays = Array(1...7)
+        alarm.soundLevel = 0.6
+        alarm.challengeAlarmIDs = [UUID()]
+        alarm.wakeGames = WakeGameOptions()
+        alarm.wakeGames?.stroop = true
+
+        let copies = try alarm.smartDuplicates(count: 3, intervalMinutes: 5, copyTests: false, now: now, calendar: calendar)
+        XCTAssertEqual(copies.map(\.target), [5, 10, 15].map { target.addingTimeInterval(TimeInterval($0 * 60)) })
+        XCTAssertEqual(copies.map(\.clockMinute), [5, 10, 15])
+        XCTAssertEqual(Set(([alarm] + copies).map(\.id)).count, 4)
+        XCTAssertTrue(copies.allSatisfy { !$0.hasTests && $0.challengeAlarmIDs == nil })
+        XCTAssertTrue(copies.allSatisfy { $0.days == alarm.days && $0.name == alarm.name && $0.soundLevel == alarm.soundLevel })
+        XCTAssertTrue(alarm.hasTests)
+        XCTAssertEqual(alarm.target, target)
+
+        let tested = try alarm.smartDuplicates(count: 4, intervalMinutes: 8, copyTests: true, now: now, calendar: calendar)
+        XCTAssertTrue(tested.allSatisfy { $0.typing && $0.mathCount == 3 && $0.wakeGames == alarm.wakeGames })
+        XCTAssertTrue(tested.allSatisfy { $0.challengeAlarmIDs == nil })
+        XCTAssertThrowsError(try alarm.smartDuplicates(count: 0, intervalMinutes: 5, copyTests: false))
+        XCTAssertThrowsError(try alarm.smartDuplicates(count: 5, intervalMinutes: 5, copyTests: false))
+        XCTAssertThrowsError(try alarm.smartDuplicates(count: 1, intervalMinutes: 1, copyTests: false))
+        XCTAssertThrowsError(try alarm.smartDuplicates(count: 1, intervalMinutes: 9, copyTests: false))
+    }
+
+    func testSmartDuplicatesRollOverAtMidnightAndKeepOneTimeAlarmOnItsDate() throws {
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = TimeZone(secondsFromGMT: 0)!
+        let now = calendar.date(from: DateComponents(year: 2026, month: 11, day: 21, hour: 22))!
+        let target = try AlarmRoutine.next(hour: 23, minute: 58, days: [7], now: now, calendar: calendar)
+        var alarm = AlarmRecord(target: target, isTimer: false, ringtoneID: "classic-beep",
+                                soundFilename: "classic-beep.wav", soundName: "Classic Beep", typing: false, mathCount: 0)
+        alarm.repeatDays = [7]
+        alarm.enabled = false
+        let copy = try XCTUnwrap(alarm.smartDuplicates(count: 1, intervalMinutes: 5, copyTests: true, now: now, calendar: calendar).first)
+        XCTAssertEqual(copy.days, [1])
+        XCTAssertEqual(copy.clockHour, 0)
+        XCTAssertEqual(copy.clockMinute, 3)
+        XCTAssertEqual(copy.target, target.addingTimeInterval(300))
+        XCTAssertFalse(copy.isEnabled)
+
+        alarm.repeatDays = []
+        let once = try XCTUnwrap(alarm.smartDuplicates(count: 1, intervalMinutes: 5, copyTests: false, now: now, calendar: calendar).first)
+        XCTAssertTrue(once.days.isEmpty)
+        XCTAssertEqual(once.target, target.addingTimeInterval(300))
+    }
+
     func testCountdownBoundsAndAbsoluteDeadline() throws {
         let now = Date(timeIntervalSince1970: 1000)
         XCTAssertEqual(try AlarmScheduling.countdown(seconds: 30, now: now).timeIntervalSince1970, 1030)

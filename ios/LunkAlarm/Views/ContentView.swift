@@ -4,19 +4,19 @@ struct ContentView: View {
     @Bindable var store: AlarmStore
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.openURL) private var openURL
+    @Environment(\.scenePhase) private var scenePhase
     @State private var pickerOpen = false
     @State private var themeOpen = false
     @State private var editor: AlarmEditorPresentation?
     @State private var ringingOpen = false
+    @State private var clockControls: UUID? = UUID()
     @Namespace private var clockSpace
 
     var body: some View {
         GeometryReader { geometry in
             ZStack {
                 AlarmBackground(theme: store.theme)
-                VStack(spacing: 0) {
-                    toolbar.padding(.horizontal, 20).padding(.top, 12).padding(.bottom, 8)
-                    ZStack {
+                ZStack {
                     if pickerOpen {
                         SavedAlarmsView(store: store, returnToClock: { pickerOpen = false }, add: { mode in
                             store.state.settings.alarmName = ""; store.state.settings.mode = mode
@@ -39,13 +39,29 @@ struct ContentView: View {
                         }.frame(maxWidth: .infinity, maxHeight: .infinity)
                             .transition(.move(edge: .top).combined(with: .opacity))
                             .contentShape(Rectangle())
-                            .gesture(AlarmNavigationSwipe(direction: .up) { pickerOpen = true })
-                            .accessibilityAction(named: "View alarms") { pickerOpen = true }
+                            .gesture(AlarmNavigationSwipe(direction: .up, action: showAlarms))
+                            .gesture(AlarmNavigationSwipe(direction: .down, action: revealClockControls))
+                            .accessibilityAction(named: "View alarms") { showAlarms() }
+                            .accessibilityAction(named: "Show clock controls") { revealClockControls() }
                     }
-                    }.frame(maxWidth: .infinity, maxHeight: .infinity).clipped()
+                }.frame(maxWidth: .infinity, maxHeight: .infinity).clipped()
+            }.overlay(alignment: .top) {
+                if !pickerOpen && clockControls != nil {
+                    toolbar.padding(.horizontal, 20).padding(.top, 12)
+                        .transition(.opacity)
                 }
             }.foregroundStyle(store.theme.text)
                 .animation(reduceMotion ? nil : .spring(response: 0.48, dampingFraction: 0.88), value: pickerOpen)
+                .animation(reduceMotion ? nil : .easeInOut(duration: 0.2), value: clockControls != nil)
+        }
+        .task(id: clockControls) {
+            guard clockControls != nil else { return }
+            do { try await Task.sleep(for: .seconds(5)) } catch { return }
+            guard !Task.isCancelled else { return }
+            clockControls = nil
+        }
+        .onChange(of: scenePhase) { _, phase in
+            if phase == .background { clockControls = nil }
         }
         .sheet(isPresented: $themeOpen) { themeSheet }
         .sheet(item: $editor) { presentation in
@@ -55,7 +71,7 @@ struct ContentView: View {
         }
         .onChange(of: store.ringing?.id, initial: true) { _, id in
             guard let id else { ringingOpen = false; return }
-            editor = nil; themeOpen = false
+            editor = nil; themeOpen = false; clockControls = nil
             Task { @MainActor in
                 try? await Task.sleep(for: .milliseconds(500))
                 if store.ringing?.id == id { ringingOpen = true }
@@ -71,6 +87,16 @@ struct ContentView: View {
             }
             Button("OK", role: .cancel) { store.errorMessage = nil }
         } message: { Text(store.errorMessage ?? "") }
+    }
+
+    private func showAlarms() {
+        clockControls = nil
+        pickerOpen = true
+    }
+
+    private func revealClockControls() {
+        guard !pickerOpen else { return }
+        clockControls = UUID()
     }
 
     private var toolbar: some View {
@@ -98,7 +124,7 @@ struct ContentView: View {
                 }.foregroundStyle(store.theme.muted).padding(.vertical, 8)
                     .accessibilityElement(children: .ignore)
                     .accessibilityLabel("Swipe up to view alarms")
-                    .accessibilityAction { pickerOpen = true }
+                    .accessibilityAction { showAlarms() }
                     .accessibilityIdentifier("alarmSwipeHint")
             }
         }.padding(.vertical, pickerOpen ? 18 : 10).frame(maxWidth: .infinity)
@@ -164,6 +190,8 @@ struct SheetShell<Content: View>: View {
     let theme: AlarmTheme
     var scrolls = true
     var showsDone = true
+    var closeLabel = "Close alarm editor"
+    var closeDisabled = false
     @ViewBuilder let content: Content
     @Environment(\.dismiss) private var dismiss
     var body: some View {
@@ -179,7 +207,8 @@ struct SheetShell<Content: View>: View {
                         if showsDone { Button("Done") { dismiss() } }
                         else {
                             Button { dismiss() } label: { Image(systemName: "xmark") }
-                                .accessibilityLabel("Close alarm editor").accessibilityIdentifier("closeAlarmEditor")
+                                .accessibilityLabel(closeLabel).accessibilityIdentifier("closeAlarmEditor")
+                                .disabled(closeDisabled)
                         }
                     }
                 }

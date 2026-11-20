@@ -6,6 +6,7 @@ struct SavedAlarmsView: View {
     var add: (AlarmMode) -> Void
     var edit: (AlarmRecord) -> Void
     @State private var lastSwipe = Date.distantPast
+    @State private var smartDuplicateAlarm: AlarmRecord?
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 14) {
@@ -30,6 +31,12 @@ struct SavedAlarmsView: View {
                     .foregroundStyle(store.theme.onAccent).frame(width: 64, height: 64)
                     .background(store.theme.gradient, in: Circle()).shadow(color: store.theme.accent2.opacity(0.25), radius: 12, y: 5)
             }.buttonStyle(.plain).padding(24).accessibilityLabel("New alarm").accessibilityIdentifier("newAlarmButton")
+        }
+        .sheet(item: $smartDuplicateAlarm) { alarm in
+            SmartDuplicateSheet(store: store, alarm: alarm)
+        }
+        .onChange(of: store.ringing?.id) { _, id in
+            if id != nil { smartDuplicateAlarm = nil }
         }
     }
     @ViewBuilder private func alarmSection(timer: Bool) -> some View {
@@ -68,17 +75,18 @@ struct SavedAlarmsView: View {
                             }
                         }.font(.system(size: 32, weight: .light)).monospacedDigit()
                             .foregroundStyle(alarm.isEnabled ? theme.text : theme.muted)
-                        HStack(spacing: 8) {
-                            if alarm.isTimer { Text("Countdown") }
-                            Image(systemName: alarm.isTimer ? "timer" : "alarm")
-                            if alarm.typing { Image(systemName: "keyboard") }
-                            if alarm.wakeGames?.puzzle == true { Image(systemName: "puzzlepiece") }
-                            if alarm.wakeGames?.mines == true { Image(systemName: "burst") }
-                            if alarm.wakeGames?.sudoku == true { Image(systemName: "square.grid.3x3") }
-                            if alarm.wakeGames?.stroop == true { Image(systemName: "paintpalette") }
-                            if alarm.mathCount > 0 { Label("\(alarm.mathCount)", systemImage: "plus.forwardslash.minus") }
-                        }.font(.system(size: 11)).foregroundStyle(theme.muted)
-                            .accessibilityIdentifier("alarmMetadata-\(alarm.id)")
+                        if alarm.isTimer || alarm.hasTests {
+                            HStack(spacing: 8) {
+                                if alarm.isTimer { Text("Countdown") }
+                                if alarm.typing { Image(systemName: "keyboard") }
+                                if alarm.wakeGames?.puzzle == true { Image(systemName: "puzzlepiece") }
+                                if alarm.wakeGames?.mines == true { Image(systemName: "burst") }
+                                if alarm.wakeGames?.sudoku == true { Image(systemName: "square.grid.3x3") }
+                                if alarm.wakeGames?.stroop == true { Image(systemName: "paintpalette") }
+                                if alarm.mathCount > 0 { Label("\(alarm.mathCount)", systemImage: "plus.forwardslash.minus") }
+                            }.font(.system(size: 11)).foregroundStyle(theme.muted)
+                                .accessibilityIdentifier("alarmMetadata-\(alarm.id)")
+                        }
                     }.frame(maxWidth: .infinity, alignment: .leading).contentShape(Rectangle())
                 }.buttonStyle(.plain).accessibilityLabel("Edit \(alarm.accessibleName)")
                     .accessibilityIdentifier("editAlarm-\(alarm.id)")
@@ -121,6 +129,9 @@ struct SavedAlarmsView: View {
                 Menu {
                     Button("Delete", role: .destructive) { store.remove(alarm) }
                     Button("Duplicate") { Task { await store.duplicate(alarm) } }
+                    if !alarm.isTimer {
+                        Button("Smart Duplicate") { smartDuplicateAlarm = alarm }
+                    }
                 } label: { Image(systemName: "ellipsis").foregroundStyle(theme.text).frame(width: 44, height: 30) }
                     .menuOrder(.fixed)
                     .disabled(store.saving || store.readOnly || store.ringing?.id == alarm.id)
@@ -135,5 +146,49 @@ struct SavedAlarmsView: View {
         }.padding(14).frame(maxWidth: .infinity, alignment: .leading)
             .background { RoundedRectangle(cornerRadius: 18).fill(theme.card).onTapGesture { openEditor(alarm) } }
             .overlay(RoundedRectangle(cornerRadius: 18).stroke(theme.border).allowsHitTesting(false))
+    }
+}
+
+private struct SmartDuplicateSheet: View {
+    let store: AlarmStore
+    let alarm: AlarmRecord
+    @Environment(\.dismiss) private var dismiss
+    @State private var count = 1
+    @State private var interval = 5
+    @State private var copyTests = false
+    @State private var failure: String?
+
+    var body: some View {
+        SheetShell(title: "Smart Duplicate", theme: store.theme, showsDone: false,
+                   closeLabel: "Close Smart Duplicate", closeDisabled: store.saving) {
+            VStack(alignment: .leading, spacing: 22) {
+                Stepper("Duplicates: \(count)", value: $count, in: AlarmRecord.smartDuplicateCounts)
+                    .accessibilityIdentifier("smartDuplicateCount")
+                Stepper("Minutes apart: \(interval)", value: $interval, in: AlarmRecord.smartDuplicateIntervals)
+                    .accessibilityIdentifier("smartDuplicateInterval")
+                if alarm.hasTests {
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("Which alarms should use the wake-up tests?").font(.subheadline)
+                        Picker("Wake-up tests", selection: $copyTests) {
+                            Text("Original only").tag(false)
+                            Text("All alarms").tag(true)
+                        }.pickerStyle(.segmented)
+                    }
+                }
+                if let failure { Text(failure).font(.callout).foregroundStyle(store.theme.accent) }
+                Button(store.saving ? "Creating…" : count == 1 ? "Create 1 duplicate" : "Create \(count) duplicates") {
+                    Task {
+                        failure = nil
+                        if await store.smartDuplicate(alarm.id, count: count, intervalMinutes: interval, copyTests: copyTests) {
+                            dismiss()
+                        } else {
+                            failure = store.errorMessage ?? "Could not duplicate this alarm."
+                            store.errorMessage = nil
+                        }
+                    }
+                }.buttonStyle(AccentButtonStyle(theme: store.theme)).disabled(store.saving || store.readOnly)
+            }
+        }
+        .interactiveDismissDisabled(store.saving)
     }
 }
