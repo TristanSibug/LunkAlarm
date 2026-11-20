@@ -1,7 +1,7 @@
 {
   "buildOnly": false,
-  "commit": "ff53f3df08a581c69181779c35ecb3d7aaad8f41",
-  "run": "https://github.com/TristanSibug/LunkAlarm/actions/runs/44574957677",
+  "commit": "4c7f569684b19de1bf33567055d46bd4228058f4",
+  "run": "https://github.com/TristanSibug/LunkAlarm/actions/runs/44788481478",
   "status": "success",
   "build": "success",
   "emulator": "success",
@@ -9,7 +9,7 @@
   "tests": [
     {
       "name": "online.reeeserve.lunkalarm.core.AlarmCoreTest",
-      "tests": "20",
+      "tests": "22",
       "failures": "0",
       "errors": "0",
       "skipped": "0"
@@ -37,7 +37,7 @@
     },
     {
       "name": "online.reeeserve.lunkalarm.AlarmInteractionTest",
-      "tests": "4",
+      "tests": "6",
       "failures": "0",
       "errors": "0",
       "skipped": "0"
