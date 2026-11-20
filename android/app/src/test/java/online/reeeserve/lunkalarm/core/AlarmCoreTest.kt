@@ -8,6 +8,37 @@ import java.time.*
 class AlarmCoreTest {
     private val utc = ZoneId.of("UTC")
     private fun millis(text: String) = Instant.parse(text).toEpochMilli()
+    @Test fun smartDuplicateOffsetsTheTimeAndLetsTestsStayOnTheOriginal() {
+        val now = millis("2026-11-20T06:00:00Z")
+        val original = AlarmRecord.create(AlarmDraft(name = "Morning", typing = true, mathCount = 3,
+            puzzle = true, mines = true, sudoku = true, stroop = true, volume = .6f), now, 0, 42, utc)
+        val copies = original.smartDuplicates(3, 5, false, now, utc)
+        assertEquals(listOf(5, 10, 15), copies.map { it.draft.minute })
+        assertEquals(listOf(5, 10, 15).map { original.target + it * 60_000L }, copies.map { it.target })
+        assertEquals(4, (copies + original).map { it.id }.toSet().size)
+        assertTrue(copies.all { !it.hasTests && it.draft.name == "Morning" && it.draft.volume == .6f })
+        assertEquals(0, original.draft.minute)
+        assertTrue(original.hasTests)
+        for (copy in original.smartDuplicates(4, 8, true, now, utc)) {
+            assertEquals(original.draft, copy.draft.copy(minute = 0))
+        }
+        assertThrows(IllegalArgumentException::class.java) { original.smartDuplicates(5, 5, true, now, utc) }
+        assertThrows(IllegalArgumentException::class.java) { original.smartDuplicates(1, 1, true, now, utc) }
+    }
+
+    @Test fun smartDuplicateMovesRepeatDaysAcrossMidnight() {
+        val now = millis("2026-11-21T22:00:00Z")
+        val original = AlarmRecord.create(AlarmDraft(hour = 23, minute = 58, days = setOf(7)), now, 0, 42, utc)
+            .copy(enabled = false)
+        val copy = original.smartDuplicates(1, 5, false, now, utc).single()
+        assertEquals(setOf(1), copy.draft.days)
+        assertEquals(millis("2026-11-22T00:03:00Z"), copy.target)
+        assertFalse(copy.enabled)
+        val oneTimeCopy = original.copy(draft = original.draft.copy(days = emptySet()))
+            .smartDuplicates(1, 5, false, now, utc).single()
+        assertTrue(oneTimeCopy.draft.days.isEmpty())
+        assertEquals(copy.target, oneTimeCopy.target)
+    }
     @Test fun onceSelectsNextDayWhenTimeAlreadyPassed() {
         val now = millis("2026-11-09T08:00:00Z")
         assertEquals(millis("2026-11-10T07:00:00Z"), AlarmTime.next(7, 0, emptySet(), now, utc))

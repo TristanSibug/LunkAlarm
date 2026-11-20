@@ -30,6 +30,7 @@ import online.reeeserve.lunkalarm.core.*
 @Composable fun AlarmEditor(draft: AlarmDraft, editingId: String?, state: AppState, theme: LunkTheme, activity: MainActivity,
     change: (AlarmDraft) -> Unit, close: () -> Unit, permissions: () -> Unit) {
     val repo = activity.graph.repository; val controller = activity.graph.controller
+    val fullScreenAllowed = remember(activity.permissionRevision) { controller.scheduler.fullScreenAllowed }
     var sheet by remember { mutableStateOf<String?>(null) }
     var testSettings by rememberSaveable { mutableStateOf<WakeTest?>(null) }
     var testPractice by rememberSaveable { mutableStateOf<WakeTest?>(null) }
@@ -146,6 +147,9 @@ import online.reeeserve.lunkalarm.core.*
                 }
             }
             item { VolumeControls(draft, theme, change) { sheet = "sound-check" } }
+            if (!fullScreenAllowed) {
+                item { TextButton(onClick = permissions) { Text("Lock screen alarm access") } }
+            }
             item {
                 Column(Modifier.testTag("wake-tests"), verticalArrangement = Arrangement.spacedBy(16.dp)) {
                     SectionLabel("Wake-up tests", theme)

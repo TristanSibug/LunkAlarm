@@ -10,9 +10,12 @@ class AlarmController(private val context: Context, val repository: AlarmReposit
     private fun withError(action: () -> Unit): Boolean = try { action(); true } catch (failure: Exception) {
         repository.report(failure.localizedMessage ?: "Could not change the alarm."); false
     }
-    fun save(draft: AlarmDraft, editingId: String? = null, rememberDraft: Boolean = true): Boolean = withError {
+    private fun requireScheduleAccess() {
         check(scheduler.exactAllowed) { "Allow Alarms & reminders before saving an alarm." }
         check(scheduler.notificationsAllowed) { "Allow notifications so Android can display your alarm when the phone is locked." }
+    }
+    fun save(draft: AlarmDraft, editingId: String? = null, rememberDraft: Boolean = true): Boolean = withError {
+        requireScheduleAccess()
         val original = editingId?.let { id -> repository.state.value.alarms.firstOrNull { it.id == id } }
         check(editingId == null || original != null) { "This alarm was deleted." }
         check(original?.active != true) { "Finish the wake-up tests before editing this alarm." }
@@ -21,6 +24,7 @@ class AlarmController(private val context: Context, val repository: AlarmReposit
         install(record, original, if (rememberDraft) draft else null)
     }
     private fun install(record: AlarmRecord, original: AlarmRecord?, newDraft: AlarmDraft? = null) {
+        if (record.enabled) requireScheduleAccess()
         val before = repository.state.value
         repository.update { it.copy(alarms = it.alarms.filterNot { a -> a.id == record.id } + record, draft = newDraft ?: it.draft) }
         try {
@@ -40,6 +44,27 @@ class AlarmController(private val context: Context, val repository: AlarmReposit
     }
     fun duplicate(record: AlarmRecord): Boolean = withError {
         install(record.duplicate(System.currentTimeMillis(), SystemClock.elapsedRealtime(), scheduler.boot), null)
+    }
+    fun smartDuplicate(id: String, count: Int, minutesApart: Int, copyTests: Boolean): Boolean = withError {
+        val source = checkNotNull(repository.state.value.alarms.firstOrNull { it.id == id }) { "This alarm was deleted." }
+        check(!source.active) { "Finish the wake-up tests before duplicating this alarm." }
+        if (source.enabled) requireScheduleAccess()
+        val copies = source.smartDuplicates(count, minutesApart, copyTests, System.currentTimeMillis())
+        repository.update { it.copy(alarms = it.alarms + copies) }
+        val attempted = mutableListOf<AlarmRecord>()
+        try {
+            for (copy in copies) {
+                attempted.add(copy)
+                scheduler.schedule(copy)
+            }
+        } catch (failure: Exception) {
+            val retained = attempted.filter { runCatching { scheduler.cancel(it.id) }.isFailure }
+                .map { it.copy(error = "Could not cancel this copy. Turn it off or delete it to retry.") }
+            val copyIds = copies.map { it.id }.toSet()
+            repository.update { state -> state.copy(alarms = state.alarms.filterNot { it.id in copyIds } + retained) }
+            if (retained.isNotEmpty()) error("Some copies could not be canceled. Check the alarm list before trying again.")
+            throw failure
+        }
     }
     fun enable(record: AlarmRecord, enabled: Boolean): Boolean = withError {
         check(!record.active)

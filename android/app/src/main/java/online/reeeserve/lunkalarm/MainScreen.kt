@@ -29,6 +29,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.*
 import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -43,44 +44,65 @@ import kotlin.math.*
     val state by repo.state.collectAsStateWithLifecycle(); val error by repo.error.collectAsStateWithLifecycle()
     val theme = Themes.find(state.theme)
     var alarmsOpen by rememberSaveable { mutableStateOf(false) }
+    var controlsUntil by remember { mutableLongStateOf(if (activity.showClockControlsOnLaunch) SystemClock.elapsedRealtime() + 5000 else 0) }
     var themesOpen by remember { mutableStateOf(false) }
     var permissionsOpen by remember { mutableStateOf(false) }
     var editingId by rememberSaveable { mutableStateOf<String?>(null) }
     val draftSaver = remember { Saver<AlarmDraft?, String>(save = { it?.let { d -> AlarmJson.encode(AppState(draft = d)) } ?: "" }, restore = { if (it.isEmpty()) null else AlarmJson.decode(it).draft }) }
     var editor by rememberSaveable(stateSaver = draftSaver) { mutableStateOf<AlarmDraft?>(null) }
-    SideEffect { activity.applyBars(theme) }
-    LaunchedEffect(state.session?.owner) {
-        if (state.session != null && activity.lifecycle.currentState.isAtLeast(Lifecycle.State.RESUMED)) {
-            editor = null; AlarmService.start(activity); activity.startActivity(RingingActivity.intent(activity))
+    fun revealControls(durationMs: Long) { controlsUntil = SystemClock.elapsedRealtime() + durationMs }
+    fun showClock() { alarmsOpen = false; revealControls(2500) }
+    fun showAlarms() { controlsUntil = 0; alarmsOpen = true }
+    DisposableEffect(activity) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_STOP) controlsUntil = 0
+        }
+        activity.lifecycle.addObserver(observer)
+        onDispose { activity.lifecycle.removeObserver(observer) }
+    }
+    LaunchedEffect(controlsUntil) {
+        val deadline = controlsUntil
+        if (deadline != 0L) {
+            delay((deadline - SystemClock.elapsedRealtime()).coerceAtLeast(0L))
+            if (controlsUntil == deadline) controlsUntil = 0
         }
     }
-    BackHandler(editor != null || alarmsOpen) { if (editor != null) editor = null else alarmsOpen = false }
+    SideEffect { activity.applyBars(theme) }
+    var ringingWasOpen by rememberSaveable { mutableStateOf(false) }
+    LaunchedEffect(state.session?.owner) {
+        if (state.session != null) {
+            ringingWasOpen = true
+            controlsUntil = 0
+            if (activity.lifecycle.currentState.isAtLeast(Lifecycle.State.RESUMED)) {
+                editor = null; AlarmService.start(activity); activity.startActivity(RingingActivity.intent(activity))
+            }
+        } else if (ringingWasOpen) {
+            ringingWasOpen = false
+            if (!alarmsOpen) revealControls(2500)
+        }
+    }
+    BackHandler(editor != null || alarmsOpen) { if (editor != null) editor = null else showClock() }
     LunkStyle(theme) {
         Box(Modifier.fillMaxSize().background(theme.background)) {
             if (theme.id !in listOf("oled", "dark")) Box(Modifier.fillMaxSize().background(androidx.compose.ui.graphics.Brush.radialGradient(
                 listOf(theme.accent.copy(alpha = if (theme.light) .09f else .18f), androidx.compose.ui.graphics.Color.Transparent), Offset.Zero, 900f)))
-            Column(Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.safeDrawing)) {
-                Row(Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 10.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    val revision = activity.permissionRevision
-                    val allowed = remember(revision, permissionsOpen) { controller.scheduler.exactAllowed && controller.scheduler.notificationsAllowed }
-                    Row(Modifier.weight(1f, fill = false).clip(CircleShape).background(theme.text.copy(alpha = .055f)).clickable { permissionsOpen = true }
-                        .padding(horizontal = 10.dp, vertical = 10.dp).testTag("alarm-access"), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                        Box(Modifier.size(7.dp).background(if (allowed) androidx.compose.ui.graphics.Color(0xff39dc78) else theme.accent, CircleShape))
-                        Text(if (allowed) "Alarms allowed" else "Alarm access", fontSize = 11.sp, color = theme.muted, maxLines = 1)
-                    }
-                    Spacer(Modifier.weight(1f))
-                    Chip("Theme", theme) { themesOpen = true }
-                    Chip(if (state.use24Hour) "24h" else "12h", theme) { repo.update { it.copy(use24Hour = !it.use24Hour) } }
-                }
-                AnimatedContent(alarmsOpen, modifier = Modifier.weight(1f), transitionSpec = {
+            Box(Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.safeDrawing)) {
+                AnimatedContent(alarmsOpen, modifier = Modifier.fillMaxSize(), transitionSpec = {
                     val enter = slideInVertically(tween(350)) { if (targetState) it else -it } + fadeIn(tween(250))
                     val exit = slideOutVertically(tween(350)) { if (targetState) -it else it } + fadeOut(tween(250))
                     enter togetherWith exit
                 }, label = "clock-to-alarms") { open ->
-                    if (open) SavedAlarmScreen(state, theme, controller, clock = { alarmsOpen = false }, add = {
+                    if (open) SavedAlarmScreen(state, theme, controller, clock = ::showClock, add = {
                         timer -> editingId = null; editor = state.draft.copy(name = "", timer = timer)
                     }, edit = { record -> editingId = record.id; editor = record.draft })
-                    else ClockScreen(state.use24Hour, theme) { alarmsOpen = true }
+                    else ClockScreen(state.use24Hour, theme, alarms = ::showAlarms, revealControls = { revealControls(5000) })
+                }
+                if (!alarmsOpen && controlsUntil != 0L && state.session == null) {
+                    Row(Modifier.align(Alignment.TopEnd).padding(top = 10.dp, end = 20.dp).testTag("clock-controls"),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Chip("Theme", theme) { themesOpen = true }
+                        Chip(if (state.use24Hour) "24h" else "12h", theme) { repo.update { it.copy(use24Hour = !it.use24Hour) } }
+                    }
                 }
             }
             editor?.let { draft ->
@@ -116,19 +138,30 @@ import kotlin.math.*
                 }, confirmButton = { TextButton(onClick = { permissionsOpen = false }) { Text("Close") } })
             }
             if (error != null && !permissionsOpen) AlertDialog(onDismissRequest = { repo.report(null) }, title = { Text("LunkAlarm") }, text = { Text(error.orEmpty()) },
-                confirmButton = { TextButton(onClick = { repo.report(null) }) { Text("OK") } })
+                confirmButton = { TextButton(onClick = { repo.report(null) }) { Text("OK") } },
+                dismissButton = {
+                    if (!controller.scheduler.exactAllowed || !controller.scheduler.notificationsAllowed) {
+                        TextButton(onClick = { repo.report(null); permissionsOpen = true }) { Text("Alarm access") }
+                    }
+                })
         }
     }
 }
 
-@Composable private fun ClockScreen(use24: Boolean, theme: LunkTheme, alarms: () -> Unit) {
+@Composable private fun ClockScreen(use24: Boolean, theme: LunkTheme, alarms: () -> Unit, revealControls: () -> Unit) {
     var now by remember { mutableLongStateOf(System.currentTimeMillis()) }
     val latest by rememberUpdatedState(alarms)
+    val reveal by rememberUpdatedState(revealControls)
     LaunchedEffect(Unit) { while (true) { now = System.currentTimeMillis(); delay(500) } }
-    BoxWithConstraints(Modifier.fillMaxSize().testTag("big-clock").pointerInput(Unit) {
+    BoxWithConstraints(Modifier.fillMaxSize().testTag("big-clock").semantics {
+        customActions = listOf(CustomAccessibilityAction("Show clock controls") { revealControls(); true })
+    }.pointerInput(Unit) {
         var movement = 0f
         detectVerticalDragGestures(onDragStart = { movement = 0f }, onVerticalDrag = { _, dy -> movement += dy },
-            onDragEnd = { if (movement < -48.dp.toPx()) latest() })
+            onDragEnd = {
+                if (movement < -48.dp.toPx()) latest()
+                else if (movement > 48.dp.toPx()) reveal()
+            })
     }) {
         val date = Instant.ofEpochMilli(now).atZone(ZoneId.systemDefault())
         val display = date.format(DateTimeFormatter.ofPattern(if (use24) "HH:mm" else "h:mm"))
@@ -148,13 +181,12 @@ import kotlin.math.*
                 Text("Swipe up to view alarms", color = theme.muted, fontSize = 12.sp)
             }
         }
-        if (maxHeight > 400.dp) Text("Scheduled by Android. No need to keep this screen open.", color = theme.muted, fontSize = 11.sp,
-            modifier = Modifier.align(Alignment.BottomCenter).padding(horizontal = 24.dp, vertical = 18.dp))
     }
 }
 
 @Composable private fun SavedAlarmScreen(state: AppState, theme: LunkTheme, controller: AlarmController, clock: () -> Unit, add: (Boolean) -> Unit, edit: (AlarmRecord) -> Unit) {
     val list = rememberLazyListState()
+    var smartDuplicateId by rememberSaveable { mutableStateOf<String?>(null) }
     val latestClock by rememberUpdatedState(clock)
     var pull by remember { mutableFloatStateOf(0f) }
     val connection = remember { object : NestedScrollConnection {
@@ -190,7 +222,9 @@ import kotlin.math.*
                                 ?: (if (timer) "No upcoming timers" else "No upcoming alarms"), color = theme.muted, fontSize = 14.sp)
                         }
                     }
-                    items(records, key = { it.id }) { record -> AlarmCardRow(record, state.use24Hour, theme, controller, edit) }
+                    items(records, key = { it.id }) { record ->
+                        AlarmCardRow(record, state.use24Hour, theme, controller, edit, smartDuplicate = { smartDuplicateId = record.id })
+                    }
                 }
             }
         }
@@ -208,9 +242,16 @@ import kotlin.math.*
             }
         }
     }
+    val source = state.alarms.firstOrNull { it.id == smartDuplicateId && !it.active }
+    if (source != null) key(source.id) {
+        SmartDuplicateDialog(source, theme, close = { smartDuplicateId = null }) { count, minutes, copyTests ->
+            if (controller.smartDuplicate(source.id, count, minutes, copyTests)) smartDuplicateId = null
+        }
+    }
 }
 
-@Composable private fun AlarmCardRow(alarm: AlarmRecord, use24: Boolean, palette: LunkTheme, controller: AlarmController, edit: (AlarmRecord) -> Unit) {
+@Composable private fun AlarmCardRow(alarm: AlarmRecord, use24: Boolean, palette: LunkTheme, controller: AlarmController,
+                                    edit: (AlarmRecord) -> Unit, smartDuplicate: () -> Unit) {
     val theme = palette.cardPalette
     var offset by remember { mutableFloatStateOf(0f) }; var width by remember { mutableFloatStateOf(350f) }
     var dragging by remember { mutableStateOf(false) }; var armed by remember { mutableStateOf(false) }; var menu by remember { mutableStateOf(false) }
@@ -226,7 +267,13 @@ import kotlin.math.*
                 change.consume(); offset = (offset + amount).coerceIn(-width, 0f)
                 val next = -offset >= width * .65f; if (next && !armed) haptic(view, true); armed = next
             }
-        }.semantics { customActions = if (alarm.active) emptyList() else listOf(CustomAccessibilityAction("Delete") { controller.remove(alarm) }, CustomAccessibilityAction("Duplicate") { controller.duplicate(alarm) }) }) {
+        }.semantics {
+            customActions = if (alarm.active) emptyList() else buildList {
+                add(CustomAccessibilityAction("Delete") { controller.remove(alarm) })
+                add(CustomAccessibilityAction("Duplicate") { controller.duplicate(alarm) })
+                if (!alarm.draft.timer) add(CustomAccessibilityAction("Smart Duplicate") { smartDuplicate(); true })
+            }
+        }) {
         if (offset < 0) IconButton(onClick = { remove() }, modifier = Modifier.align(Alignment.CenterEnd).padding(end = 15.dp).size(52.dp).background(androidx.compose.ui.graphics.Color(0xffff3b49), CircleShape).testTag("swipe-delete-${alarm.id}")) {
             Icon(Icons.Default.Delete, "Delete ${alarm.label}", tint = androidx.compose.ui.graphics.Color.White)
         }
@@ -239,10 +286,15 @@ import kotlin.math.*
                     val label = if (alarm.draft.timer) AlarmTime.duration(alarm.remaining(now, SystemClock.elapsedRealtime(), controller.scheduler.boot)) else
                         "%02d:%02d".format(alarm.draft.hour, alarm.draft.minute).let { _ -> LocalTime.of(alarm.draft.hour, alarm.draft.minute).format(DateTimeFormatter.ofPattern(if (use24) "HH:mm" else "h:mm a")) }
                     Text(label, fontSize = 32.sp, fontWeight = FontWeight.Light, color = if (alarm.enabled) theme.text else theme.muted)
-                    val details = listOfNotNull(if (alarm.draft.timer) "Countdown" else null, if (alarm.draft.typing) "Typing" else null,
-                        if (alarm.draft.mathCount > 0) "Math · ${alarm.draft.mathCount}" else null, if (alarm.draft.puzzle) "Puzzle" else null,
-                        if (alarm.draft.mines) "Minesweeper" else null, if (alarm.draft.sudoku) "Sudoku" else null, if (alarm.draft.stroop) "Stroop" else null)
-                    if (details.isNotEmpty()) Text(details.joinToString("   "), color = theme.muted, fontSize = 11.sp)
+                    if (alarm.draft.timer || alarm.hasTests) {
+                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            if (alarm.draft.timer) Text("Countdown", color = theme.muted, fontSize = 11.sp)
+                            WakeTest.entries.filter { it.enabled(alarm.draft) }.forEach { test ->
+                                TestGlyph(test, theme.muted, Modifier.size(14.dp).clearAndSetSemantics { contentDescription = test.short },
+                                    textSize = 11.sp)
+                            }
+                        }
+                    }
                 }
                 if (!alarm.draft.timer) Switch(checked = alarm.enabled, onCheckedChange = { controller.enable(alarm, it) }, enabled = !alarm.active,
                     colors = SwitchDefaults.colors(checkedTrackColor = theme.accent2, checkedThumbColor = androidx.compose.ui.graphics.Color.White), modifier = Modifier.testTag("enabled-${alarm.id}"))
@@ -265,11 +317,58 @@ import kotlin.math.*
                     DropdownMenu(expanded = menu, onDismissRequest = { menu = false }) {
                         DropdownMenuItem(text = { Text("Delete") }, onClick = { menu = false; controller.remove(alarm) })
                         DropdownMenuItem(text = { Text("Duplicate") }, onClick = { menu = false; controller.duplicate(alarm) })
+                        if (!alarm.draft.timer) {
+                            DropdownMenuItem(text = { Text("Smart Duplicate") }, onClick = { menu = false; smartDuplicate() })
+                        }
                     }
                 }
             }
             alarm.error?.let { Text(it, fontSize = 12.sp, color = theme.accent) }
             if (alarm.active) TextButton(onClick = { view.context.startActivity(RingingActivity.intent(view.context)) }) { Text("Finish wake-up tests") }
+        }
+    }
+}
+
+@Composable private fun SmartDuplicateDialog(alarm: AlarmRecord, theme: LunkTheme, close: () -> Unit,
+                                             create: (Int, Int, Boolean) -> Unit) {
+    var count by rememberSaveable { mutableIntStateOf(1) }
+    var minutes by rememberSaveable { mutableIntStateOf(5) }
+    var copyTests by rememberSaveable { mutableStateOf(false) }
+    AlertDialog(
+        onDismissRequest = close,
+        title = { Text("Smart Duplicate") },
+        text = {
+            Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                DuplicateStepper("Duplicates", count, AlarmRecord.smartDuplicateCounts) { count = it }
+                DuplicateStepper("Minutes apart", minutes, AlarmRecord.smartDuplicateIntervals) { minutes = it }
+                if (alarm.hasTests) {
+                    Text("Which alarms should use the wake-up tests?")
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        FilterChip(selected = !copyTests, onClick = { copyTests = false }, label = { Text("Original only") })
+                        FilterChip(selected = copyTests, onClick = { copyTests = true }, label = { Text("All alarms") })
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = { create(count, minutes, copyTests) }, modifier = Modifier.testTag("create-smart-duplicates")) {
+                Text(if (count == 1) "Create 1 duplicate" else "Create $count duplicates", color = theme.accent)
+            }
+        },
+        dismissButton = { TextButton(onClick = close) { Text("Cancel") } },
+        containerColor = theme.card
+    )
+}
+
+@Composable private fun DuplicateStepper(label: String, value: Int, range: IntRange, change: (Int) -> Unit) {
+    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+        Text(label, Modifier.weight(1f))
+        IconButton(onClick = { change(value - 1) }, enabled = value > range.first) {
+            Icon(Icons.Default.Remove, "Decrease $label")
+        }
+        Text(value.toString())
+        IconButton(onClick = { change(value + 1) }, enabled = value < range.last) {
+            Icon(Icons.Default.Add, "Increase $label")
         }
     }
 }

@@ -137,6 +137,33 @@ class AlarmInteractionTest {
         capture("android-edit-seven-to-seven-thirty")
     }
 
+    @Test fun b_smartDuplicateAddsThreeOffsetsWithTestsOnTheOriginalOnly() {
+        rule.runOnIdle { assertTrue(controller.save(AlarmDraft(name = "Morning", hour = 7, minute = 0, typing = true, mathCount = 3))) }
+        val original = repo.state.value.alarms.single()
+        rule.onNodeWithTag("view-alarms").performClick()
+        rule.onNodeWithTag("options-${original.id}").performClick()
+        rule.onNodeWithText("Smart Duplicate").performClick()
+        rule.onNodeWithText("Original only").assertIsSelected()
+        rule.onNodeWithText("All alarms").assertExists()
+        repeat(2) { rule.onNodeWithContentDescription("Increase Duplicates").performClick() }
+        rule.onNodeWithTag("create-smart-duplicates").performClick()
+        rule.waitUntil { repo.state.value.alarms.size == 4 }
+        val copies = repo.state.value.alarms.filter { it.id != original.id }
+        assertEquals(listOf(5, 10, 15), copies.map { it.draft.minute })
+        assertTrue(copies.all { it.draft.hour == 7 && !it.hasTests })
+        assertEquals(original, repo.state.value.alarms.single { it.id == original.id })
+    }
+
+    @Test fun b_clockControlsRevealOnSwipeAndWhenReturningFromAlarms() {
+        rule.onNodeWithTag("big-clock").performTouchInput { swipeDown() }
+        rule.onNodeWithTag("clock-controls").assertIsDisplayed()
+        rule.onNodeWithTag("view-alarms").performClick()
+        rule.onNodeWithTag("clock-controls").assertDoesNotExist()
+        rule.onNodeWithText("Clock", substring = false).performClick()
+        rule.onNodeWithTag("clock-controls").assertIsDisplayed()
+        rule.waitUntil(4500) { rule.onAllNodesWithTag("clock-controls").fetchSemanticsNodes().isEmpty() }
+    }
+
     @Test fun c_swipeNavigationCountdownEditingAndDeleteGestures() {
         rule.onNodeWithTag("big-clock").performTouchInput { swipeUp() }
         rule.onNodeWithTag("your-alarms").assertExists()

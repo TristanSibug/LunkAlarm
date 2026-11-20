@@ -209,9 +209,9 @@ enum class WakeTest(val title: String, val short: String) {
         Text(detail, color = theme.muted, fontSize = 11.sp)
     }
 }
-@Composable fun TestGlyph(test: WakeTest, color: Color, modifier: Modifier = Modifier) {
+@Composable fun TestGlyph(test: WakeTest, color: Color, modifier: Modifier = Modifier, textSize: TextUnit = 20.sp) {
     if (test == WakeTest.TYPING || test == WakeTest.MATH) Box(modifier, contentAlignment = Alignment.Center) {
-        Text(if (test == WakeTest.TYPING) "Aa" else "+=", color = color, fontSize = 20.sp, fontWeight = FontWeight.SemiBold, maxLines = 1, softWrap = false)
+        Text(if (test == WakeTest.TYPING) "Aa" else "+=", color = color, fontSize = textSize, fontWeight = FontWeight.SemiBold, maxLines = 1, softWrap = false)
     } else if (test == WakeTest.STROOP) Icon(Icons.Default.Palette, null, modifier, tint = color)
     else Canvas(modifier) {
         val w = size.width; val h = size.height; val stroke = Stroke(1.5.dp.toPx())

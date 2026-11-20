@@ -1,26 +1,24 @@
-# LunkAlarm 1.10.0 — Alarm Editing Fix
+# LunkAlarm 1.10.3 — Smart Duplicate and Alarm Editing
 
-One release for **Android, iOS, and the website**, with both mobile installers available below.
+This release brings together the latest updates for Android and iOS, with the website linked below. It includes the changes since the previous public mobile releases.
+
+### What’s new
+
+- **Smart Duplicate on iOS and Android** — Create 1–4 alarm copies, spaced 2–8 minutes apart. Choose whether wake-up tests stay on the original or apply to all copies.
+- **Big clock controls on iOS and Android** — Theme and 12/24-hour controls appear for five seconds on a fresh launch or swipe down, and for 2.5 seconds when you return to the big clock.
+- **Cleaner cards and clock** — Saved cards use wake-up-test icons without counts. The big clock no longer shows the alarm permission badge or scheduling footer. Scheduling still requires system permission.
+- **iOS alarm editing fix** — Changing a saved alarm, such as 7:00 AM to 7:30 AM, updates that alarm in place. The same edit was verified on Android and on the desktop and mobile website.
 
 ### Downloads
 
-| Platform | Download |
+| Platform | File or link |
 | --- | --- |
-| Android | [LunkAlarm-Android-1.10.0.apk](https://github.com/TristanSibug/LunkAlarm/releases/download/lunkalarm-v1.10.0/LunkAlarm-Android-1.10.0.apk) |
-| iOS | [LunkAlarm-iOS-1.10.0-unsigned.ipa](https://github.com/TristanSibug/LunkAlarm/releases/download/lunkalarm-v1.10.0/LunkAlarm-iOS-1.10.0-unsigned.ipa) |
+| Android | Attached `LunkAlarm-Android-1.10.3.apk` |
+| iOS | Attached `LunkAlarm-iOS-1.10.3-unsigned.ipa` |
 | Website | [Open LunkAlarm](https://alarm.tjesibug.online) |
-
-### Fixes
-
-- Fix iOS alarm editing creating a second alarm instead of updating the selected one, including the first edit after opening the app.
-- Editing 7:00 AM to 7:30 AM now keeps the same alarm and replaces its schedule.
-- Add checks for the same editing flow on Android and the website, including desktop and touch layouts.
-- Group both mobile downloads and the website link in one release, starting with version 1.10.0.
 
 ### Installation
 
-- **Android:** Install the APK over your permanently signed LunkAlarm installation to keep saved alarms. No uninstall is needed for updates from the 1.3.1 signing baseline onward.
-- **iOS:** The IPA is unsigned. Install it using your usual compatible signing/sideloading tool.
-- **Website:** Open the link above; no installation is needed.
-
-Wake-up-test audio and sound controls are unchanged.
+- **Android** — Install the APK over your existing permanently signed LunkAlarm app to keep your saved alarms. Updates from 1.3.1 onward require no uninstall.
+- **iOS** — Sign and install the unsigned IPA using your usual sideloading method.
+- **Website** — Open the link above in your browser.

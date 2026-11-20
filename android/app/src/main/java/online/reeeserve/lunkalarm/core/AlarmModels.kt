@@ -57,7 +57,37 @@ data class AlarmRecord(
         ((if (boot == bootCount && elapsedTarget > 0) elapsedTarget - elapsed else target - now)).coerceAtLeast(0)
     fun duplicate(now: Long, elapsed: Long, bootCount: Int, zone: ZoneId = ZoneId.systemDefault()): AlarmRecord =
         create(draft, now, elapsed, bootCount, zone).copy(enabled = enabled)
+
+    fun smartDuplicates(count: Int, minutesApart: Int, copyTests: Boolean, now: Long,
+                        zone: ZoneId = ZoneId.systemDefault()): List<AlarmRecord> {
+        require(!draft.timer && count in smartDuplicateCounts && minutesApart in smartDuplicateIntervals) {
+            "Choose 1–4 copies and 2–8 minutes between alarms."
+        }
+        val first = if (target > now) target else AlarmTime.next(draft.hour, draft.minute, draft.days, now, zone)
+        val settings = if (copyTests) draft else draft.copy(
+            typing = false, mathCount = 0, puzzle = false, mines = false, sudoku = false, stroop = false
+        )
+        return (1..count).map { index ->
+            val offset = index * minutesApart
+            if (draft.days.isEmpty()) {
+                val deadline = first + offset * 60_000L
+                val time = Instant.ofEpochMilli(deadline).atZone(zone)
+                AlarmRecord(draft = settings.copy(hour = time.hour, minute = time.minute), target = deadline,
+                    boot = boot, enabled = enabled)
+            } else {
+                val minutes = draft.hour * 60 + draft.minute + offset
+                val hour = minutes / 60 % 24
+                val minute = minutes % 60
+                val days = draft.days.map { (it - 1 + minutes / 1440) % 7 + 1 }.toSet()
+                AlarmRecord(draft = settings.copy(hour = hour, minute = minute, days = days),
+                    target = AlarmTime.next(hour, minute, days, now, zone), boot = boot, enabled = enabled)
+            }
+        }
+    }
+
     companion object {
+        val smartDuplicateCounts = 1..4
+        val smartDuplicateIntervals = 2..8
         fun create(draft: AlarmDraft, now: Long, elapsed: Long, boot: Int, zone: ZoneId = ZoneId.systemDefault()): AlarmRecord {
             draft.validate()
             return AlarmRecord(draft = draft, target = if (draft.timer) now + draft.seconds * 1000L
