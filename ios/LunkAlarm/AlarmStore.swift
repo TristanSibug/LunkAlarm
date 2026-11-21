@@ -104,7 +104,7 @@ final class AlarmStore {
               service.manager.authorizationState == .notDetermined else { return }
         UserDefaults.standard.set(true, forKey: key)
         // Denial leaves the clock usable. Saving an alarm still enforces AlarmKit access.
-        _ = try? await service.manager.requestAuthorization()
+        try? await service.authorize()
         authorization = service.manager.authorizationState
     }
 
