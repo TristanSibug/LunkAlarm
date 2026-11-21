@@ -193,33 +193,24 @@ final class AlarmInteractionTests: XCTestCase {
         wait(for: [finished], timeout: 5)
         XCTAssertTrue(app.descendants(matching: .any)["alarmSwipeHint"].waitForExistence(timeout: 5))
     }
-    @MainActor func testClockControlsAppearBrieflyOnLaunchSwipeAndClockReturn() {
+    @MainActor func testAboutPageHoldsClockControlsAndReturnsToClock() {
         let app = launch()
         let theme = app.buttons["Theme"]
-        XCTAssertTrue(theme.waitForExistence(timeout: 5))
-        let hidden = XCTNSPredicateExpectation(predicate: NSPredicate(format: "exists == false"), object: theme)
-        wait(for: [hidden], timeout: 7)
-
-        app.swipeDown(velocity: .fast)
-        XCTAssertTrue(theme.waitForExistence(timeout: 5))
-        XCUIDevice.shared.press(.home)
-        app.activate()
+        XCTAssertTrue(app.buttons["openAbout"].waitForExistence(timeout: 5))
         XCTAssertFalse(theme.exists)
-
         app.swipeDown(velocity: .fast)
-        XCTAssertTrue(theme.waitForExistence(timeout: 5))
-        app.swipeUp(velocity: .fast)
-        XCTAssertTrue(app.staticTexts["savedAlarmsTitle"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["By Tristan Josh E. Sibug"].waitForExistence(timeout: 5))
+        XCTAssertTrue(theme.isHittable)
+        XCTAssertTrue(app.buttons["Switch clock format"].exists)
+        returnToClock(app)
         XCTAssertFalse(theme.exists)
-        app.buttons["Clock"].tap()
-        XCTAssertTrue(theme.waitForExistence(timeout: 2))
-        let hiddenAfterReturn = XCTNSPredicateExpectation(predicate: NSPredicate(format: "exists == false"), object: theme)
-        wait(for: [hiddenAfterReturn], timeout: 4)
 
         app.swipeUp(velocity: .fast)
         XCTAssertTrue(app.staticTexts["savedAlarmsTitle"].waitForExistence(timeout: 5))
-        app.swipeDown(velocity: .fast)
-        XCTAssertTrue(theme.waitForExistence(timeout: 2))
+        returnToClock(app)
+        XCTAssertFalse(theme.exists)
+        app.buttons["openAbout"].tap()
+        XCTAssertTrue(theme.waitForExistence(timeout: 5))
     }
 
     @MainActor func testSmartDuplicateCreatesOffsetAlarmWithTestsOnOriginalOnly() {
@@ -463,7 +454,7 @@ final class AlarmInteractionTests: XCTestCase {
             choice.tap()
             let dismissed = XCTNSPredicateExpectation(predicate: NSPredicate(format: "exists == false"), object: app.navigationBars["Theme"])
             wait(for: [dismissed], timeout: 5)
-            XCTAssertTrue(app.descendants(matching: .any)["alarmSwipeHint"].waitForExistence(timeout: 5))
+            returnToClock(app)
             capture(app, name: "ios-theme-\(name)-clock")
             app.swipeUp(velocity: .fast)
             XCTAssertTrue(app.staticTexts["savedAlarmsTitle"].waitForExistence(timeout: 5))
@@ -639,12 +630,12 @@ final class AlarmInteractionTests: XCTestCase {
     }
 
     @MainActor func testMidnightCherrySudokuContrast() {
-        let app = launch(); app.buttons["Theme"].tap()
+        let app = launch(); app.buttons["openAbout"].tap(); app.buttons["Theme"].tap()
         XCTAssertTrue(app.navigationBars["Theme"].waitForExistence(timeout: 5))
         let choice = app.buttons["Midnight Cherry"]
         for _ in 0..<8 where !choice.isHittable { app.scrollViews.firstMatch.swipeUp(velocity: .slow) }
         choice.tap()
-        openEditor(app); openTest(app, "sudoku")
+        returnToClock(app); openEditor(app); openTest(app, "sudoku")
         app.buttons["sudoku-timer-240"].tap(); app.buttons["try-sudoku"].tap()
         XCTAssertTrue(app.buttons["sudoku-cell-0"].waitForExistence(timeout: 5))
         capture(app, name: "ios-midnight-cherry-sudoku-contrast")

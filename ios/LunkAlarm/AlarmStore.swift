@@ -22,6 +22,7 @@ final class AlarmStore {
     private var alertingIDs = Set<UUID>()
     private var isActive = false
     private var isUITesting = false
+    private let hasSavedStateAtLaunch: Bool
     private var muteOnReturn = false
     private var challengeTimer: Task<Void, Never>?
     private var watchdogTask: Task<Void, Never>?
@@ -36,7 +37,9 @@ final class AlarmStore {
         #endif
         let folder = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
             .appendingPathComponent(dataFolder)
-        repository = StateRepository(url: folder.appendingPathComponent("state.json"))
+        let saved = StateRepository(url: folder.appendingPathComponent("state.json"))
+        repository = saved
+        hasSavedStateAtLaunch = [saved.url, saved.backupURL].contains { FileManager.default.fileExists(atPath: $0.path) }
         do { state = try repository.load() }
         catch {
             state = SavedState(); readOnly = true
@@ -94,6 +97,16 @@ final class AlarmStore {
         return nil
     }
     var alarmAccessDenied: Bool { authorization == .denied }
+
+    func requestInitialAlarmAccess() async {
+        let key = "didOfferInitialAlarmAccess"
+        guard !isUITesting, !hasSavedStateAtLaunch, !UserDefaults.standard.bool(forKey: key),
+              service.manager.authorizationState == .notDetermined else { return }
+        UserDefaults.standard.set(true, forKey: key)
+        // Denial leaves the clock usable. Saving an alarm still enforces AlarmKit access.
+        _ = try? await service.manager.requestAuthorization()
+        authorization = service.manager.authorizationState
+    }
 
     @discardableResult private func commit(_ next: SavedState) -> Bool {
         guard !readOnly else { errorMessage = NativeAlarmError.readOnly.localizedDescription; return false }
@@ -470,7 +483,11 @@ final class AlarmStore {
         let pending = watchdogTasks
         pending.forEach { $0.cancel() }
         Task {
-            defer { finishing = false }
+            var didFinish = false
+            defer {
+                finishing = false
+                if didFinish { refresh() }
+            }
             // Let an in-flight system schedule finish/cancel before deleting its owner.
             for task in pending { await task.value }
             do {
@@ -485,7 +502,7 @@ final class AlarmStore {
                 guard commit(next) else { return }
                 endChallengeSession(); message = nil
                 if !alarm.isTimer && !alarm.days.isEmpty { await setEnabled(alarm, true) }
-                refresh()
+                didFinish = true
             } catch { errorMessage = "Could not stop the iOS alarm: \(error.localizedDescription)" }
         }
     }

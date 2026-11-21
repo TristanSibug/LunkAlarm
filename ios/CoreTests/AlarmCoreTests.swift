@@ -31,8 +31,12 @@ final class AlarmCoreTests: XCTestCase {
         XCTAssertTrue(tested.allSatisfy { $0.challengeAlarmIDs == nil })
         XCTAssertThrowsError(try alarm.smartDuplicates(count: 0, intervalMinutes: 5, copyTests: false))
         XCTAssertThrowsError(try alarm.smartDuplicates(count: 5, intervalMinutes: 5, copyTests: false))
-        XCTAssertThrowsError(try alarm.smartDuplicates(count: 1, intervalMinutes: 1, copyTests: false))
-        XCTAssertThrowsError(try alarm.smartDuplicates(count: 1, intervalMinutes: 9, copyTests: false))
+        for interval in [1, 59, 60, 23 * 60] {
+            XCTAssertNoThrow(try alarm.smartDuplicates(count: 1, intervalMinutes: interval, copyTests: false, now: now, calendar: calendar))
+        }
+        for interval in [0, 61, 24 * 60] {
+            XCTAssertThrowsError(try alarm.smartDuplicates(count: 1, intervalMinutes: interval, copyTests: false))
+        }
     }
 
     func testSmartDuplicatesRollOverAtMidnightAndKeepOneTimeAlarmOnItsDate() throws {
@@ -50,6 +54,9 @@ final class AlarmCoreTests: XCTestCase {
         XCTAssertEqual(copy.clockMinute, 3)
         XCTAssertEqual(copy.target, target.addingTimeInterval(300))
         XCTAssertFalse(copy.isEnabled)
+        let hoursLater = try alarm.smartDuplicates(count: 4, intervalMinutes: 23 * 60, copyTests: false, now: now, calendar: calendar)
+        XCTAssertEqual(hoursLater.last?.days, [4])
+        XCTAssertEqual(hoursLater.last?.target, target.addingTimeInterval(92 * 3600))
 
         alarm.repeatDays = []
         let once = try XCTUnwrap(alarm.smartDuplicates(count: 1, intervalMinutes: 5, copyTests: false, now: now, calendar: calendar).first)

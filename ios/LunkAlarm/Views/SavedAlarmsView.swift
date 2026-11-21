@@ -154,9 +154,25 @@ private struct SmartDuplicateSheet: View {
     let alarm: AlarmRecord
     @Environment(\.dismiss) private var dismiss
     @State private var count = 1
-    @State private var interval = 5
+    @State private var useHours = false
+    @State private var minutes = "5"
+    @State private var hours = "1"
     @State private var copyTests = false
+    @State private var showTestsHelp = false
     @State private var failure: String?
+    private var intervalRange: ClosedRange<Int> {
+        useHours ? AlarmRecord.smartDuplicateHourIntervals : AlarmRecord.smartDuplicateMinuteIntervals
+    }
+    private var intervalText: Binding<String> {
+        Binding(get: { useHours ? hours : minutes }, set: { value in
+            let digits = value.filter { $0.isASCII && $0.isNumber }
+            if useHours { hours = digits } else { minutes = digits }
+        })
+    }
+    private var intervalMinutes: Int? {
+        guard let value = Int(intervalText.wrappedValue), intervalRange.contains(value) else { return nil }
+        return useHours ? value * 60 : value
+    }
 
     var body: some View {
         SheetShell(title: "Smart Duplicate", theme: store.theme, showsDone: false,
@@ -164,11 +180,33 @@ private struct SmartDuplicateSheet: View {
             VStack(alignment: .leading, spacing: 22) {
                 Stepper("Duplicates: \(count)", value: $count, in: AlarmRecord.smartDuplicateCounts)
                     .accessibilityIdentifier("smartDuplicateCount")
-                Stepper("Minutes apart: \(interval)", value: $interval, in: AlarmRecord.smartDuplicateIntervals)
-                    .accessibilityIdentifier("smartDuplicateInterval")
+                VStack(alignment: .leading, spacing: 10) {
+                    Text("Time between alarms").font(.subheadline)
+                    Picker("Interval unit", selection: $useHours) {
+                        Text("Minutes").tag(false)
+                        Text("Hours").tag(true)
+                    }.pickerStyle(.segmented)
+                    HStack {
+                        TextField(useHours ? "1–23 hours" : "1–59 minutes", text: intervalText)
+                            .keyboardType(.numberPad).textFieldStyle(.roundedBorder)
+                            .accessibilityLabel(useHours ? "Hours apart" : "Minutes apart")
+                            .accessibilityIdentifier("smartDuplicateInterval")
+                        Stepper("Interval", value: Binding(get: {
+                            min(intervalRange.upperBound, max(intervalRange.lowerBound, Int(intervalText.wrappedValue) ?? 1))
+                        }, set: { intervalText.wrappedValue = String($0) }), in: intervalRange)
+                        .labelsHidden()
+                    }
+                    Text(useHours ? "1–23 hours" : "1–59 minutes").font(.caption).foregroundStyle(store.theme.muted)
+                }
                 if alarm.hasTests {
                     VStack(alignment: .leading, spacing: 8) {
-                        Text("Which alarms should use the wake-up tests?").font(.subheadline)
+                        HStack {
+                            Text("Which alarms should use the wake-up tests?").font(.subheadline)
+                            Button { showTestsHelp = true } label: {
+                                Image(systemName: "questionmark.circle").frame(width: 44, height: 44)
+                            }.buttonStyle(.plain).foregroundStyle(store.theme.accent)
+                                .accessibilityLabel("How wake-up tests queue")
+                        }
                         Picker("Wake-up tests", selection: $copyTests) {
                             Text("Original only").tag(false)
                             Text("All alarms").tag(true)
@@ -177,18 +215,25 @@ private struct SmartDuplicateSheet: View {
                 }
                 if let failure { Text(failure).font(.callout).foregroundStyle(store.theme.accent) }
                 Button(store.saving ? "Creating…" : count == 1 ? "Create 1 duplicate" : "Create \(count) duplicates") {
+                    guard let intervalMinutes else { return }
                     Task {
                         failure = nil
-                        if await store.smartDuplicate(alarm.id, count: count, intervalMinutes: interval, copyTests: copyTests) {
+                        if await store.smartDuplicate(alarm.id, count: count, intervalMinutes: intervalMinutes, copyTests: copyTests) {
                             dismiss()
                         } else {
                             failure = store.errorMessage ?? "Could not duplicate this alarm."
                             store.errorMessage = nil
                         }
                     }
-                }.buttonStyle(AccentButtonStyle(theme: store.theme)).disabled(store.saving || store.readOnly)
+                }.buttonStyle(AccentButtonStyle(theme: store.theme))
+                    .disabled(store.saving || store.readOnly || intervalMinutes == nil)
             }
         }
         .interactiveDismissDisabled(store.saving)
+        .alert("Queued wake-up tests", isPresented: $showTestsHelp) {
+            Button("OK", role: .cancel) {}
+        } message: {
+            Text("A new alarm does not replace the test you’re answering. If another alarm is still pending, its tests can start after you finish. Choose Original only if you want just the first alarm to have tests.")
+        }
     }
 }

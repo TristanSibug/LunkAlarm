@@ -4,21 +4,20 @@ struct ContentView: View {
     @Bindable var store: AlarmStore
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.openURL) private var openURL
-    @Environment(\.scenePhase) private var scenePhase
-    @State private var pickerOpen = false
+    @State private var page: HomePage = .clock
     @State private var themeOpen = false
     @State private var editor: AlarmEditorPresentation?
     @State private var ringingOpen = false
-    @State private var clockControls: ClockControlsReveal? = ClockControlsReveal(duration: .seconds(5))
-    @Namespace private var clockSpace
+    private enum HomePage: Equatable { case about, clock, alarms }
 
     var body: some View {
         GeometryReader { geometry in
             ZStack {
                 AlarmBackground(theme: store.theme)
                 ZStack {
-                    if pickerOpen {
-                        SavedAlarmsView(store: store, returnToClock: showClock, add: { mode in
+                    switch page {
+                    case .alarms:
+                        SavedAlarmsView(store: store, returnToClock: { page = .clock }, add: { mode in
                             store.state.settings.alarmName = ""; store.state.settings.mode = mode
                             editor = AlarmEditorPresentation(editingID: nil, mode: mode)
                         }, edit: { alarm in
@@ -26,37 +25,34 @@ struct ContentView: View {
                             editor = AlarmEditorPresentation(editingID: alarm.id, mode: alarm.isTimer ? .timer : .time)
                         })
                             .transition(.move(edge: .bottom).combined(with: .opacity))
-                    } else {
+                    case .about:
+                        aboutPage.transition(.move(edge: .top).combined(with: .opacity))
+                    case .clock:
                         VStack {
                             Spacer(minLength: 8)
                             clock(width: geometry.size.width, height: geometry.size.height * 0.66)
                             Spacer(minLength: 8)
                         }.frame(maxWidth: .infinity, maxHeight: .infinity)
-                            .transition(.move(edge: .top).combined(with: .opacity))
+                            .overlay(alignment: .top) {
+                                Button { page = .about } label: {
+                                    Image(systemName: "chevron.down")
+                                        .font(.system(size: 14, weight: .medium))
+                                        .foregroundStyle(store.theme.muted)
+                                        .frame(width: 44, height: 44)
+                                        .contentShape(Rectangle())
+                                }.buttonStyle(.plain).accessibilityLabel("About LunkAlarm")
+                                    .accessibilityIdentifier("openAbout")
+                            }
+                            .transition(.opacity)
                             .contentShape(Rectangle())
-                            .gesture(AlarmNavigationSwipe(direction: .up, action: showAlarms))
-                            .gesture(AlarmNavigationSwipe(direction: .down) { revealClockControls() })
-                            .accessibilityAction(named: "View alarms") { showAlarms() }
-                            .accessibilityAction(named: "Show clock controls") { revealClockControls() }
+                            .gesture(AlarmNavigationSwipe(direction: .up) { page = .alarms })
+                            .gesture(AlarmNavigationSwipe(direction: .down) { page = .about })
+                            .accessibilityAction(named: "View alarms") { page = .alarms }
+                            .accessibilityAction(named: "About LunkAlarm") { page = .about }
                     }
                 }.frame(maxWidth: .infinity, maxHeight: .infinity).clipped()
-            }.overlay(alignment: .topTrailing) {
-                if !pickerOpen && clockControls != nil {
-                    toolbar.padding(.trailing, 20).padding(.top, 12)
-                        .transition(.opacity)
-                }
             }.foregroundStyle(store.theme.text)
-                .animation(reduceMotion ? nil : .spring(response: 0.48, dampingFraction: 0.88), value: pickerOpen)
-                .animation(reduceMotion ? nil : .easeInOut(duration: 0.2), value: clockControls != nil)
-        }
-        .task(id: clockControls) {
-            guard let reveal = clockControls else { return }
-            do { try await Task.sleep(for: reveal.duration) } catch { return }
-            guard !Task.isCancelled, clockControls == reveal else { return }
-            clockControls = nil
-        }
-        .onChange(of: scenePhase) { _, phase in
-            if phase == .background { clockControls = nil }
+                .animation(reduceMotion ? nil : .spring(response: 0.48, dampingFraction: 0.88), value: page)
         }
         .sheet(isPresented: $themeOpen) { themeSheet }
         .sheet(item: $editor) { presentation in
@@ -66,13 +62,13 @@ struct ContentView: View {
         }
         .onChange(of: store.ringing?.id, initial: true) { _, id in
             guard let id else { ringingOpen = false; return }
-            editor = nil; themeOpen = false; clockControls = nil
+            editor = nil; themeOpen = false
             Task { @MainActor in
                 try? await Task.sleep(for: .milliseconds(500))
                 if store.ringing?.id == id { ringingOpen = true }
             }
         }
-        .fullScreenCover(isPresented: $ringingOpen, onDismiss: revealClockControlsOnReturn) {
+        .fullScreenCover(isPresented: $ringingOpen) {
             RingingView(store: store).interactiveDismissDisabled()
                 .preferredColorScheme(store.theme.isLight ? .light : .dark)
         }
@@ -84,23 +80,27 @@ struct ContentView: View {
         } message: { Text(store.errorMessage ?? "") }
     }
 
-    private func showAlarms() {
-        clockControls = nil
-        pickerOpen = true
-    }
-
-    private func showClock() {
-        pickerOpen = false
-        revealClockControlsOnReturn()
-    }
-
-    private func revealClockControlsOnReturn() {
-        revealClockControls(for: .milliseconds(2500))
-    }
-
-    private func revealClockControls(for duration: Duration = .seconds(5)) {
-        guard !pickerOpen, store.ringing == nil else { return }
-        clockControls = ClockControlsReveal(duration: duration)
+    private var aboutPage: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 28) {
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("LunkAlarm").font(.largeTitle.bold()).accessibilityAddTraits(.isHeader)
+                    Text("By Tristan Josh E. Sibug").foregroundStyle(store.theme.muted)
+                }
+                VStack(alignment: .leading, spacing: 12) {
+                    Text("“I made this app to wake me from my daily deep slumber”")
+                        .font(.title2).foregroundStyle(store.theme.accent)
+                    Text("LunkAlarm combines alarms and timers with optional wake-up tests to help you get up.")
+                        .foregroundStyle(store.theme.muted)
+                }
+                toolbar
+            }.frame(maxWidth: 480, alignment: .leading).padding(24)
+                .frame(maxWidth: .infinity, alignment: .top)
+        }.safeAreaInset(edge: .bottom) {
+            Button { page = .clock } label: { Label("Clock", systemImage: "chevron.up") }
+                .buttonStyle(.plain).foregroundStyle(store.theme.muted).padding(16)
+        }.gesture(AlarmNavigationSwipe(direction: .up) { page = .clock })
+            .accessibilityIdentifier("aboutPage")
     }
 
     private var toolbar: some View {
@@ -113,8 +113,7 @@ struct ContentView: View {
     private func clock(width: CGFloat, height: CGFloat) -> some View {
         VStack(spacing: 24) {
             ClockFaceView(use24Hour: store.state.settings.use24Hour, theme: store.theme,
-                          digitSize: min(pickerOpen ? 146 : 260, max(64, min((width - 55) * 0.36, height * 0.46))))
-                .matchedGeometryEffect(id: "clock", in: clockSpace)
+                          digitSize: min(260, max(64, min((width - 55) * 0.36, height * 0.46))))
             HStack(spacing: 10) {
                 VStack(spacing: 7) {
                     Image(systemName: "chevron.up").font(.system(size: 14, weight: .medium))
@@ -122,10 +121,10 @@ struct ContentView: View {
                 }.foregroundStyle(store.theme.muted).padding(.vertical, 8)
                     .accessibilityElement(children: .ignore)
                     .accessibilityLabel("Swipe up to view alarms")
-                    .accessibilityAction { showAlarms() }
+                    .accessibilityAction { page = .alarms }
                     .accessibilityIdentifier("alarmSwipeHint")
             }
-        }.padding(.vertical, pickerOpen ? 18 : 10).frame(maxWidth: .infinity)
+        }.padding(.vertical, 10).frame(maxWidth: .infinity)
     }
     private var themeSheet: some View {
         SheetShell(title: "Theme", theme: store.theme) {
@@ -149,10 +148,6 @@ struct ContentView: View {
     }
 }
 
-private struct ClockControlsReveal: Equatable {
-    let id = UUID()
-    let duration: Duration
-}
 
 // Sheet identity and edit target travel together, including the first sheet
 // presented after launch. A separate Boolean can present stale/nil edit state.

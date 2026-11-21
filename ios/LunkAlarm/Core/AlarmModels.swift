@@ -85,12 +85,14 @@ public struct AlarmRecord: Codable, Identifiable, Equatable, Sendable {
         return copy
     }
     public static let smartDuplicateCounts = 1...4
-    public static let smartDuplicateIntervals = 2...8
+    public static let smartDuplicateMinuteIntervals = 1...59
+    public static let smartDuplicateHourIntervals = 1...23
 
     public func smartDuplicates(count: Int, intervalMinutes: Int, copyTests: Bool,
                                 now: Date = Date(), calendar: Calendar = .current) throws -> [AlarmRecord] {
-        guard !isTimer, Self.smartDuplicateCounts.contains(count),
-              Self.smartDuplicateIntervals.contains(intervalMinutes), AlarmRoutine.validDays(repeatDays) else {
+        let validInterval = Self.smartDuplicateMinuteIntervals.contains(intervalMinutes) ||
+            (intervalMinutes.isMultiple(of: 60) && Self.smartDuplicateHourIntervals.contains(intervalMinutes / 60))
+        guard !isTimer, Self.smartDuplicateCounts.contains(count), validInterval, AlarmRoutine.validDays(repeatDays) else {
             throw AlarmDataError.invalidSmartDuplicate
         }
         let hour = clockHour ?? calendar.component(.hour, from: target)
@@ -187,7 +189,7 @@ public enum AlarmDataError: LocalizedError {
         case .invalidData: "Saved alarm data could not be read safely. It has been left untouched."
         case .invalidDuration: "Choose a duration between one second and 99 hours, 59 minutes, 59 seconds."
         case .invalidTime: "Choose a valid hour and minute."
-        case .invalidSmartDuplicate: "Choose 1–4 copies and 2–8 minutes between alarms."
+        case .invalidSmartDuplicate: "Choose 1–4 copies, spaced 1–59 minutes or 1–23 hours apart."
         }
     }
 }

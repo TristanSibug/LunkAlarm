@@ -28,6 +28,7 @@ private struct AlarmRootView: View {
     }
     private func sceneChanged(_ phase: ScenePhase) {
         store.setActive(phase == .active, backgrounded: phase == .background)
+        if phase == .active { Task { await store.requestInitialAlarmAccess() } }
     }
     private func handleInterruption(_ note: Notification) {
         guard let type = note.userInfo?[AVAudioSessionInterruptionTypeKey] as? UInt,
