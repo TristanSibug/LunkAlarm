@@ -22,13 +22,14 @@ class AlarmRepository(context: Context) {
     private val storage = context.createDeviceProtectedStorageContext()
     val soundDirectory: File = File(storage.filesDir, "sounds").apply { mkdirs() }
     private val file = AtomicFile(File(storage.filesDir, "alarms.json"))
+    val hasSavedState get() = file.baseFile.exists() || File(file.baseFile.path + ".bak").exists()
     var readOnly = false; private set
     private val errors = MutableStateFlow<String?>(null)
     val error = errors.asStateFlow()
     private val current = MutableStateFlow(load())
     val state = current.asStateFlow()
     private fun load(): AppState = try {
-        if (!file.baseFile.exists() && !File(file.baseFile.path + ".bak").exists()) AppState()
+        if (!hasSavedState) AppState()
         else AlarmJson.decode(file.openRead().use { it.readBytes().toString(Charsets.UTF_8) })
     } catch (error: Exception) {
         readOnly = true
@@ -132,6 +133,7 @@ object AlarmJson {
     }
     fun encode(state: AppState): String = JSONObject().apply {
         put("version", 1); put("theme", state.theme); put("use24Hour", state.use24Hour); put("draft", draft(state.draft))
+        put("clockFont", state.clockFontId)
         put("alarms", JSONArray(state.alarms.map { alarm -> JSONObject().apply {
             put("id", alarm.id); put("draft", draft(alarm.draft)); put("target", alarm.target); put("elapsedTarget", alarm.elapsedTarget)
             put("boot", alarm.boot); put("enabled", alarm.enabled); put("active", alarm.active); put("error", alarm.error)
@@ -150,6 +152,7 @@ object AlarmJson {
         require(sounds.map { it.id }.distinct().size == sounds.size && sounds.all { it.filename == File(it.filename).name && !it.filename.contains('\\') && it.filename !in listOf("", ".", "..") })
         val session = j.optJSONObject("session")?.let { AlarmSession(it.getString("owner"), challenge(it.getJSONObject("challenge")), it.getBoolean("sound"), it.getBoolean("opened"), it.optInt("boot", -1)) }
         require(session == null || alarms.any { it.id == session.owner && it.active })
-        return AppState(j.getString("theme").let { if (it == "vscode-blue") "deep-ocean" else it }, j.getBoolean("use24Hour"), draft(j.getJSONObject("draft")), alarms, sounds, session)
+        return AppState(j.getString("theme").let { if (it == "vscode-blue") "deep-ocean" else it },
+            j.getBoolean("use24Hour"), draft(j.getJSONObject("draft")), alarms, sounds, session, j.optionalString("clockFont"))
     }
 }

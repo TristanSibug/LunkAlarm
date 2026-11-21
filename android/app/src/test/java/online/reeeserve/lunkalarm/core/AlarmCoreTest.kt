@@ -23,7 +23,12 @@ class AlarmCoreTest {
             assertEquals(original.draft, copy.draft.copy(minute = 0))
         }
         assertThrows(IllegalArgumentException::class.java) { original.smartDuplicates(5, 5, true, now, utc) }
-        assertThrows(IllegalArgumentException::class.java) { original.smartDuplicates(1, 1, true, now, utc) }
+        for (interval in listOf(1, 59, 60, 23 * 60)) {
+            assertEquals(1, original.smartDuplicates(1, interval, false, now, utc).size)
+        }
+        for (interval in listOf(0, 61, 24 * 60)) {
+            assertThrows(IllegalArgumentException::class.java) { original.smartDuplicates(1, interval, false, now, utc) }
+        }
     }
 
     @Test fun smartDuplicateMovesRepeatDaysAcrossMidnight() {
@@ -34,6 +39,9 @@ class AlarmCoreTest {
         assertEquals(setOf(1), copy.draft.days)
         assertEquals(millis("2026-11-22T00:03:00Z"), copy.target)
         assertFalse(copy.enabled)
+        val hoursLater = original.smartDuplicates(4, 23 * 60, false, now, utc).last()
+        assertEquals(setOf(4), hoursLater.draft.days)
+        assertEquals(original.target + 92 * 3_600_000L, hoursLater.target)
         val oneTimeCopy = original.copy(draft = original.draft.copy(days = emptySet()))
             .smartDuplicates(1, 5, false, now, utc).single()
         assertTrue(oneTimeCopy.draft.days.isEmpty())
@@ -123,6 +131,14 @@ class AlarmCoreTest {
         val session = AlarmSession(alarm.id, WakeChallenge.create(alarm.draft).start(100000), sound = false, opened = true)
         val state = AppState(alarms = listOf(alarm), session = session)
         assertEquals(state, AlarmJson.decode(AlarmJson.encode(state)))
+    }
+    @Test fun clockFontPreferenceRoundTripsAndOldSettingsUseDefault() {
+        val state = AppState(clockFontId = "serif")
+        val saved = AlarmJson.encode(state)
+        assertEquals(state, AlarmJson.decode(saved))
+
+        val old = org.json.JSONObject(saved).apply { remove("clockFont") }
+        assertNull(AlarmJson.decode(old.toString()).clockFontId)
     }
     @Test fun corruptedOrUnsafeSavedDataIsRejected() {
         assertThrows(Exception::class.java) { AlarmJson.decode("broken") }

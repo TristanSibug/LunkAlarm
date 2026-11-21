@@ -154,14 +154,26 @@ class AlarmInteractionTest {
         assertEquals(original, repo.state.value.alarms.single { it.id == original.id })
     }
 
-    @Test fun b_clockControlsRevealOnSwipeAndWhenReturningFromAlarms() {
+    @Test fun b_aboutPageHoldsClockControlsAndReturnsToClock() {
+        rule.onNodeWithTag("open-about").assertExists()
+        rule.onNodeWithText("Theme").assertDoesNotExist()
         rule.onNodeWithTag("big-clock").performTouchInput { swipeDown() }
-        rule.onNodeWithTag("clock-controls").assertIsDisplayed()
-        rule.onNodeWithTag("view-alarms").performClick()
-        rule.onNodeWithTag("clock-controls").assertDoesNotExist()
+        rule.onNodeWithText("By Tristan Josh E. Sibug").assertIsDisplayed()
+        rule.onNodeWithText("Theme").assertIsDisplayed()
+        rule.onNodeWithText("12-hour · 2:30 PM").assertIsDisplayed()
+        rule.onNodeWithText("Clock format").performClick()
+        rule.onNodeWithText("24-hour · 14:30").assertIsDisplayed()
+        rule.onNodeWithText("Clock font").performClick()
+        rule.onNodeWithText("Serif").performClick()
+        assertEquals("serif", repo.state.value.clockFontId)
+        rule.onNodeWithText("Serif").assertIsDisplayed()
         rule.onNodeWithText("Clock", substring = false).performClick()
-        rule.onNodeWithTag("clock-controls").assertIsDisplayed()
-        rule.waitUntil(4500) { rule.onAllNodesWithTag("clock-controls").fetchSemanticsNodes().isEmpty() }
+        rule.onNodeWithText("Theme").assertDoesNotExist()
+        rule.onNodeWithTag("view-alarms").performClick()
+        rule.onNodeWithText("Clock", substring = false).performClick()
+        rule.onNodeWithText("Theme").assertDoesNotExist()
+        rule.onNodeWithTag("open-about").performClick()
+        rule.onNodeWithTag("about-page").assertIsDisplayed()
     }
 
     @Test fun c_swipeNavigationCountdownEditingAndDeleteGestures() {

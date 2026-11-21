@@ -60,8 +60,10 @@ data class AlarmRecord(
 
     fun smartDuplicates(count: Int, minutesApart: Int, copyTests: Boolean, now: Long,
                         zone: ZoneId = ZoneId.systemDefault()): List<AlarmRecord> {
-        require(!draft.timer && count in smartDuplicateCounts && minutesApart in smartDuplicateIntervals) {
-            "Choose 1–4 copies and 2–8 minutes between alarms."
+        val validInterval = minutesApart in smartDuplicateMinuteIntervals ||
+            (minutesApart % 60 == 0 && minutesApart / 60 in smartDuplicateHourIntervals)
+        require(!draft.timer && count in smartDuplicateCounts && validInterval) {
+            "Choose 1–4 copies, spaced 1–59 minutes or 1–23 hours apart."
         }
         val first = if (target > now) target else AlarmTime.next(draft.hour, draft.minute, draft.days, now, zone)
         val settings = if (copyTests) draft else draft.copy(
@@ -87,7 +89,8 @@ data class AlarmRecord(
 
     companion object {
         val smartDuplicateCounts = 1..4
-        val smartDuplicateIntervals = 2..8
+        val smartDuplicateMinuteIntervals = 1..59
+        val smartDuplicateHourIntervals = 1..23
         fun create(draft: AlarmDraft, now: Long, elapsed: Long, boot: Int, zone: ZoneId = ZoneId.systemDefault()): AlarmRecord {
             draft.validate()
             return AlarmRecord(draft = draft, target = if (draft.timer) now + draft.seconds * 1000L
@@ -123,7 +126,8 @@ object AlarmTime {
 data class ImportedSound(val id: String, val name: String, val filename: String)
 data class AppState(
     val theme: String = "sunrise", val use24Hour: Boolean = false, val draft: AlarmDraft = AlarmDraft(),
-    val alarms: List<AlarmRecord> = emptyList(), val sounds: List<ImportedSound> = emptyList(), val session: AlarmSession? = null
+    val alarms: List<AlarmRecord> = emptyList(), val sounds: List<ImportedSound> = emptyList(), val session: AlarmSession? = null,
+    val clockFontId: String? = null
 )
 data class AlarmSession(val owner: String, val challenge: WakeChallenge, val sound: Boolean = true, val opened: Boolean = false, val boot: Int = -1)
 

@@ -15,14 +15,17 @@ import androidx.compose.runtime.*
 import androidx.core.view.WindowInsetsControllerCompat
 
 class MainActivity : ComponentActivity() {
-    private companion object { var openedClock = false }
-    var showClockControlsOnLaunch = false; private set
+    var offerAlarmSetup = false; private set
     var permissionRevision by mutableIntStateOf(0); private set
     private val notifications = registerForActivityResult(ActivityResultContracts.RequestPermission()) { permissionRevision++ }
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState); enableEdgeToEdge()
-        showClockControlsOnLaunch = !openedClock
-        openedClock = true
+        val prefs = getPreferences(MODE_PRIVATE)
+        if (!graph.repository.hasSavedState && !prefs.getBoolean("didOfferInitialAlarmAccess", false)) {
+            val scheduler = graph.controller.scheduler
+            offerAlarmSetup = !scheduler.exactAllowed || !scheduler.notificationsAllowed || !scheduler.fullScreenAllowed
+            prefs.edit().putBoolean("didOfferInitialAlarmAccess", true).apply()
+        }
         window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
         graph.controller.reschedule(null)
         setContent { MainScreen(this) }

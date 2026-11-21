@@ -10,8 +10,11 @@ import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.*
 import androidx.compose.foundation.lazy.grid.*
+import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.shape.*
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.HelpOutline
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -25,11 +28,17 @@ import androidx.compose.ui.input.nestedscroll.*
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.*
 import androidx.compose.ui.semantics.*
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.text.font.Font
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.*
 import androidx.lifecycle.Lifecycle
-import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -38,70 +47,61 @@ import java.time.*
 import java.time.format.DateTimeFormatter
 import kotlin.math.*
 
+private enum class HomePage { ABOUT, CLOCK, ALARMS }
+
+private enum class ClockFont(val id: String, val title: String, val family: FontFamily, val weight: FontWeight) {
+    SYSTEM("system", "System Light", FontFamily.Default, FontWeight.ExtraLight),
+    ROUNDED("rounded", "Rounded", FontFamily(Font(R.font.quicksand)), FontWeight.Normal),
+    SERIF("serif", "Serif", FontFamily.Serif, FontWeight.Normal),
+    MONOSPACED("monospaced", "Monospaced", FontFamily.Monospace, FontWeight.Normal)
+}
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable fun MainScreen(activity: MainActivity) {
     val repo = activity.graph.repository; val controller = activity.graph.controller
     val state by repo.state.collectAsStateWithLifecycle(); val error by repo.error.collectAsStateWithLifecycle()
     val theme = Themes.find(state.theme)
-    var alarmsOpen by rememberSaveable { mutableStateOf(false) }
-    var controlsUntil by remember { mutableLongStateOf(if (activity.showClockControlsOnLaunch) SystemClock.elapsedRealtime() + 5000 else 0) }
+    val clockFont = ClockFont.entries.firstOrNull { it.id == state.clockFontId } ?: ClockFont.SYSTEM
+    var page by rememberSaveable { mutableStateOf(HomePage.CLOCK) }
     var themesOpen by remember { mutableStateOf(false) }
-    var permissionsOpen by remember { mutableStateOf(false) }
+    var clockFontsOpen by remember { mutableStateOf(false) }
+    var permissionsOpen by rememberSaveable { mutableStateOf(activity.offerAlarmSetup) }
     var editingId by rememberSaveable { mutableStateOf<String?>(null) }
     val draftSaver = remember { Saver<AlarmDraft?, String>(save = { it?.let { d -> AlarmJson.encode(AppState(draft = d)) } ?: "" }, restore = { if (it.isEmpty()) null else AlarmJson.decode(it).draft }) }
     var editor by rememberSaveable(stateSaver = draftSaver) { mutableStateOf<AlarmDraft?>(null) }
-    fun revealControls(durationMs: Long) { controlsUntil = SystemClock.elapsedRealtime() + durationMs }
-    fun showClock() { alarmsOpen = false; revealControls(2500) }
-    fun showAlarms() { controlsUntil = 0; alarmsOpen = true }
-    DisposableEffect(activity) {
-        val observer = LifecycleEventObserver { _, event ->
-            if (event == Lifecycle.Event.ON_STOP) controlsUntil = 0
-        }
-        activity.lifecycle.addObserver(observer)
-        onDispose { activity.lifecycle.removeObserver(observer) }
-    }
-    LaunchedEffect(controlsUntil) {
-        val deadline = controlsUntil
-        if (deadline != 0L) {
-            delay((deadline - SystemClock.elapsedRealtime()).coerceAtLeast(0L))
-            if (controlsUntil == deadline) controlsUntil = 0
-        }
-    }
+    fun showClock() { page = HomePage.CLOCK }
     SideEffect { activity.applyBars(theme) }
-    var ringingWasOpen by rememberSaveable { mutableStateOf(false) }
     LaunchedEffect(state.session?.owner) {
-        if (state.session != null) {
-            ringingWasOpen = true
-            controlsUntil = 0
-            if (activity.lifecycle.currentState.isAtLeast(Lifecycle.State.RESUMED)) {
-                editor = null; AlarmService.start(activity); activity.startActivity(RingingActivity.intent(activity))
-            }
-        } else if (ringingWasOpen) {
-            ringingWasOpen = false
-            if (!alarmsOpen) revealControls(2500)
+        if (state.session != null && activity.lifecycle.currentState.isAtLeast(Lifecycle.State.RESUMED)) {
+            editor = null
+            themesOpen = false
+            clockFontsOpen = false
+            AlarmService.start(activity)
+            activity.startActivity(RingingActivity.intent(activity))
         }
     }
-    BackHandler(editor != null || alarmsOpen) { if (editor != null) editor = null else showClock() }
+    BackHandler(editor != null || page != HomePage.CLOCK) { if (editor != null) editor = null else showClock() }
     LunkStyle(theme) {
         Box(Modifier.fillMaxSize().background(theme.background)) {
             if (theme.id !in listOf("oled", "dark")) Box(Modifier.fillMaxSize().background(androidx.compose.ui.graphics.Brush.radialGradient(
                 listOf(theme.accent.copy(alpha = if (theme.light) .09f else .18f), androidx.compose.ui.graphics.Color.Transparent), Offset.Zero, 900f)))
             Box(Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.safeDrawing)) {
-                AnimatedContent(alarmsOpen, modifier = Modifier.fillMaxSize(), transitionSpec = {
-                    val enter = slideInVertically(tween(350)) { if (targetState) it else -it } + fadeIn(tween(250))
-                    val exit = slideOutVertically(tween(350)) { if (targetState) -it else it } + fadeOut(tween(250))
+                AnimatedContent(page, modifier = Modifier.fillMaxSize(), transitionSpec = {
+                    val direction = if (targetState.ordinal > initialState.ordinal) 1 else -1
+                    val enter = slideInVertically(tween(350)) { it * direction } + fadeIn(tween(250))
+                    val exit = slideOutVertically(tween(350)) { -it * direction } + fadeOut(tween(250))
                     enter togetherWith exit
-                }, label = "clock-to-alarms") { open ->
-                    if (open) SavedAlarmScreen(state, theme, controller, clock = ::showClock, add = {
-                        timer -> editingId = null; editor = state.draft.copy(name = "", timer = timer)
-                    }, edit = { record -> editingId = record.id; editor = record.draft })
-                    else ClockScreen(state.use24Hour, theme, alarms = ::showAlarms, revealControls = { revealControls(5000) })
-                }
-                if (!alarmsOpen && controlsUntil != 0L && state.session == null) {
-                    Row(Modifier.align(Alignment.TopEnd).padding(top = 10.dp, end = 20.dp).testTag("clock-controls"),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        Chip("Theme", theme) { themesOpen = true }
-                        Chip(if (state.use24Hour) "24h" else "12h", theme) { repo.update { it.copy(use24Hour = !it.use24Hour) } }
+                }, label = "clock-pages") { visiblePage ->
+                    when (visiblePage) {
+                        HomePage.ABOUT -> AboutScreen(theme, state.use24Hour, clockFont, clock = ::showClock,
+                            chooseTheme = { themesOpen = true }, chooseFont = { clockFontsOpen = true },
+                            toggleFormat = { repo.update { it.copy(use24Hour = !it.use24Hour) } })
+                        HomePage.CLOCK -> ClockScreen(state.use24Hour, theme, clockFont,
+                            alarms = { page = HomePage.ALARMS }, about = { page = HomePage.ABOUT })
+                        HomePage.ALARMS -> SavedAlarmScreen(state, theme, controller, clock = ::showClock, add = { timer ->
+                            editingId = null
+                            editor = state.draft.copy(name = "", timer = timer)
+                        }, edit = { record -> editingId = record.id; editor = record.draft })
                     }
                 }
             }
@@ -126,6 +126,10 @@ import kotlin.math.*
                     }
                 }
             }
+            if (clockFontsOpen) ClockFontPicker(theme, clockFont, close = { clockFontsOpen = false }) { font ->
+                repo.update { it.copy(clockFontId = font.id.takeUnless { font == ClockFont.SYSTEM }) }
+                clockFontsOpen = false
+            }
             if (permissionsOpen) key(activity.permissionRevision) {
                 AlertDialog(onDismissRequest = { permissionsOpen = false }, title = { Text("Alarm access") }, text = {
                     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -148,30 +152,43 @@ import kotlin.math.*
     }
 }
 
-@Composable private fun ClockScreen(use24: Boolean, theme: LunkTheme, alarms: () -> Unit, revealControls: () -> Unit) {
+@Composable private fun ClockScreen(use24: Boolean, theme: LunkTheme, clockFont: ClockFont, alarms: () -> Unit, about: () -> Unit) {
     var now by remember { mutableLongStateOf(System.currentTimeMillis()) }
     val latest by rememberUpdatedState(alarms)
-    val reveal by rememberUpdatedState(revealControls)
+    val showAbout by rememberUpdatedState(about)
     LaunchedEffect(Unit) { while (true) { now = System.currentTimeMillis(); delay(500) } }
     BoxWithConstraints(Modifier.fillMaxSize().testTag("big-clock").semantics {
-        customActions = listOf(CustomAccessibilityAction("Show clock controls") { revealControls(); true })
+        customActions = listOf(CustomAccessibilityAction("About LunkAlarm") { about(); true })
     }.pointerInput(Unit) {
         var movement = 0f
         detectVerticalDragGestures(onDragStart = { movement = 0f }, onVerticalDrag = { _, dy -> movement += dy },
             onDragEnd = {
                 if (movement < -48.dp.toPx()) latest()
-                else if (movement > 48.dp.toPx()) reveal()
+                else if (movement > 48.dp.toPx()) showAbout()
             })
     }) {
+        IconButton(onClick = about, modifier = Modifier.align(Alignment.TopCenter).testTag("open-about")) {
+            Icon(Icons.Default.KeyboardArrowDown, "About LunkAlarm", tint = theme.muted, modifier = Modifier.size(20.dp))
+        }
         val date = Instant.ofEpochMilli(now).atZone(ZoneId.systemDefault())
         val display = date.format(DateTimeFormatter.ofPattern(if (use24) "HH:mm" else "h:mm"))
         val size = min(maxWidth.value / (if (display.length > 4) 3.4f else 2.7f), (maxHeight.value - 130) * .5f).coerceIn(48f, 200f)
+        val spacing = if (clockFont == ClockFont.SYSTEM) -.035f else 0f
+        val style = LocalTextStyle.current.copy(fontFamily = clockFont.family, fontWeight = clockFont.weight,
+            fontSize = size.sp, letterSpacing = (size * spacing).sp, fontFeatureSettings = "tnum")
+        val measurer = rememberTextMeasurer()
+        val detailStyle = LocalTextStyle.current.copy(fontFamily = clockFont.family, fontSize = 22.sp)
+        val detailWidth = measurer.measure(if (use24) "00" else "PM", detailStyle).size.width
+        val timeWidth = measurer.measure(display, style, softWrap = false).size.width
+        val availableWidth = with(LocalDensity.current) { (maxWidth - 46.dp).toPx() } - detailWidth
+        val fittedSize = size * (availableWidth / timeWidth.coerceAtLeast(1)).coerceIn(.25f, 1f)
         Column(Modifier.fillMaxSize().padding(horizontal = 20.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center) {
             Row(verticalAlignment = Alignment.Top, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                Text(display, fontSize = size.sp, lineHeight = (size * 1.05f).sp, fontWeight = FontWeight.ExtraLight, color = theme.text, letterSpacing = (-size * .035f).sp)
-                Column(Modifier.padding(top = (size * .12f).dp)) {
-                    Text(date.format(DateTimeFormatter.ofPattern("ss")), fontSize = 22.sp, color = theme.accent)
-                    if (!use24) Text(date.format(DateTimeFormatter.ofPattern("a")), fontSize = 17.sp, color = theme.muted)
+                Text(display, style = style, fontSize = fittedSize.sp, lineHeight = (fittedSize * 1.05f).sp,
+                    color = theme.text, letterSpacing = (fittedSize * spacing).sp, maxLines = 1, softWrap = false)
+                Column(Modifier.padding(top = (fittedSize * .12f).dp)) {
+                    Text(date.format(DateTimeFormatter.ofPattern("ss")), style = detailStyle, color = theme.accent)
+                    if (!use24) Text(date.format(DateTimeFormatter.ofPattern("a")), style = detailStyle, fontSize = 17.sp, color = theme.muted)
                 }
             }
             Text(date.format(DateTimeFormatter.ofPattern("EEEE, MMMM d")), color = theme.text, fontSize = 17.sp, modifier = Modifier.padding(top = 14.dp))
@@ -179,6 +196,96 @@ import kotlin.math.*
             Column(Modifier.padding(top = 28.dp).clickable(onClick = alarms).padding(12.dp).testTag("view-alarms"), horizontalAlignment = Alignment.CenterHorizontally) {
                 Icon(Icons.Default.KeyboardArrowUp, null, tint = theme.muted, modifier = Modifier.size(20.dp))
                 Text("Swipe up to view alarms", color = theme.muted, fontSize = 12.sp)
+            }
+        }
+    }
+}
+
+@Composable private fun AboutScreen(theme: LunkTheme, use24Hour: Boolean, clockFont: ClockFont, clock: () -> Unit,
+                                    chooseTheme: () -> Unit, chooseFont: () -> Unit, toggleFormat: () -> Unit) {
+    val latestClock by rememberUpdatedState(clock)
+    val swipeToClock = remember {
+        object : NestedScrollConnection {
+            private var distance = 0f
+            override fun onPostScroll(consumed: Offset, available: Offset, source: NestedScrollSource): Offset {
+                if (source == NestedScrollSource.UserInput) {
+                    if (available.y < 0) {
+                        distance -= available.y
+                        if (distance >= 120f) { distance = 0f; latestClock() }
+                    } else if (available.y > 0) distance = 0f
+                }
+                return Offset.Zero
+            }
+            override suspend fun onPreFling(available: androidx.compose.ui.unit.Velocity): androidx.compose.ui.unit.Velocity {
+                distance = 0f
+                return androidx.compose.ui.unit.Velocity.Zero
+            }
+        }
+    }
+    BoxWithConstraints(Modifier.fillMaxSize().testTag("about-page").nestedScroll(swipeToClock).pointerInput(Unit) {
+        var distance = 0f
+        detectVerticalDragGestures(onDragStart = { distance = 0f }, onVerticalDrag = { _, dy -> distance += dy },
+            onDragEnd = { if (distance < -48.dp.toPx()) latestClock() })
+    }) {
+        val controlsInset = minOf(60.dp, maxHeight * .08f)
+        Column(Modifier.align(Alignment.TopCenter).widthIn(max = 480.dp).fillMaxWidth()
+            .padding(bottom = 64.dp).verticalScroll(rememberScrollState())
+            .heightIn(min = (maxHeight - 64.dp).coerceAtLeast(0.dp)).padding(24.dp),
+            verticalArrangement = Arrangement.SpaceBetween) {
+            Column(Modifier.padding(bottom = 24.dp), verticalArrangement = Arrangement.spacedBy(24.dp)) {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text("LunkAlarm", fontSize = 34.sp, fontWeight = FontWeight.Bold, modifier = Modifier.semantics { heading() })
+                    Text("By Tristan Josh E. Sibug", color = theme.muted)
+                }
+                Text("I made this app to wake me from my daily deep slumber", color = theme.accent, fontSize = 22.sp)
+            }
+            Column(Modifier.padding(bottom = controlsInset),
+                verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                AboutControl("Theme", theme, opensPicker = true, click = chooseTheme)
+                AboutControl("Clock font", theme, detail = clockFont.title, opensPicker = true, click = chooseFont)
+                AboutControl("Clock format", theme, detail = if (use24Hour) "24-hour · 14:30" else "12-hour · 2:30 PM", click = toggleFormat)
+            }
+        }
+        TextButton(onClick = clock, modifier = Modifier.align(Alignment.BottomCenter).padding(12.dp)) {
+            Icon(Icons.Default.KeyboardArrowUp, null, tint = theme.muted)
+            Text("Clock", color = theme.muted)
+        }
+    }
+}
+
+@Composable private fun AboutControl(label: String, theme: LunkTheme, detail: String? = null,
+                                     opensPicker: Boolean = false, click: () -> Unit) {
+    val shape = RoundedCornerShape(16.dp)
+    Row(Modifier.fillMaxWidth().heightIn(min = 56.dp).clip(shape)
+        .background(theme.text.copy(alpha = .065f)).border(1.dp, theme.border, shape)
+        .clickable(role = Role.Button, onClick = click).padding(horizontal = 16.dp, vertical = 8.dp),
+        horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+        Text(label, Modifier.weight(1f), color = theme.text, fontWeight = FontWeight.SemiBold)
+        detail?.let { Text(it, color = theme.muted) }
+        if (opensPicker) Icon(Icons.Default.ChevronRight, null, Modifier.size(18.dp), tint = theme.muted)
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable private fun ClockFontPicker(theme: LunkTheme, selected: ClockFont, close: () -> Unit,
+                                       choose: (ClockFont) -> Unit) {
+    ModalBottomSheet(onDismissRequest = close, containerColor = theme.card) {
+        Column(Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).padding(horizontal = 20.dp).padding(bottom = 24.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            Text("Clock font", Modifier.semantics { heading() }, fontSize = 22.sp, fontWeight = FontWeight.SemiBold)
+            ClockFont.entries.forEach { font ->
+                val shape = RoundedCornerShape(16.dp)
+                val isSelected = selected == font
+                Row(Modifier.fillMaxWidth().heightIn(min = 64.dp).clip(shape).background(theme.field)
+                    .border(1.dp, if (isSelected) theme.accent else theme.border, shape)
+                    .selectable(isSelected, role = Role.RadioButton) { choose(font) }.padding(horizontal = 16.dp, vertical = 8.dp),
+                    verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Text("12:38", Modifier.clearAndSetSemantics {}, fontSize = 32.sp,
+                        fontFamily = font.family, fontWeight = font.weight, color = theme.text)
+                    Spacer(Modifier.weight(1f))
+                    Text(font.title, color = theme.text)
+                    if (isSelected) Icon(Icons.Default.CheckCircle, null, tint = theme.accent)
+                }
             }
         }
     }
@@ -332,17 +439,50 @@ import kotlin.math.*
 @Composable private fun SmartDuplicateDialog(alarm: AlarmRecord, theme: LunkTheme, close: () -> Unit,
                                              create: (Int, Int, Boolean) -> Unit) {
     var count by rememberSaveable { mutableIntStateOf(1) }
-    var minutes by rememberSaveable { mutableIntStateOf(5) }
+    var useHours by rememberSaveable { mutableStateOf(false) }
+    var minutes by rememberSaveable { mutableStateOf("5") }
+    var hours by rememberSaveable { mutableStateOf("1") }
     var copyTests by rememberSaveable { mutableStateOf(false) }
+    var showTestsHelp by rememberSaveable { mutableStateOf(false) }
+    val intervalText = if (useHours) hours else minutes
+    val range = if (useHours) AlarmRecord.smartDuplicateHourIntervals else AlarmRecord.smartDuplicateMinuteIntervals
+    val interval = intervalText.toIntOrNull()?.takeIf { it in range }
+    val stepValue = (intervalText.toIntOrNull() ?: range.first).coerceIn(range)
+    fun setInterval(text: String) {
+        val digits = text.filter { it in '0'..'9' }
+        if (useHours) hours = digits else minutes = digits
+    }
     AlertDialog(
         onDismissRequest = close,
         title = { Text("Smart Duplicate") },
         text = {
             Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 DuplicateStepper("Duplicates", count, AlarmRecord.smartDuplicateCounts) { count = it }
-                DuplicateStepper("Minutes apart", minutes, AlarmRecord.smartDuplicateIntervals) { minutes = it }
+                Text("Time between alarms")
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    FilterChip(selected = !useHours, onClick = { useHours = false }, label = { Text("Minutes") })
+                    FilterChip(selected = useHours, onClick = { useHours = true }, label = { Text("Hours") })
+                }
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    OutlinedTextField(value = intervalText, onValueChange = ::setInterval,
+                        modifier = Modifier.weight(1f).testTag("smart-duplicate-interval"),
+                        label = { Text(if (useHours) "Hours apart" else "Minutes apart") },
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number), singleLine = true)
+                    IconButton(onClick = { setInterval((stepValue - 1).toString()) }, enabled = stepValue > range.first) {
+                        Icon(Icons.Default.Remove, "Decrease interval")
+                    }
+                    IconButton(onClick = { setInterval((stepValue + 1).toString()) }, enabled = stepValue < range.last) {
+                        Icon(Icons.Default.Add, "Increase interval")
+                    }
+                }
+                Text(if (useHours) "1–23 hours" else "1–59 minutes", fontSize = 12.sp, color = theme.muted)
                 if (alarm.hasTests) {
-                    Text("Which alarms should use the wake-up tests?")
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text("Which alarms should use the wake-up tests?", Modifier.weight(1f))
+                        IconButton(onClick = { showTestsHelp = !showTestsHelp }) {
+                            Icon(Icons.AutoMirrored.Filled.HelpOutline, "How wake-up tests queue", tint = theme.accent)
+                        }
+                    }
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         FilterChip(selected = !copyTests, onClick = { copyTests = false }, label = { Text("Original only") })
                         FilterChip(selected = copyTests, onClick = { copyTests = true }, label = { Text("All alarms") })
@@ -351,11 +491,29 @@ import kotlin.math.*
             }
         },
         confirmButton = {
-            TextButton(onClick = { create(count, minutes, copyTests) }, modifier = Modifier.testTag("create-smart-duplicates")) {
+            TextButton(onClick = { interval?.let { create(count, if (useHours) it * 60 else it, copyTests) } },
+                enabled = interval != null, modifier = Modifier.testTag("create-smart-duplicates")) {
                 Text(if (count == 1) "Create 1 duplicate" else "Create $count duplicates", color = theme.accent)
             }
         },
         dismissButton = { TextButton(onClick = close) { Text("Cancel") } },
+        containerColor = theme.card
+    )
+    if (showTestsHelp) AlertDialog(
+        onDismissRequest = { showTestsHelp = false },
+        title = { Text("Queued wake-up tests") },
+        text = {
+            Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                Text("Wake-up tests queue up as alarms ring.")
+                Text("Finish the current set to start the next one.")
+                Text(buildAnnotatedString {
+                    append("Choose ")
+                    withStyle(SpanStyle(fontWeight = FontWeight.SemiBold)) { append("Original only") }
+                    append(" to keep wake-up tests on the first alarm.")
+                })
+            }
+        },
+        confirmButton = { TextButton(onClick = { showTestsHelp = false }) { Text("OK") } },
         containerColor = theme.card
     )
 }
