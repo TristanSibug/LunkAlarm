@@ -233,7 +233,13 @@ private struct SmartDuplicateSheet: View {
         .alert("Queued wake-up tests", isPresented: $showTestsHelp) {
             Button("OK", role: .cancel) {}
         } message: {
-            Text("Wake-up tests queue up as alarms ring. Finish the current set to start the next one. Choose Original only to keep wake-up tests on the first alarm.")
+            Text("""
+                Wake-up tests queue up as alarms ring.
+
+                Finish the current set to start the next one.
+
+                Choose **Original only** to keep wake-up tests on the first alarm.
+                """)
         }
     }
 }

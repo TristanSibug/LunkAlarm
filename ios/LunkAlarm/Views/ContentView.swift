@@ -6,6 +6,7 @@ struct ContentView: View {
     @Environment(\.openURL) private var openURL
     @State private var page: HomePage = .clock
     @State private var themeOpen = false
+    @State private var fontPickerOpen = false
     @State private var editor: AlarmEditorPresentation?
     @State private var ringingOpen = false
     private enum HomePage: Equatable { case about, clock, alarms }
@@ -55,6 +56,7 @@ struct ContentView: View {
                 .animation(reduceMotion ? nil : .spring(response: 0.48, dampingFraction: 0.88), value: page)
         }
         .sheet(isPresented: $themeOpen) { themeSheet }
+        .sheet(isPresented: $fontPickerOpen) { clockFontSheet }
         .sheet(item: $editor) { presentation in
             SheetShell(title: presentation.title, theme: store.theme, scrolls: false, showsDone: false) {
                 AlarmEditorView(store: store, editingID: presentation.editingID, onAdded: { editor = nil })
@@ -62,7 +64,7 @@ struct ContentView: View {
         }
         .onChange(of: store.ringing?.id, initial: true) { _, id in
             guard let id else { ringingOpen = false; return }
-            editor = nil; themeOpen = false
+            editor = nil; themeOpen = false; fontPickerOpen = false
             Task { @MainActor in
                 try? await Task.sleep(for: .milliseconds(500))
                 if store.ringing?.id == id { ringingOpen = true }
@@ -117,6 +119,17 @@ struct ContentView: View {
                         .foregroundStyle(store.theme.muted).accessibilityHidden(true)
                 }
             }.accessibilityLabel("Theme")
+            Button { fontPickerOpen = true } label: {
+                HStack {
+                    Text("Clock font")
+                    Spacer()
+                    Text(clockFont.name).foregroundStyle(store.theme.muted)
+                    Image(systemName: "chevron.right").font(.footnote)
+                        .foregroundStyle(store.theme.muted).accessibilityHidden(true)
+                }
+            }
+            .accessibilityLabel("Clock font")
+            .accessibilityValue(clockFont.name)
             Button { store.state.settings.use24Hour.toggle() } label: {
                 ViewThatFits(in: .horizontal) {
                     HStack {
@@ -135,9 +148,14 @@ struct ContentView: View {
         }
         .buttonStyle(AboutControlStyle(theme: store.theme))
     }
+
+    private var clockFont: ClockFont {
+        store.state.settings.clockFontID.flatMap(ClockFont.init(rawValue:)) ?? .system
+    }
+
     private func clock(width: CGFloat, height: CGFloat) -> some View {
         VStack(spacing: 24) {
-            ClockFaceView(use24Hour: store.state.settings.use24Hour, theme: store.theme,
+            ClockFaceView(use24Hour: store.state.settings.use24Hour, theme: store.theme, clockFont: clockFont,
                           digitSize: min(260, max(64, min((width - 55) * 0.36, height * 0.46))))
             HStack(spacing: 10) {
                 VStack(spacing: 7) {
@@ -151,6 +169,33 @@ struct ContentView: View {
             }
         }.padding(.vertical, 10).frame(maxWidth: .infinity)
     }
+
+    private var clockFontSheet: some View {
+        SheetShell(title: "Clock font", theme: store.theme) {
+            VStack(spacing: 12) {
+                ForEach(ClockFont.allCases, id: \.self) { font in
+                    Button {
+                        store.state.settings.clockFontID = font == .system ? nil : font.rawValue
+                        fontPickerOpen = false
+                    } label: {
+                        HStack(spacing: 12) {
+                            Text("12:38").font(font.timeFont(size: 36)).monospacedDigit()
+                                .accessibilityHidden(true)
+                            Spacer()
+                            Text(font.name)
+                            if clockFont == font {
+                                Image(systemName: "checkmark.circle.fill").foregroundStyle(store.theme.accent)
+                                    .accessibilityHidden(true)
+                            }
+                        }.padding(.vertical, 8)
+                    }
+                    .accessibilityLabel(font.name)
+                    .accessibilityAddTraits(clockFont == font ? .isSelected : [])
+                }
+            }.buttonStyle(AboutControlStyle(theme: store.theme))
+        }
+    }
+
     private var themeSheet: some View {
         SheetShell(title: "Theme", theme: store.theme) {
             LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 12) {
@@ -198,9 +243,45 @@ private struct AlarmEditorPresentation: Identifiable {
     var title: String { (editingID == nil ? "New " : "Edit ") + (mode == .timer ? "timer" : "alarm") }
 }
 
-struct ClockFaceView: View {
+private enum ClockFont: String, CaseIterable {
+    case system, rounded, serif, monospaced
+
+    var name: String {
+        switch self {
+        case .system: "System Light"
+        case .rounded: "Rounded"
+        case .serif: "Serif"
+        case .monospaced: "Monospaced"
+        }
+    }
+
+    private var design: Font.Design {
+        switch self {
+        case .system: .default
+        case .rounded: .rounded
+        case .serif: .serif
+        case .monospaced: .monospaced
+        }
+    }
+
+    func timeFont(size: CGFloat) -> Font {
+        let weight: Font.Weight = switch self {
+        case .system: .ultraLight
+        case .rounded, .monospaced: .light
+        case .serif: .regular
+        }
+        return .system(size: size, weight: weight, design: design)
+    }
+
+    func detailFont(size: CGFloat) -> Font {
+        .system(size: size, weight: .regular, design: design)
+    }
+}
+
+private struct ClockFaceView: View {
     let use24Hour: Bool
     let theme: AlarmTheme
+    let clockFont: ClockFont
     let digitSize: CGFloat
     var body: some View {
         TimelineView(.periodic(from: .now, by: 1)) { context in
@@ -209,12 +290,13 @@ struct ClockFaceView: View {
             let time = String(format: use24Hour ? "%02d:%02d" : "%d:%02d", use24Hour ? hour : (hour % 12 == 0 ? 12 : hour % 12), parts.minute ?? 0)
             VStack(spacing: 6) {
                 HStack(alignment: .top, spacing: 7) {
-                    Text(time).font(.system(size: digitSize, weight: .ultraLight)).tracking(-digitSize * 0.035)
+                    Text(time).font(clockFont.timeFont(size: digitSize))
+                        .tracking(clockFont == .system ? -digitSize * 0.035 : 0)
                         .monospacedDigit().lineLimit(1).minimumScaleFactor(0.5).foregroundStyle(theme.text)
                     VStack(alignment: .leading, spacing: 4) {
                         Text(String(format: "%02d", parts.second ?? 0)).foregroundStyle(theme.gradient)
-                        if !use24Hour { Text(hour < 12 ? "AM" : "PM").font(.system(size: 17)).foregroundStyle(theme.muted) }
-                    }.font(.system(size: 22, weight: .regular)).monospacedDigit().padding(.top, 9)
+                        if !use24Hour { Text(hour < 12 ? "AM" : "PM").font(clockFont.detailFont(size: 17)).foregroundStyle(theme.muted) }
+                    }.font(clockFont.detailFont(size: 22)).monospacedDigit().padding(.top, 9)
                 }.accessibilityElement(children: .ignore).accessibilityLabel(context.date.formatted(date: .omitted, time: .standard))
                 Text(context.date, format: .dateTime.weekday(.wide).month(.wide).day()).font(.system(size: 17, weight: .medium)).padding(.top, 10)
                 Text(TimeZone.current.identifier).font(.system(size: 12)).foregroundStyle(theme.muted)

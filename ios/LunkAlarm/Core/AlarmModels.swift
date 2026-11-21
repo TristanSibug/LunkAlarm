@@ -17,6 +17,7 @@ public struct AlarmSettings: Codable, Equatable, Sendable {
     public var alarmName: String?
     public var repeatDays: [Int]?
     public var themeID = "sunrise"
+    public var clockFontID: String?
     public var use24Hour = false
     public var mode = AlarmMode.time
     public var ringtoneID = "classic-beep"

@@ -164,6 +164,14 @@ final class AlarmCoreTests: XCTestCase {
         state.settings.soundLevel = 0
         XCTAssertThrowsError(try state.validated())
     }
+    func testClockFontPreferenceIsOptionalAndPersists() throws {
+        let initial = try JSONEncoder().encode(SavedState())
+        var state = try JSONDecoder().decode(SavedState.self, from: initial).validated()
+        XCTAssertNil(state.settings.clockFontID)
+
+        state.settings.clockFontID = "serif"
+        XCTAssertEqual(try JSONDecoder().decode(SavedState.self, from: JSONEncoder().encode(state)).validated(), state)
+    }
     func testTimedTypingThenMathAndTimeoutResetsEntireSequence() {
         let start = Date(timeIntervalSince1970: 1000)
         var test = TimedWakeChallenge(typing: true, mathCount: 3, now: start)
