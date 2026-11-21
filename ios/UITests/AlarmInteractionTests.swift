@@ -201,7 +201,10 @@ final class AlarmInteractionTests: XCTestCase {
         app.swipeDown(velocity: .fast)
         XCTAssertTrue(app.staticTexts["By Tristan Josh E. Sibug"].waitForExistence(timeout: 5))
         XCTAssertTrue(theme.isHittable)
-        XCTAssertTrue(app.buttons["Switch clock format"].exists)
+        let clockFormat = app.buttons["Switch clock format"]
+        XCTAssertEqual(clockFormat.value as? String, "12-hour, for example 2:30 PM")
+        clockFormat.tap()
+        XCTAssertEqual(clockFormat.value as? String, "24-hour, for example 14:30")
         returnToClock(app)
         XCTAssertFalse(theme.exists)
 

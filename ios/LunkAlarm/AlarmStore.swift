@@ -100,12 +100,11 @@ final class AlarmStore {
 
     func requestInitialAlarmAccess() async {
         let key = "didOfferInitialAlarmAccess"
-        guard !isUITesting, !hasSavedStateAtLaunch, !UserDefaults.standard.bool(forKey: key),
-              service.manager.authorizationState == .notDetermined else { return }
+        guard isActive, !isUITesting, !hasSavedStateAtLaunch, !UserDefaults.standard.bool(forKey: key),
+              authorization == .notDetermined else { return }
         UserDefaults.standard.set(true, forKey: key)
         // Denial leaves the clock usable. Saving an alarm still enforces AlarmKit access.
-        try? await service.authorize()
-        authorization = service.manager.authorizationState
+        if let result = try? await service.requestAccess() { authorization = result }
     }
 
     @discardableResult private func commit(_ next: SavedState) -> Bool {
@@ -376,10 +375,14 @@ final class AlarmStore {
         // Scheduled alerts remain owned by AlarmKit; there is no idle keepalive.
     }
     func refresh() {
+        // Closing the system permission dialog can reactivate the scene before
+        // the authorization request has returned. Do not query AlarmKit then.
+        guard !service.isRequestingAuthorization else { return }
         authorization = service.manager.authorizationState
         guard !saving else { return }
         do {
-            reconcile(service.manager.authorizationState == .authorized ? try service.manager.alarms : [])
+            let hasSavedAlarms = !state.alarms.isEmpty
+            reconcile(hasSavedAlarms && authorization == .authorized ? try service.manager.alarms : [])
         }
         catch { errorMessage = "Could not read iOS alarms: \(error.localizedDescription)" }
     }

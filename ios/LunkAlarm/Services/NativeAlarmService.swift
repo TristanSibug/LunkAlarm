@@ -6,12 +6,24 @@ import AppIntents
 import SwiftUI
 
 @MainActor
-struct NativeAlarmService {
+final class NativeAlarmService {
     var manager: AlarmManager { .shared }
+    private var authorizationRequest: Task<AlarmManager.AuthorizationState, Error>?
+    var isRequestingAuthorization: Bool { authorizationRequest != nil }
+
+    func requestAccess() async throws -> AlarmManager.AuthorizationState {
+        if let authorizationRequest { return try await authorizationRequest.value }
+        let state = manager.authorizationState
+        guard state == .notDetermined else { return state }
+
+        let request = Task { try await manager.requestAuthorization() }
+        authorizationRequest = request
+        defer { authorizationRequest = nil }
+        return try await request.value
+    }
+
     func authorize() async throws {
-        let state = manager.authorizationState == .notDetermined
-            ? try await manager.requestAuthorization() : manager.authorizationState
-        guard state == .authorized else { throw NativeAlarmError.permissionDenied }
+        guard try await requestAccess() == .authorized else { throw NativeAlarmError.permissionDenied }
     }
     func schedule(_ alarm: AlarmRecord, tint: Color) async throws {
         try await authorize()

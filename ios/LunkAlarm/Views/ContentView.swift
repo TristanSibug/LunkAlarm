@@ -81,21 +81,22 @@ struct ContentView: View {
     }
 
     private var aboutPage: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: 28) {
-                VStack(alignment: .leading, spacing: 8) {
-                    Text("LunkAlarm").font(.largeTitle.bold()).accessibilityAddTraits(.isHeader)
-                    Text("By Tristan Josh E. Sibug").foregroundStyle(store.theme.muted)
-                }
-                VStack(alignment: .leading, spacing: 12) {
-                    Text("“I made this app to wake me from my daily deep slumber”")
+        GeometryReader { geometry in
+            ScrollView {
+                VStack(alignment: .leading, spacing: 28) {
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("LunkAlarm").font(.largeTitle.bold()).accessibilityAddTraits(.isHeader)
+                        Text("By Tristan Josh E. Sibug").foregroundStyle(store.theme.muted)
+                    }
+                    Text("I made this app to wake me from my daily deep slumber")
                         .font(.title2).foregroundStyle(store.theme.accent)
-                    Text("LunkAlarm combines alarms and timers with optional wake-up tests to help you get up.")
-                        .foregroundStyle(store.theme.muted)
+                    Spacer(minLength: 0)
+                    aboutControls.padding(.bottom, min(60, geometry.size.height * 0.08))
                 }
-                toolbar
-            }.frame(maxWidth: 480, alignment: .leading).padding(24)
-                .frame(maxWidth: .infinity, alignment: .top)
+                .frame(minHeight: max(0, geometry.size.height - 48), alignment: .top)
+                .frame(maxWidth: 480, alignment: .leading).padding(24)
+                .frame(maxWidth: .infinity)
+            }
         }.safeAreaInset(edge: .bottom) {
             Button { page = .clock } label: { Label("Clock", systemImage: "chevron.up") }
                 .buttonStyle(.plain).foregroundStyle(store.theme.muted).padding(16)
@@ -103,12 +104,36 @@ struct ContentView: View {
             .accessibilityIdentifier("aboutPage")
     }
 
-    private var toolbar: some View {
-        HStack(spacing: 8) {
-            Button("Theme") { themeOpen = true }.buttonStyle(ChipStyle(theme: store.theme))
-            Button(store.state.settings.use24Hour ? "24h" : "12h") { store.state.settings.use24Hour.toggle() }
-                .buttonStyle(ChipStyle(theme: store.theme)).accessibilityLabel("Switch clock format")
+    private var aboutControls: some View {
+        let use24Hour = store.state.settings.use24Hour
+        let format = use24Hour ? "24-hour" : "12-hour"
+        let example = use24Hour ? "14:30" : "2:30 PM"
+        return VStack(spacing: 12) {
+            Button { themeOpen = true } label: {
+                HStack {
+                    Text("Theme")
+                    Spacer()
+                    Image(systemName: "chevron.right").font(.footnote)
+                        .foregroundStyle(store.theme.muted).accessibilityHidden(true)
+                }
+            }.accessibilityLabel("Theme")
+            Button { store.state.settings.use24Hour.toggle() } label: {
+                ViewThatFits(in: .horizontal) {
+                    HStack {
+                        Text("Clock format")
+                        Spacer()
+                        Text("\(format) · \(example)").foregroundStyle(store.theme.muted)
+                    }
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("Clock format")
+                        Text("\(format) · \(example)").foregroundStyle(store.theme.muted)
+                    }
+                }
+            }
+            .accessibilityLabel("Switch clock format")
+            .accessibilityValue("\(format), for example \(example)")
         }
+        .buttonStyle(AboutControlStyle(theme: store.theme))
     }
     private func clock(width: CGFloat, height: CGFloat) -> some View {
         VStack(spacing: 24) {
@@ -145,6 +170,21 @@ struct ContentView: View {
                 }
             }
         }
+    }
+}
+
+private struct AboutControlStyle: ButtonStyle {
+    let theme: AlarmTheme
+
+    func makeBody(configuration: Configuration) -> some View {
+        let shape = RoundedRectangle(cornerRadius: 16)
+        configuration.label.font(.body.weight(.semibold))
+            .foregroundStyle(theme.text)
+            .frame(maxWidth: .infinity, minHeight: 56, alignment: .leading)
+            .padding(.horizontal, 16)
+            .background(theme.text.opacity(configuration.isPressed ? 0.15 : 0.065), in: shape)
+            .overlay(shape.strokeBorder(theme.border))
+            .contentShape(shape)
     }
 }
 
