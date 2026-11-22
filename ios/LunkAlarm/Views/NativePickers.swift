@@ -4,47 +4,70 @@ import UIKit
 // UIDatePicker owns the continuous time wheels, including noon/midnight rollover.
 // Its native time layout has no headings and uses unpadded hours in 12-hour mode.
 struct NativeTimePicker: UIViewRepresentable {
-    @Binding var hour: Int
-    @Binding var minute: Int
-    let use24Hour: Bool
+    @Binding var settings: AlarmSettings
     let isLight: Bool
+
+    // The alarm stores a wall-clock time. A fixed calendar prevents a DST
+    // transition day from normalizing a valid hour or minute in the editor.
+    private static let wheelCalendar: Calendar = {
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = .gmt
+        return calendar
+    }()
+
+    private static func wheelDate(hour: Int, minute: Int) -> Date {
+        Date(timeIntervalSinceReferenceDate: TimeInterval(hour * 3_600 + minute * 60))
+    }
 
     func makeUIView(context: Context) -> UIDatePicker {
         let picker = UIDatePicker()
         picker.datePickerMode = .time
         picker.preferredDatePickerStyle = .wheels
         picker.minuteInterval = 1
+        picker.calendar = Self.wheelCalendar
+        picker.timeZone = Self.wheelCalendar.timeZone
         picker.accessibilityIdentifier = "alarmTimePicker"
         picker.addTarget(context.coordinator, action: #selector(Coordinator.changed(_:)), for: .valueChanged)
         return picker
     }
     func updateUIView(_ picker: UIDatePicker, context: Context) {
-        context.coordinator.parent = self
-        let locale = Locale(identifier: use24Hour ? "en_GB" : "en_US")
-        if picker.locale != locale { picker.locale = locale }
-        picker.overrideUserInterfaceStyle = isLight ? .light : .dark
-        let selected = Calendar.current.dateComponents([.hour, .minute], from: picker.date)
-        if selected.hour != hour || selected.minute != minute {
-            var parts = Calendar.current.dateComponents([.year, .month, .day], from: picker.date)
-            parts.hour = hour; parts.minute = minute; parts.second = 0
-            if let date = Calendar.current.date(from: parts) { picker.setDate(date, animated: false) }
+        let coordinator = context.coordinator
+        coordinator.parent = self
+        let locale = Locale(identifier: settings.use24Hour ? "en_GB" : "en_US")
+        if picker.locale != locale {
+            picker.locale = locale
+            coordinator.displayedSelection = nil
         }
+        let style: UIUserInterfaceStyle = isLight ? .light : .dark
+        if picker.overrideUserInterfaceStyle != style { picker.overrideUserInterfaceStyle = style }
+
+        // Only push external changes, such as opening a saved alarm. The
+        // native wheel can be between rows when SwiftUI refreshes the view.
+        let selection = DateComponents(hour: settings.hour, minute: settings.minute)
+        guard coordinator.displayedSelection != selection else { return }
+        coordinator.displayedSelection = selection
+        picker.setDate(Self.wheelDate(hour: settings.hour, minute: settings.minute), animated: false)
     }
     func makeCoordinator() -> Coordinator { Coordinator(self) }
-    final class Coordinator: NSObject {
+    @MainActor final class Coordinator: NSObject {
         var parent: NativeTimePicker
+        var displayedSelection: DateComponents?
         init(_ parent: NativeTimePicker) { self.parent = parent }
         @objc func changed(_ picker: UIDatePicker) {
-            let parts = Calendar.current.dateComponents([.hour, .minute], from: picker.date)
-            let selected = parts.hour ?? 0
-            let resolved = AlarmTimeWheel.resolvedHour(previous: parent.hour, selected: selected, use24Hour: parent.use24Hour)
-            if resolved != selected {
-                var corrected = Calendar.current.dateComponents([.year, .month, .day, .hour, .minute, .second], from: picker.date)
-                corrected.hour = resolved
-                if let date = Calendar.current.date(from: corrected) { picker.setDate(date, animated: false) }
+            let parts = NativeTimePicker.wheelCalendar.dateComponents([.hour, .minute], from: picker.date)
+            guard let selectedHour = parts.hour, let minute = parts.minute else { return }
+            var settings = parent.settings
+            let hour = minute == settings.minute
+                ? AlarmTimeWheel.resolvedHour(previous: settings.hour, selected: selectedHour, use24Hour: settings.use24Hour)
+                : selectedHour
+            displayedSelection = DateComponents(hour: hour, minute: minute)
+            if hour != selectedHour {
+                picker.setDate(NativeTimePicker.wheelDate(hour: hour, minute: minute), animated: false)
             }
-            parent.hour = resolved
-            parent.minute = parts.minute ?? 0
+            guard settings.hour != hour || settings.minute != minute else { return }
+            settings.hour = hour
+            settings.minute = minute
+            parent.settings = settings
         }
     }
 }

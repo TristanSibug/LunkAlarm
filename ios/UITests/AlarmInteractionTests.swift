@@ -304,6 +304,23 @@ final class AlarmInteractionTests: XCTestCase {
         capture(app, name: "ios-edit-seven-to-seven-thirty")
     }
 
+    @MainActor func testMinuteWheelWrapsInBothDirectionsAndKeepsSavedValue() {
+        let app = launch()
+        openEditor(app)
+        let minute = app.datePickers["alarmTimePicker"].pickerWheels.element(boundBy: 1)
+        XCTAssertEqual(Int((minute.value as? String ?? "").filter(\.isNumber)), 0)
+
+        let savedAlarm = app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH 'editAlarm-'")).firstMatch
+        for expected in ["59", "00"] {
+            minute.adjust(toPickerWheelValue: expected)
+            saveEditor(app)
+            XCTAssertTrue(savedAlarm.waitForExistence(timeout: 5))
+            savedAlarm.tap()
+            XCTAssertTrue(app.navigationBars["Edit alarm"].waitForExistence(timeout: 5))
+            XCTAssertEqual(Int((minute.value as? String ?? "").filter(\.isNumber)), Int(expected))
+        }
+    }
+
     @MainActor func testCountdownIsInYourAlarmsAndCanBeEdited() {
         let app = launch()
         openEditor(app)

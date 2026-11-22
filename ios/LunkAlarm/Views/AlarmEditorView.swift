@@ -182,8 +182,7 @@ struct AlarmEditorView: View {
         }
     }
     private var timeWheels: some View {
-        NativeTimePicker(hour: $store.state.settings.hour, minute: $store.state.settings.minute,
-                         use24Hour: store.state.settings.use24Hour, isLight: store.theme.isLight)
+        NativeTimePicker(settings: $store.state.settings, isLight: store.theme.isLight)
             .frame(maxWidth: .infinity).frame(height: 170).clipped()
             .background(store.theme.field, in: RoundedRectangle(cornerRadius: 16))
             .overlay(RoundedRectangle(cornerRadius: 16).stroke(store.theme.border))
