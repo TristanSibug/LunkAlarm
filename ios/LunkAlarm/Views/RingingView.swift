@@ -10,7 +10,7 @@ struct RingingView: View {
             if store.ringing?.hasTests == true { challengeControls }
             ScrollView {
                 VStack(spacing: 24) {
-                    Image(systemName: "alarm.waves.left.and.right.fill").font(.system(size: 36)).foregroundStyle(store.theme.gradient)
+                    Image(systemName: "alarm.waves.left.and.right.fill").font(.system(size: 36)).foregroundStyle(store.theme.accentForeground)
                     Text("Good morning.").font(.system(size: 34, weight: .light))
                     Text(store.ringing?.soundName ?? "LunkAlarm").font(.caption).foregroundStyle(store.theme.muted)
                     if let challenge = store.challenge {

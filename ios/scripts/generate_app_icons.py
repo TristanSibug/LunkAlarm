@@ -66,6 +66,21 @@ def generate():
         (directory / "Contents.json").write_text(json.dumps(contents, separators=(",", ":")) + "\n")
 
 
+def generate_previews():
+    from PIL import Image
+
+    for icon in sorted(CATALOG.glob("AppIcon*.appiconset")):
+        preview = CATALOG / f"{icon.stem}-Preview.imageset"
+        preview.mkdir(exist_ok=True)
+        with Image.open(icon / "AppIcon.png") as image:
+            image.resize((192, 192), Image.Resampling.LANCZOS).save(preview / "Preview.png", optimize=True)
+        contents = {
+            "images": [{"filename": "Preview.png", "idiom": "universal", "scale": "3x"}],
+            "info": {"author": "xcode", "version": 1},
+        }
+        (preview / "Contents.json").write_text(json.dumps(contents, separators=(",", ":")) + "\n")
+
+
 def verify_bundle(bundle):
     expected = {name for name, *_ in theme_colors()}
     with (bundle / "Info.plist").open("rb") as file:
@@ -82,9 +97,13 @@ def verify_bundle(bundle):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--verify-bundle", type=Path)
+    mode = parser.add_mutually_exclusive_group()
+    mode.add_argument("--verify-bundle", type=Path)
+    mode.add_argument("--previews-only", action="store_true")
     arguments = parser.parse_args()
     if arguments.verify_bundle:
         verify_bundle(arguments.verify_bundle)
     else:
-        generate()
+        if not arguments.previews_only:
+            generate()
+        generate_previews()

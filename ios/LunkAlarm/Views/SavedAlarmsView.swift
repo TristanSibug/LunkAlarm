@@ -66,7 +66,10 @@ struct SavedAlarmsView: View {
             HStack(alignment: .center, spacing: 10) {
                 Button { openEditor(alarm) } label: {
                     VStack(alignment: .leading, spacing: 3) {
-                        if !alarm.displayName.isEmpty { Text(alarm.displayName).font(.system(size: 15, weight: .semibold)).lineLimit(1) }
+                        if !alarm.displayName.isEmpty {
+                            Text(alarm.displayName).font(.system(size: 15, weight: .semibold)).lineLimit(1)
+                                .foregroundStyle(alarm.isTimer ? theme.text : theme.alarmTitle)
+                        }
                         Group {
                             if alarm.isTimer {
                                 Text(timerInterval: Date.distantPast...alarm.target, countsDown: true)
@@ -84,7 +87,7 @@ struct SavedAlarmsView: View {
                                 if alarm.wakeGames?.sudoku == true { Image(systemName: "square.grid.3x3") }
                                 if alarm.wakeGames?.stroop == true { Image(systemName: "paintpalette") }
                                 if alarm.mathCount > 0 { Image(systemName: "plus.forwardslash.minus").accessibilityLabel("Math") }
-                            }.font(.system(size: 11)).foregroundStyle(theme.muted)
+                            }.font(.system(size: 11)).foregroundStyle(theme.id == "heritage" ? theme.accent : theme.muted)
                                 .accessibilityIdentifier("alarmMetadata-\(alarm.id)")
                         }
                     }.frame(maxWidth: .infinity, alignment: .leading).contentShape(Rectangle())

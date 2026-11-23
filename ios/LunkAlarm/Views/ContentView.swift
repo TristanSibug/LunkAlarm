@@ -4,13 +4,15 @@ struct ContentView: View {
     @Bindable var store: AlarmStore
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.openURL) private var openURL
-    @Environment(\.scenePhase) private var scenePhase
     @State private var page: HomePage = .clock
     @State private var themeOpen = false
+    @State private var iconPickerOpen = false
+    @State private var selectedIconID = AppIcon.selectedID
+    @State private var pendingIconID: String?
+    @State private var applyingAppIcon = false
     @State private var fontPickerOpen = false
     @State private var editor: AlarmEditorPresentation?
     @State private var ringingOpen = false
-    @State private var appIcon = ThemeAppIcon()
     private enum HomePage: Equatable { case about, clock, alarms }
 
     var body: some View {
@@ -57,10 +59,8 @@ struct ContentView: View {
             }.foregroundStyle(store.theme.text)
                 .animation(reduceMotion ? nil : .spring(response: 0.48, dampingFraction: 0.88), value: page)
         }
-        .sheet(isPresented: $themeOpen, onDismiss: syncAppIcon) { themeSheet }
-        .onChange(of: scenePhase, initial: true) { _, phase in
-            if phase == .active { syncAppIcon() }
-        }
+        .sheet(isPresented: $themeOpen) { themeSheet }
+        .sheet(isPresented: $iconPickerOpen, onDismiss: applyAppIcon) { appIconSheet }
         .sheet(isPresented: $fontPickerOpen) { clockFontSheet }
         .sheet(item: $editor) { presentation in
             SheetShell(title: presentation.title, theme: store.theme, scrolls: false, showsDone: false) {
@@ -70,6 +70,7 @@ struct ContentView: View {
         .onChange(of: store.ringing?.id, initial: true) { _, id in
             guard let id else { ringingOpen = false; return }
             editor = nil; themeOpen = false; fontPickerOpen = false
+            pendingIconID = nil; iconPickerOpen = false
             Task { @MainActor in
                 try? await Task.sleep(for: .milliseconds(500))
                 if store.ringing?.id == id { ringingOpen = true }
@@ -87,9 +88,20 @@ struct ContentView: View {
         } message: { Text(store.errorMessage ?? "") }
     }
 
-    private func syncAppIcon() {
-        guard !themeOpen, store.ringing == nil else { return }
-        appIcon.sync(with: store.theme.id)
+    private func applyAppIcon() {
+        guard let iconID = pendingIconID else { return }
+        pendingIconID = nil
+        guard store.ringing == nil, iconID != selectedIconID else { return }
+        applyingAppIcon = true
+        Task {
+            defer { applyingAppIcon = false }
+            do {
+                try await AppIcon.select(iconID)
+                selectedIconID = AppIcon.selectedID
+            } catch {
+                store.errorMessage = "Could not change the app icon. \(error.localizedDescription)"
+            }
+        }
     }
 
     private var aboutPage: some View {
@@ -129,6 +141,23 @@ struct ContentView: View {
                         .foregroundStyle(store.theme.muted).accessibilityHidden(true)
                 }
             }.accessibilityLabel("Theme")
+            Button {
+                selectedIconID = AppIcon.selectedID
+                iconPickerOpen = true
+            } label: {
+                HStack {
+                    Text("App icon")
+                    Spacer()
+                    Image(AppIcon.previewName(for: selectedIconID)).resizable()
+                        .frame(width: 28, height: 28).clipShape(.rect(cornerRadius: 6))
+                        .accessibilityHidden(true)
+                    Image(systemName: "chevron.right").font(.footnote)
+                        .foregroundStyle(store.theme.muted).accessibilityHidden(true)
+                }
+            }
+            .accessibilityLabel("App icon")
+            .accessibilityValue(AlarmTheme.find(selectedIconID).name)
+            .disabled(applyingAppIcon)
             Button { fontPickerOpen = true } label: {
                 HStack {
                     Text("Clock font")
@@ -226,6 +255,39 @@ struct ContentView: View {
             }
         }
     }
+
+    private var appIconSheet: some View {
+        SheetShell(title: "App icon", theme: store.theme) {
+            LazyVGrid(columns: [GridItem(.adaptive(minimum: 96, maximum: 144), spacing: 10)], spacing: 10) {
+                ForEach(AlarmTheme.arranged) { icon in
+                    let selected = selectedIconID == icon.id
+                    Button {
+                        pendingIconID = icon.id
+                        iconPickerOpen = false
+                    } label: {
+                        VStack(spacing: 8) {
+                            Image(AppIcon.previewName(for: icon.id)).resizable()
+                                .frame(width: 54, height: 54).clipShape(.rect(cornerRadius: 12))
+                                .accessibilityHidden(true)
+                            Text(icon.name).font(.caption).multilineTextAlignment(.center)
+                        }
+                        .padding(8).frame(maxWidth: .infinity, minHeight: 100)
+                        .background(store.theme.field, in: RoundedRectangle(cornerRadius: 14))
+                        .overlay(RoundedRectangle(cornerRadius: 14).strokeBorder(selected ? store.theme.accent : store.theme.border))
+                        .overlay(alignment: .topTrailing) {
+                            if selected {
+                                Image(systemName: "checkmark.circle.fill").font(.caption)
+                                    .foregroundStyle(store.theme.accent).padding(6).accessibilityHidden(true)
+                            }
+                        }
+                        .contentShape(.rect(cornerRadius: 14))
+                    }
+                    .buttonStyle(.plain).accessibilityLabel(icon.name)
+                    .accessibilityAddTraits(selected ? .isSelected : [])
+                }
+            }
+        }
+    }
 }
 
 private struct AboutControlStyle: ButtonStyle {
@@ -304,7 +366,7 @@ private struct ClockFaceView: View {
                         .tracking(clockFont == .system ? -digitSize * 0.035 : 0)
                         .monospacedDigit().lineLimit(1).minimumScaleFactor(0.5).foregroundStyle(theme.text)
                     VStack(alignment: .leading, spacing: 4) {
-                        Text(String(format: "%02d", parts.second ?? 0)).foregroundStyle(theme.gradient)
+                        Text(String(format: "%02d", parts.second ?? 0)).foregroundStyle(theme.accentForeground)
                         if !use24Hour { Text(hour < 12 ? "AM" : "PM").font(clockFont.detailFont(size: 17)).foregroundStyle(theme.muted) }
                     }.font(clockFont.detailFont(size: 22)).monospacedDigit().padding(.top, 9)
                 }.accessibilityElement(children: .ignore).accessibilityLabel(context.date.formatted(date: .omitted, time: .standard))

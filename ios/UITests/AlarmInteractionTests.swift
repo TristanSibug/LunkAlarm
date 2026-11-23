@@ -201,6 +201,17 @@ final class AlarmInteractionTests: XCTestCase {
         app.swipeDown(velocity: .fast)
         XCTAssertTrue(app.staticTexts["By Tristan Josh E. Sibug"].waitForExistence(timeout: 5))
         XCTAssertTrue(theme.isHittable)
+        let appIcon = app.buttons["App icon"]
+        XCTAssertTrue(appIcon.isHittable)
+        let initialIcon = appIcon.value as? String
+        appIcon.tap()
+        XCTAssertTrue(app.navigationBars["App icon"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.buttons["Cobalt & Coral"].exists)
+        app.navigationBars["App icon"].buttons["Done"].tap()
+        theme.tap()
+        XCTAssertTrue(app.navigationBars["Theme"].waitForExistence(timeout: 5))
+        app.buttons["Light"].tap()
+        XCTAssertEqual(appIcon.value as? String, initialIcon)
         let clockFormat = app.buttons["Switch clock format"]
         XCTAssertEqual(clockFormat.value as? String, "12-hour, for example 2:30 PM")
         clockFormat.tap()

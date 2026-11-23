@@ -12,9 +12,22 @@ struct AlarmTheme: Identifiable, Sendable {
     var isLight = false
     var glow = false
     var dayAccent: Color { id == "cobalt-coral" ? accent2 : accent }
+    var symbolAccent: Color { id == "heritage" ? accent : accent2 }
+    var accentForeground: AnyShapeStyle {
+        id == "heritage" ? AnyShapeStyle(accent) : AnyShapeStyle(gradient)
+    }
+    var alarmTitle: Color { id == "midnight-cherry" ? accent2 : text }
     var alarmCardTheme: AlarmTheme {
-        guard id == "midnight-cherry" else { return self }
-        return AlarmTheme(id: id, name: name, background: background, card: Color(hex: 0xfff8fa), text: Color(hex: 0x351624), muted: Color(hex: 0x735567), accent: Color(hex: 0x91445e), accent2: Color(hex: 0xb23d61), isLight: true)
+        switch id {
+        case "cobalt-coral":
+            AlarmTheme(id: id, name: name, background: background, card: text, text: card,
+                       muted: Color(hex: 0x4a5e7e), accent: Color(hex: 0x305f9b), accent2: Color(hex: 0xa63e38), isLight: true)
+        case "midnight-cherry":
+            AlarmTheme(id: id, name: name, background: background, card: Color(hex: 0xfff8fa), text: Color(hex: 0x351624),
+                       muted: Color(hex: 0x735567), accent: Color(hex: 0x91445e), accent2: Color(hex: 0x3d71a2), isLight: true)
+        default:
+            self
+        }
     }
     var field: Color { isLight ? Color.black.opacity(0.045) : Color.black.opacity(0.25) }
     var border: Color { text.opacity(0.1) }
@@ -41,7 +54,7 @@ struct AlarmTheme: Identifiable, Sendable {
         AlarmTheme(id: "deep-ocean", name: "Deep Ocean", background: Color(hex: 0x081a24), card: Color(hex: 0x102b38), text: Color(hex: 0xe1f5fb), muted: Color(hex: 0x99b9c6), accent: Color(hex: 0x79d2de), accent2: Color(hex: 0x82b0f7)),
         AlarmTheme(id: "eggshell-white", name: "Eggshell White", background: Color(hex: 0xf7f3e8), card: Color(hex: 0xfffefa), text: Color(hex: 0x28343c), muted: Color(hex: 0x636b70), accent: Color(hex: 0x566a78), accent2: Color(hex: 0x6d6252), isLight: true),
         // Reference stripes 1 / 3 / 4: oxblood, ivory and navy.
-        AlarmTheme(id: "heritage", name: "Heritage", background: Color(hex: 0xf9efd4), card: Color(hex: 0xfffdf5), text: Color(hex: 0x032d3f), muted: Color(hex: 0x52626b), accent: Color(hex: 0x7d0500), accent2: Color(hex: 0x032d3f), isLight: true),
+        AlarmTheme(id: "heritage", name: "Heritage", background: Color(hex: 0xf9efd4), card: Color(hex: 0xfffdf5), text: Color(hex: 0x7d0500), muted: Color(hex: 0x8b4943), accent: Color(hex: 0x7d0500), accent2: Color(hex: 0x032d3f), isLight: true),
         // Reference stripes 2 / 4 / 5: crimson cards, navy background, steel-blue accents.
         // Pale blue/rose text keeps the saturated red surfaces readable.
         AlarmTheme(id: "signal-blue", name: "Signal Blue", background: Color(hex: 0x032d3f), card: Color(hex: 0xbe0d1f), text: Color(hex: 0xf1f7fa), muted: Color(hex: 0xe8d7e1), accent: Color(hex: 0xd2e7f2), accent2: Color(hex: 0x699db8)),

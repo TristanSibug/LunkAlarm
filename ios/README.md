@@ -7,7 +7,7 @@ The website in `web/` remains separately deployable. **Find more ringtones onlin
 ## What is included
 
 - A centered large clock on launch, local date/time zone, and 12/24-hour display. Swipe up to view alarms; the floating + opens the editor. Swipe down at the top of the alarm list or use Clock to return. Wheel/control interactions do not dismiss the page. VoiceOver exposes equivalent actions. Reduced Motion disables the transition.
-- Swipe down from the big clock to open About. Choose a clock font, toggle the clock format, or select from eighteen themes independent of the iPhone's light/dark setting. The Home Screen bell icon follows the selected theme.
+- Swipe down from the big clock to open About. Choose an app theme, a Home Screen bell icon, a clock font, and the clock format. The theme and app icon are independent.
 - Apple's native heading-free time wheel with unpadded 12-hour hours and AM/PM rollover, plus duration wheels. Wake-up test settings use finite buttons and bounded −/+ controls; wake-up test tiles are always shown, and individual settings open in sheets. Duration presets are 5 min, 10 min, 30 min and 1 hour; trailing choices hide when space is limited.
 - Ten offline PCM ringtones rendered from the existing app's synthesizer recipes; six-second previews.
 - Import from Files: browser-downloadable audio smaller than 2 MB and shorter than 30 seconds, converted to mono PCM WAV in `Library/Sounds`. Each alarm remembers its selected sound and tests; importing a new sound does not change older alarms.

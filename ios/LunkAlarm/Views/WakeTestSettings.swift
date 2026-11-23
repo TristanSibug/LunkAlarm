@@ -36,11 +36,11 @@ struct WakeTestSelector: View {
                     WakeTestGlyph(test: test).frame(width: 36, height: 29)
                     Text(test.name).font(.system(size: test == .mines ? 9 : 10, weight: .medium)).lineLimit(1).minimumScaleFactor(0.85)
                         .foregroundStyle(theme.text)
-                }.foregroundStyle(on ? theme.accent2 : theme.muted)
+                }.foregroundStyle(on ? theme.symbolAccent : theme.muted)
                     .frame(minWidth: 72, maxWidth: .infinity).padding(.vertical, 18)
                     .background(on ? theme.accent2.opacity(0.1) : theme.field, in: RoundedRectangle(cornerRadius: 13))
                     .overlay(RoundedRectangle(cornerRadius: 13).stroke(on ? theme.accent2 : theme.border, lineWidth: on ? 1.5 : 1))
-                    .overlay(alignment: .topTrailing) { if on { Image(systemName: "checkmark").font(.system(size: 9, weight: .semibold)).foregroundStyle(theme.accent2).padding(5) } }
+                    .overlay(alignment: .topTrailing) { if on { Image(systemName: "checkmark").font(.system(size: 9, weight: .semibold)).foregroundStyle(theme.symbolAccent).padding(5) } }
             }.buttonStyle(.plain).accessibilityLabel(test.title).accessibilityValue(on ? "Enabled" : "Disabled")
                 .accessibilityAddTraits(on ? .isSelected : []).accessibilityIdentifier("test-tile-" + test.id)
         }
@@ -97,7 +97,7 @@ private struct WakeTestSettingsView: View {
             HStack(spacing: 10) {
                 Text(test.title).font(.system(size: 19, weight: .semibold)).lineLimit(1).minimumScaleFactor(0.75).frame(maxWidth: .infinity, alignment: .leading)
                 Button { stopPreview(); practice = test } label: {
-                    HStack(spacing: 8) { Image(systemName: "play.fill").foregroundStyle(theme.accent2); Text("Try") }
+                    HStack(spacing: 8) { Image(systemName: "play.fill").foregroundStyle(theme.symbolAccent); Text("Try") }
                         .font(.system(size: 13, weight: .semibold)).frame(minWidth: 64, minHeight: 22).padding(.horizontal, 16).padding(.vertical, 9)
                         .overlay(Capsule().stroke(theme.accent2, lineWidth: 1.2))
                 }.buttonStyle(.plain).accessibilityIdentifier("try-" + test.id)
