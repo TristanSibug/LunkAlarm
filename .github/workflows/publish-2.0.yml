@@ -1,0 +1,79 @@
+name: Publish LunkAlarm 2.0
+on:
+  push:
+    branches: [release/lunkalarm-v2.0]
+    paths: ['.github/workflows/publish-2.0.yml']
+
+permissions:
+  contents: read
+
+jobs:
+  publish:
+    if: github.repository == 'TristanSibug/LunkAlarm'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      actions: read
+      contents: write
+    env:
+      RELEASE_TAG: lunkalarm-v2.0
+      SOURCE_SHA: e2e83ac74fcb6921e3aebddebbe7589a1cb8f7e4
+      ANDROID_RUN: '45173080344'
+      IOS_RUN: '45173080327'
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: ${{ env.SOURCE_SHA }}
+      - name: Verify the release tag and completed builds
+        run: |
+          set -euo pipefail
+          test "$(gh api "repos/$GITHUB_REPOSITORY/git/ref/tags/$RELEASE_TAG" --jq .object.sha)" = "$SOURCE_SHA"
+          for run in "$ANDROID_RUN" "$IOS_RUN"; do
+            read -r sha conclusion < <(gh run view "$run" --json headSha,conclusion --jq '[.headSha,.conclusion] | join(" ")')
+            test "$sha" = "$SOURCE_SHA"
+            test "$conclusion" = success
+          done
+      - uses: actions/download-artifact@v5
+        with:
+          name: LunkAlarm-Android
+          path: downloads/android
+          github-token: ${{ github.token }}
+          run-id: ${{ env.ANDROID_RUN }}
+      - uses: actions/download-artifact@v5
+        with:
+          name: LunkAlarm-iOS
+          path: downloads/ios
+          github-token: ${{ github.token }}
+          run-id: ${{ env.IOS_RUN }}
+      - name: Verify the APK and IPA
+        run: |
+          set -euo pipefail
+          apk=$(find downloads/android -type f -name LunkAlarm-Android-2.0.apk)
+          ipa=$(find downloads/ios -type f -name LunkAlarm-iOS-2.0-unsigned.ipa)
+          test -s "$apk"
+          test -s "$ipa"
+          (cd "$(dirname "$apk")" && sha256sum --check SHA256SUMS.txt)
+          curl -fsSL --retry 3 "https://github.com/$GITHUB_REPOSITORY/releases/download/lunkalarm-v1.10.4/LunkAlarm-Android-1.10.4.apk" -o "$RUNNER_TEMP/previous.apk"
+          python3 android/scripts/verify_upgrade_pair.py "$RUNNER_TEMP/previous.apk" "$apk"
+          python3 - "$ipa" <<'PY'
+          import plistlib
+          import sys
+          import zipfile
+
+          with zipfile.ZipFile(sys.argv[1]) as archive:
+              info = plistlib.loads(archive.read('Payload/LunkAlarm.app/Info.plist'))
+              assert info['CFBundleIdentifier'] == 'online.reeeserve.LunkAlarm'
+              assert info['CFBundleShortVersionString'] == '2.0'
+              assert info['CFBundleVersion'] == '23'
+              assert archive.getinfo('Payload/LunkAlarm.app/LunkAlarm').file_size > 0
+          PY
+      - name: Publish GitHub release with both installers
+        run: |
+          set -euo pipefail
+          apk=$(find downloads/android -type f -name LunkAlarm-Android-2.0.apk)
+          ipa=$(find downloads/ios -type f -name LunkAlarm-iOS-2.0-unsigned.ipa)
+          title=$(sed -n '1s/^# //p' RELEASE_NOTES.md)
+          tail -n +3 RELEASE_NOTES.md > "$RUNNER_TEMP/release-notes.md"
+          gh release create "$RELEASE_TAG" "$apk" "$ipa" --verify-tag --latest --title "$title" --notes-file "$RUNNER_TEMP/release-notes.md"
+          gh release view "$RELEASE_TAG" --json url,isDraft,assets
