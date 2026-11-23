@@ -127,6 +127,8 @@ jobs:
       - name: Package source and unsigned builds
         if: always() && steps.device.outcome == 'success' && (env.BUILD_ONLY == 'true' || steps.simulator.outcome == 'success')
         run: |
+          set -euo pipefail
+          python3 ios/scripts/generate_app_icons.py --verify-bundle artifacts/ios-device/Build/Products/Release-iphoneos/LunkAlarm.app
           git archive --format=zip --output=LunkAlarm-iOS-source.zip HEAD ios
           if [ -d artifacts/ios-build/Build/Products/Debug-iphonesimulator/LunkAlarm.app ]; then
             ditto -c -k --sequesterRsrc --keepParent artifacts/ios-build/Build/Products/Debug-iphonesimulator/LunkAlarm.app LunkAlarm-iOS-Simulator.zip
@@ -134,7 +136,7 @@ jobs:
           mkdir -p artifacts/unsigned/Payload
           cp -R artifacts/ios-device/Build/Products/Release-iphoneos/LunkAlarm.app artifacts/unsigned/Payload/
           cd artifacts/unsigned
-          zip -qr ../../LunkAlarm-iOS-1.10.4-unsigned.ipa Payload
+          zip -qr ../../LunkAlarm-iOS-2.0-unsigned.ipa Payload
       - uses: actions/upload-artifact@v5
         if: always()
         with:
@@ -142,7 +144,7 @@ jobs:
           path: |
             LunkAlarm-iOS-source.zip
             LunkAlarm-iOS-Simulator.zip
-            LunkAlarm-iOS-1.10.4-unsigned.ipa
+            LunkAlarm-iOS-2.0-unsigned.ipa
             artifacts/ios-clock.png
             ios-build.log
             ios-device-build.log

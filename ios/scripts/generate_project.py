@@ -17,7 +17,9 @@ def add(label, body):
 
 sources = sorted((IOS / "LunkAlarm").rglob("*.swift"))
 resources = sorted((IOS / "LunkAlarm/Resources/Sounds").glob("*.wav"))
-resources += [IOS / "LunkAlarm/Resources/Assets.xcassets", IOS / "LunkAlarm/Resources/PrivacyInfo.xcprivacy"]
+asset_catalog = IOS / "LunkAlarm/Resources/Assets.xcassets"
+resources += [asset_catalog, IOS / "LunkAlarm/Resources/PrivacyInfo.xcprivacy"]
+alternate_icons = sorted(path.stem for path in asset_catalog.glob("AppIcon-*.appiconset"))
 refs, source_builds, resource_builds = [], [], []
 for path in sources + resources:
     relative = path.relative_to(IOS).as_posix()
@@ -60,8 +62,9 @@ for mode in ("Debug", "Release"):
         "INFOPLIST_FILE": "LunkAlarm/Info.plist", "GENERATE_INFOPLIST_FILE": "NO",
         "TARGETED_DEVICE_FAMILY": '"1,2"', "SUPPORTED_PLATFORMS": '"iphoneos iphonesimulator"',
         "SUPPORTS_MACCATALYST": "NO", "SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD": "NO",
-        "CODE_SIGN_STYLE": "Automatic", "CURRENT_PROJECT_VERSION": "20", "MARKETING_VERSION": "1.10.4",
+        "CODE_SIGN_STYLE": "Automatic", "CURRENT_PROJECT_VERSION": "21", "MARKETING_VERSION": "2.0",
         "ASSETCATALOG_COMPILER_APPICON_NAME": "AppIcon", "ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME": '""',
+        "ASSETCATALOG_COMPILER_ALTERNATE_APPICON_NAMES": '"' + " ".join(alternate_icons) + '"',
         "LD_RUNPATH_SEARCH_PATHS": '"$(inherited) @executable_path/Frameworks"',
     }
     test_settings = {

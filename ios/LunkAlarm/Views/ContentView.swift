@@ -4,11 +4,13 @@ struct ContentView: View {
     @Bindable var store: AlarmStore
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.openURL) private var openURL
+    @Environment(\.scenePhase) private var scenePhase
     @State private var page: HomePage = .clock
     @State private var themeOpen = false
     @State private var fontPickerOpen = false
     @State private var editor: AlarmEditorPresentation?
     @State private var ringingOpen = false
+    @State private var appIcon = ThemeAppIcon()
     private enum HomePage: Equatable { case about, clock, alarms }
 
     var body: some View {
@@ -55,7 +57,10 @@ struct ContentView: View {
             }.foregroundStyle(store.theme.text)
                 .animation(reduceMotion ? nil : .spring(response: 0.48, dampingFraction: 0.88), value: page)
         }
-        .sheet(isPresented: $themeOpen) { themeSheet }
+        .sheet(isPresented: $themeOpen, onDismiss: syncAppIcon) { themeSheet }
+        .onChange(of: scenePhase, initial: true) { _, phase in
+            if phase == .active { syncAppIcon() }
+        }
         .sheet(isPresented: $fontPickerOpen) { clockFontSheet }
         .sheet(item: $editor) { presentation in
             SheetShell(title: presentation.title, theme: store.theme, scrolls: false, showsDone: false) {
@@ -80,6 +85,11 @@ struct ContentView: View {
             }
             Button("OK", role: .cancel) { store.errorMessage = nil }
         } message: { Text(store.errorMessage ?? "") }
+    }
+
+    private func syncAppIcon() {
+        guard !themeOpen, store.ringing == nil else { return }
+        appIcon.sync(with: store.theme.id)
     }
 
     private var aboutPage: some View {
