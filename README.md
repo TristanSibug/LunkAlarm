@@ -1,7 +1,7 @@
 # Native Android build
 
-Status: **failure**  
-Commit: `7d0a5f0ba58d9caff8a43a5d0179c62ad530076d`  
-[Build and APK](https://github.com/TristanSibug/LunkAlarm/actions/runs/45172447539)
+Status: **success**  
+Commit: `e2e83ac74fcb6921e3aebddebbe7589a1cb8f7e4`  
+[Build and APK](https://github.com/TristanSibug/LunkAlarm/actions/runs/45173080344)
 
 This branch contains generated reports and emulator previews only. Android source is on main under android/.
