@@ -432,10 +432,10 @@ private enum class ClockFont(val id: String, val title: String, val family: Font
                 else Row(Modifier.weight(1f), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                     (1..7).forEach { day ->
                         val selected = day in alarm.draft.days
-                        Box(Modifier.size(26.dp).then(if (selected) Modifier.background(theme.dayAccent.copy(alpha = .1f), CircleShape)
-                            .border(1.dp, theme.dayAccent.copy(alpha = .65f), CircleShape) else Modifier)
+                        Box(Modifier.size(26.dp).then(if (selected) Modifier.background(theme.accent.copy(alpha = .1f), CircleShape)
+                            .border(1.dp, theme.accent.copy(alpha = .65f), CircleShape) else Modifier)
                             .clearAndSetSemantics { contentDescription = listOf("Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday")[day - 1] + if (selected) ", selected" else ", not selected" }, contentAlignment = Alignment.Center) {
-                            Text(listOf("S", "M", "T", "W", "T", "F", "S")[day - 1], fontSize = 11.sp, color = if (selected) theme.dayAccent else theme.muted)
+                            Text(listOf("S", "M", "T", "W", "T", "F", "S")[day - 1], fontSize = 11.sp, color = if (selected) theme.accent else theme.muted)
                         }
                     }
                 }

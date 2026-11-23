@@ -62,7 +62,7 @@ for mode in ("Debug", "Release"):
         "INFOPLIST_FILE": "LunkAlarm/Info.plist", "GENERATE_INFOPLIST_FILE": "NO",
         "TARGETED_DEVICE_FAMILY": '"1,2"', "SUPPORTED_PLATFORMS": '"iphoneos iphonesimulator"',
         "SUPPORTS_MACCATALYST": "NO", "SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD": "NO",
-        "CODE_SIGN_STYLE": "Automatic", "CURRENT_PROJECT_VERSION": "22", "MARKETING_VERSION": "2.0",
+        "CODE_SIGN_STYLE": "Automatic", "CURRENT_PROJECT_VERSION": "23", "MARKETING_VERSION": "2.0",
         "ASSETCATALOG_COMPILER_APPICON_NAME": "AppIcon", "ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME": '""',
         "ASSETCATALOG_COMPILER_ALTERNATE_APPICON_NAMES": '"' + " ".join(alternate_icons) + '"',
         "LD_RUNPATH_SEARCH_PATHS": '"$(inherited) @executable_path/Frameworks"',

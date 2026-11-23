@@ -4,7 +4,7 @@ Choose how LunkAlarm looks in the app and on your Home Screen. Swipe down from t
 
 ### What's changed
 
-- **Cobalt & Coral** now uses pale blue alarm cards with navy text and coral repeat-day markers.
+- **Cobalt & Coral** swaps its original card and switch colors. Alarm cards are coral, and enabled switches are navy.
 - **Heritage** uses its oxblood red for text and interface icons.
 - **Midnight Cherry** uses blue for alarm names and enabled switches.
 - **iOS** saves the alarm time as one selection when the minute wheel wraps backward from 00 to 59.

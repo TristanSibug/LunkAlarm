@@ -11,7 +11,6 @@ struct AlarmTheme: Identifiable, Sendable {
     let accent2: Color
     var isLight = false
     var glow = false
-    var dayAccent: Color { id == "cobalt-coral" ? accent2 : accent }
     var symbolAccent: Color { id == "heritage" ? accent : accent2 }
     var accentForeground: AnyShapeStyle {
         id == "heritage" ? AnyShapeStyle(accent) : AnyShapeStyle(gradient)
@@ -20,8 +19,8 @@ struct AlarmTheme: Identifiable, Sendable {
     var alarmCardTheme: AlarmTheme {
         switch id {
         case "cobalt-coral":
-            AlarmTheme(id: id, name: name, background: background, card: text, text: card,
-                       muted: Color(hex: 0x4a5e7e), accent: Color(hex: 0x305f9b), accent2: Color(hex: 0xa63e38), isLight: true)
+            AlarmTheme(id: id, name: name, background: background, card: accent2, text: card,
+                       muted: Color(hex: 0x293952), accent: Color(hex: 0x5b2221), accent2: card, isLight: true)
         case "midnight-cherry":
             AlarmTheme(id: id, name: name, background: background, card: Color(hex: 0xfff8fa), text: Color(hex: 0x351624),
                        muted: Color(hex: 0x735567), accent: Color(hex: 0x91445e), accent2: Color(hex: 0x3d71a2), isLight: true)

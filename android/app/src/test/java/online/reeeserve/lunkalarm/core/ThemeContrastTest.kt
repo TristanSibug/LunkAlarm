@@ -11,6 +11,11 @@ class ThemeContrastTest {
         val x = a.luminance(); val y = b.luminance()
         return (maxOf(x, y) + .05f) / (minOf(x, y) + .05f)
     }
+    @Test fun cobaltAndCoralSwapsTheOriginalCardAndSwitchColors() {
+        val theme = Themes.find("cobalt-coral")
+        assertEquals(theme.accent2, theme.cardPalette.card)
+        assertEquals(theme.card, theme.cardPalette.accent2)
+    }
     @Test fun allEighteenPalettesHaveReadablePrimaryAndSecondaryText() {
         assertEquals(18, Themes.all.size)
         Themes.all.forEach { theme ->

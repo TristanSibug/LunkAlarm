@@ -26,12 +26,11 @@ import androidx.compose.ui.viewinterop.AndroidView
 
 @Immutable data class LunkTheme(val id: String, val name: String, val background: Color, val card: Color, val text: Color,
     val muted: Color, val accent: Color, val accent2: Color, val light: Boolean = false, val glow: Boolean = false) {
-    val dayAccent get() = if (id == "cobalt-coral") accent2 else accent
     val symbolAccent get() = if (id == "heritage") accent else accent2
     val alarmTitle get() = if (id == "midnight-cherry") accent2 else text
     val cardPalette get() = when (id) {
-        "cobalt-coral" -> copy(card = text, text = card, muted = Color(0xff4a5e7e),
-            accent = Color(0xff305f9b), accent2 = Color(0xffa63e38), light = true)
+        "cobalt-coral" -> copy(card = accent2, text = card, muted = Color(0xff293952),
+            accent = Color(0xff5b2221), accent2 = card, light = true)
         "midnight-cherry" -> copy(card = Color(0xfffff8fa), text = Color(0xff351624),
             muted = Color(0xff735567), accent = Color(0xff91445e), accent2 = Color(0xff3d71a2), light = true)
         else -> this
