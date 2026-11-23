@@ -21,6 +21,7 @@ class ThemeContrastTest {
             val card = theme.cardPalette
             assertTrue("${theme.name} card text", contrast(card.text, card.card) >= 4.5f)
             assertTrue("${theme.name} card detail", contrast(card.muted, card.card) >= 4.5f)
+            assertTrue("${theme.name} alarm name", contrast(card.alarmTitle, card.card) >= 4.5f)
         }
     }
 }

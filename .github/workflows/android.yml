@@ -53,11 +53,11 @@ jobs:
           subprocess.run([sdk, '--version'], check=True)
           subprocess.run([sdk, 'platforms;android-36', 'build-tools;35.0.0'], input='y\n' * 100, text=True, check=True)
           PYSDK
-      - name: Build independently signed upgrade fixture
+      - name: Download the published Android 1.10.4 upgrade baseline
         if: env.BUILD_ONLY != 'true'
         run: |
-          ./android/gradlew -p android :app:assembleDebug -PlunkVersionCode=4 -PlunkVersionName=upgrade-fixture --console plain
-          cp android/app/build/outputs/apk/debug/app-debug.apk "$RUNNER_TEMP/lunkalarm-upgrade-fixture.apk"
+          curl -fsSL --retry 3 "https://github.com/${GITHUB_REPOSITORY}/releases/download/lunkalarm-v1.10.4/LunkAlarm-Android-1.10.4.apk" \
+            -o "$RUNNER_TEMP/lunkalarm-upgrade-fixture.apk"
       - name: Build APK (core tests and lint in full mode)
         id: apk
         run: |
@@ -92,10 +92,10 @@ jobs:
         run: |
           "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --verbose --print-certs android/app/build/outputs/apk/debug/app-debug.apk > artifacts/android-signature.txt
           python3 android/scripts/verify_apk.py artifacts/android-signature.txt
-          cp android/app/build/outputs/apk/debug/app-debug.apk artifacts/LunkAlarm-Android-1.10.4.apk
+          cp android/app/build/outputs/apk/debug/app-debug.apk artifacts/LunkAlarm-Android-2.0.apk
           git archive --format=zip --output=artifacts/LunkAlarm-Android-source.zip HEAD android
           cd artifacts
-          sha256sum LunkAlarm-Android-1.10.4.apk > SHA256SUMS.txt
+          sha256sum LunkAlarm-Android-2.0.apk > SHA256SUMS.txt
       - name: Remove private signing material from runner
         if: always()
         run: python3 android/scripts/prepare_signing.py --cleanup

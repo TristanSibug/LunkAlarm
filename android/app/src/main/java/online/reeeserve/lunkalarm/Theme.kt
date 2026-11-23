@@ -27,8 +27,15 @@ import androidx.compose.ui.viewinterop.AndroidView
 @Immutable data class LunkTheme(val id: String, val name: String, val background: Color, val card: Color, val text: Color,
     val muted: Color, val accent: Color, val accent2: Color, val light: Boolean = false, val glow: Boolean = false) {
     val dayAccent get() = if (id == "cobalt-coral") accent2 else accent
-    val cardPalette get() = if (id == "midnight-cherry") copy(card = Color(0xfffff3f6), text = Color(0xff341522),
-        muted = Color(0xff765260), accent = Color(0xff305d86), accent2 = Color(0xffa9384b), light = true) else this
+    val symbolAccent get() = if (id == "heritage") accent else accent2
+    val alarmTitle get() = if (id == "midnight-cherry") accent2 else text
+    val cardPalette get() = when (id) {
+        "cobalt-coral" -> copy(card = text, text = card, muted = Color(0xff4a5e7e),
+            accent = Color(0xff305f9b), accent2 = Color(0xffa63e38), light = true)
+        "midnight-cherry" -> copy(card = Color(0xfffff8fa), text = Color(0xff351624),
+            muted = Color(0xff735567), accent = Color(0xff91445e), accent2 = Color(0xff3d71a2), light = true)
+        else -> this
+    }
     val field get() = if (light) Color.Black.copy(alpha = .045f) else Color.Black.copy(alpha = .25f)
     val border get() = text.copy(alpha = .1f)
     val onAccent get() = if (light) Color.White else Color(0xff160f12)
@@ -42,7 +49,7 @@ object Themes {
         palette("eggshell-white", "Eggshell White", 0xf7f3e8, 0xfffefa, 0x28343c, 0x636b70, 0x566a78, 0x6d6252, true),
         palette("linen", "Linen", 0xf5efe5, 0xfffcf6, 0x302921, 0x766858, 0x986020, 0xb34938, true),
         palette("sea-glass", "Sea Glass", 0xeaf3ef, 0xf9fffc, 0x173c37, 0x526d67, 0x237268, 0x346d8e, true),
-        palette("heritage", "Heritage", 0xf9efd4, 0xfffdf5, 0x032d3f, 0x52626b, 0x7d0500, 0x032d3f, true),
+        palette("heritage", "Heritage", 0xf9efd4, 0xfffdf5, 0x7d0500, 0x8b4943, 0x7d0500, 0x032d3f, true),
         palette("oled", "OLED Black", 0x000000, 0x0c0c0e, 0xf2f2f5, 0x9a9aa3, 0xffa94d, 0xff6b7a),
         palette("dark", "Dark", 0x17181c, 0x212329, 0xececf1, 0x9a9ba6, 0xffa94d, 0xff6b7a),
         palette("sunrise", "Sunrise", 0x0a0c16, 0x171923, 0xf4f2ff, 0x9a9bb8, 0xffa94d, 0xff6b7a, glow = true),

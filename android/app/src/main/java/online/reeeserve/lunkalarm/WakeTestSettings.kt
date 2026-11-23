@@ -59,7 +59,7 @@ enum class WakeTest(val title: String, val short: String) {
         .clickable(role = Role.Button, onClick = open)
         .semantics { contentDescription = test.title; selected = enabled }.testTag("test-tile-${test.name.lowercase()}")) {
         Column(Modifier.fillMaxWidth().padding(top = 18.dp, bottom = 12.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(9.dp)) {
-            TestGlyph(test, if (enabled) theme.accent2 else theme.muted, Modifier.size(if (test == WakeTest.TYPING) 36.dp else 25.dp, 25.dp))
+            TestGlyph(test, if (enabled) theme.symbolAccent else theme.muted, Modifier.size(if (test == WakeTest.TYPING) 36.dp else 25.dp, 25.dp))
             Text(test.short, color = theme.text, fontSize = if (test == WakeTest.MINES) 9.sp else 10.sp, maxLines = 1)
         }
         if (enabled) Icon(Icons.Default.Check, null, Modifier.align(Alignment.TopEnd).padding(3.dp).size(13.dp), tint = theme.accent2)
@@ -83,7 +83,7 @@ enum class WakeTest(val title: String, val short: String) {
                     Text(test.title, color = theme.text, fontSize = 19.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f, fill = false))
                     OutlinedButton(onClick = { beforePractice(); setPractice(test) }, contentPadding = PaddingValues(horizontal = 18.dp, vertical = 6.dp),
                         border = BorderStroke(1.dp, theme.accent2), modifier = Modifier.widthIn(min = 96.dp).testTag("try-${test.name.lowercase()}")) {
-                        Icon(Icons.Default.PlayArrow, null, Modifier.size(17.dp), tint = theme.accent2)
+                        Icon(Icons.Default.PlayArrow, null, Modifier.size(17.dp), tint = theme.symbolAccent)
                         Text("Try", color = theme.text, fontSize = 12.sp)
                     }
                     }
@@ -204,7 +204,7 @@ enum class WakeTest(val title: String, val short: String) {
         .border(if (selected) 1.5.dp else 1.dp, if (selected) theme.accent2 else theme.border, RoundedCornerShape(12.dp))
         .clickable(role = Role.RadioButton, onClick = click).semantics { this.selected = selected; contentDescription = "$title, $detail" }
         .padding(horizontal = 8.dp, vertical = 12.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(6.dp)) {
-        TestGlyph(glyph, if (selected) theme.accent2 else theme.muted, Modifier.size(22.dp))
+        TestGlyph(glyph, if (selected) theme.symbolAccent else theme.muted, Modifier.size(22.dp))
         Text(title, color = theme.text, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
         Text(detail, color = theme.muted, fontSize = 11.sp)
     }

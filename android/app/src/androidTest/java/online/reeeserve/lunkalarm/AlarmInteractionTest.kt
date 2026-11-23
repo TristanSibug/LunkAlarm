@@ -176,6 +176,30 @@ class AlarmInteractionTest {
         rule.onNodeWithTag("about-page").assertIsDisplayed()
     }
 
+    @Test fun b_launcherIconChangesIndependentlyOfTheme() {
+        val defaultIcon = LauncherIcon.selected(context)
+        try {
+            rule.onNodeWithTag("open-about").performClick()
+            rule.onNodeWithText("App icon").performClick()
+            rule.onNodeWithTag("app-icon-light").performClick()
+            rule.onNodeWithContentDescription("Light").assertExists()
+            assertEquals("sunrise", repo.state.value.theme)
+            assertEquals(LauncherIcon.LIGHT, LauncherIcon.selected(context))
+
+            val launcher = Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_LAUNCHER).setPackage(context.packageName)
+            val activities = context.packageManager.queryIntentActivities(launcher, 0).map { it.activityInfo.name }
+            assertEquals(listOf("${context.packageName}.launcher.light"), activities)
+
+            rule.onNodeWithText("Theme").performClick()
+            rule.onNodeWithText("Heritage").performClick()
+            rule.onNodeWithContentDescription("Light").assertExists()
+            assertEquals("heritage", repo.state.value.theme)
+            assertEquals(LauncherIcon.LIGHT, LauncherIcon.selected(context))
+        } finally {
+            defaultIcon.select(context)
+        }
+    }
+
     @Test fun c_swipeNavigationCountdownEditingAndDeleteGestures() {
         rule.onNodeWithTag("big-clock").performTouchInput { swipeUp() }
         rule.onNodeWithTag("your-alarms").assertExists()

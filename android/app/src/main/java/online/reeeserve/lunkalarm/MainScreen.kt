@@ -64,6 +64,8 @@ private enum class ClockFont(val id: String, val title: String, val family: Font
     val clockFont = ClockFont.entries.firstOrNull { it.id == state.clockFontId } ?: ClockFont.SYSTEM
     var page by rememberSaveable { mutableStateOf(HomePage.CLOCK) }
     var themesOpen by remember { mutableStateOf(false) }
+    var iconsOpen by remember { mutableStateOf(false) }
+    var launcherIcon by remember(activity) { mutableStateOf(LauncherIcon.selected(activity)) }
     var clockFontsOpen by remember { mutableStateOf(false) }
     var permissionsOpen by rememberSaveable { mutableStateOf(activity.offerAlarmSetup) }
     var editingId by rememberSaveable { mutableStateOf<String?>(null) }
@@ -75,6 +77,7 @@ private enum class ClockFont(val id: String, val title: String, val family: Font
         if (state.session != null && activity.lifecycle.currentState.isAtLeast(Lifecycle.State.RESUMED)) {
             editor = null
             themesOpen = false
+            iconsOpen = false
             clockFontsOpen = false
             AlarmService.start(activity)
             activity.startActivity(RingingActivity.intent(activity))
@@ -93,8 +96,9 @@ private enum class ClockFont(val id: String, val title: String, val family: Font
                     enter togetherWith exit
                 }, label = "clock-pages") { visiblePage ->
                     when (visiblePage) {
-                        HomePage.ABOUT -> AboutScreen(theme, state.use24Hour, clockFont, clock = ::showClock,
-                            chooseTheme = { themesOpen = true }, chooseFont = { clockFontsOpen = true },
+                        HomePage.ABOUT -> AboutScreen(theme, state.use24Hour, clockFont, launcherIcon, clock = ::showClock,
+                            chooseTheme = { themesOpen = true }, chooseIcon = { iconsOpen = true },
+                            chooseFont = { clockFontsOpen = true },
                             toggleFormat = { repo.update { it.copy(use24Hour = !it.use24Hour) } })
                         HomePage.CLOCK -> ClockScreen(state.use24Hour, theme, clockFont,
                             alarms = { page = HomePage.ALARMS }, about = { page = HomePage.ABOUT })
@@ -124,6 +128,16 @@ private enum class ClockFont(val id: String, val title: String, val family: Font
                             Text(palette.name, color = palette.text, fontSize = 13.sp)
                         }
                     }
+                }
+            }
+            if (iconsOpen) AppIconPicker(theme, launcherIcon, close = { iconsOpen = false }) { icon ->
+                try {
+                    icon.select(activity)
+                    launcherIcon = LauncherIcon.selected(activity)
+                    iconsOpen = false
+                } catch (error: IllegalArgumentException) {
+                    iconsOpen = false
+                    repo.report("Could not change the app icon.")
                 }
             }
             if (clockFontsOpen) ClockFontPicker(theme, clockFont, close = { clockFontsOpen = false }) { font ->
@@ -201,8 +215,9 @@ private enum class ClockFont(val id: String, val title: String, val family: Font
     }
 }
 
-@Composable private fun AboutScreen(theme: LunkTheme, use24Hour: Boolean, clockFont: ClockFont, clock: () -> Unit,
-                                    chooseTheme: () -> Unit, chooseFont: () -> Unit, toggleFormat: () -> Unit) {
+@Composable private fun AboutScreen(theme: LunkTheme, use24Hour: Boolean, clockFont: ClockFont, launcherIcon: LauncherIcon,
+                                    clock: () -> Unit, chooseTheme: () -> Unit, chooseIcon: () -> Unit,
+                                    chooseFont: () -> Unit, toggleFormat: () -> Unit) {
     val latestClock by rememberUpdatedState(clock)
     val swipeToClock = remember {
         object : NestedScrollConnection {
@@ -242,6 +257,7 @@ private enum class ClockFont(val id: String, val title: String, val family: Font
             Column(Modifier.padding(bottom = controlsInset),
                 verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 AboutControl("Theme", theme, opensPicker = true, click = chooseTheme)
+                AboutControl("App icon", theme, icon = launcherIcon, opensPicker = true, click = chooseIcon)
                 AboutControl("Clock font", theme, detail = clockFont.title, opensPicker = true, click = chooseFont)
                 AboutControl("Clock format", theme, detail = if (use24Hour) "24-hour · 14:30" else "12-hour · 2:30 PM", click = toggleFormat)
             }
@@ -254,7 +270,7 @@ private enum class ClockFont(val id: String, val title: String, val family: Font
 }
 
 @Composable private fun AboutControl(label: String, theme: LunkTheme, detail: String? = null,
-                                     opensPicker: Boolean = false, click: () -> Unit) {
+                                     icon: LauncherIcon? = null, opensPicker: Boolean = false, click: () -> Unit) {
     val shape = RoundedCornerShape(16.dp)
     Row(Modifier.fillMaxWidth().heightIn(min = 56.dp).clip(shape)
         .background(theme.text.copy(alpha = .065f)).border(1.dp, theme.border, shape)
@@ -262,6 +278,7 @@ private enum class ClockFont(val id: String, val title: String, val family: Font
         horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
         Text(label, Modifier.weight(1f), color = theme.text, fontWeight = FontWeight.SemiBold)
         detail?.let { Text(it, color = theme.muted) }
+        icon?.let { LauncherIconPreview(it, Modifier.size(28.dp).semantics { contentDescription = it.title }, 6.dp) }
         if (opensPicker) Icon(Icons.Default.ChevronRight, null, Modifier.size(18.dp), tint = theme.muted)
     }
 }
@@ -342,7 +359,7 @@ private enum class ClockFont(val id: String, val title: String, val family: Font
                 Icon(if (addOpen) Icons.Default.Close else Icons.Default.Add, "Add alarm or timer", Modifier.size(30.dp))
             }
             DropdownMenu(expanded = addOpen, onDismissRequest = { addOpen = false }, containerColor = theme.card) {
-                DropdownMenuItem(text = { Text("Alarm", color = theme.text) }, leadingIcon = { Icon(Icons.Default.Alarm, null, tint = theme.accent2) },
+                DropdownMenuItem(text = { Text("Alarm", color = theme.text) }, leadingIcon = { Icon(Icons.Default.Alarm, null, tint = theme.symbolAccent) },
                     onClick = { addOpen = false; add(false) }, modifier = Modifier.testTag("add-menu-alarm"))
                 DropdownMenuItem(text = { Text("Timer", color = theme.text) }, leadingIcon = { Icon(Icons.Default.Timer, null, tint = theme.accent) },
                     onClick = { addOpen = false; add(true) }, modifier = Modifier.testTag("add-menu-timer"))
@@ -389,7 +406,9 @@ private enum class ClockFont(val id: String, val title: String, val family: Font
             .testTag("alarm-${alarm.id}").padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
-                    if (alarm.draft.name.isNotEmpty() || alarm.draft.timer) Text(alarm.label, fontSize = 15.sp, fontWeight = FontWeight.SemiBold, color = theme.text, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    if (alarm.draft.name.isNotEmpty() || alarm.draft.timer) Text(alarm.label, fontSize = 15.sp,
+                        fontWeight = FontWeight.SemiBold, color = if (alarm.draft.timer) theme.text else theme.alarmTitle,
+                        maxLines = 1, overflow = TextOverflow.Ellipsis)
                     val label = if (alarm.draft.timer) AlarmTime.duration(alarm.remaining(now, SystemClock.elapsedRealtime(), controller.scheduler.boot)) else
                         "%02d:%02d".format(alarm.draft.hour, alarm.draft.minute).let { _ -> LocalTime.of(alarm.draft.hour, alarm.draft.minute).format(DateTimeFormatter.ofPattern(if (use24) "HH:mm" else "h:mm a")) }
                     Text(label, fontSize = 32.sp, fontWeight = FontWeight.Light, color = if (alarm.enabled) theme.text else theme.muted)
@@ -397,7 +416,8 @@ private enum class ClockFont(val id: String, val title: String, val family: Font
                         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                             if (alarm.draft.timer) Text("Countdown", color = theme.muted, fontSize = 11.sp)
                             WakeTest.entries.filter { it.enabled(alarm.draft) }.forEach { test ->
-                                TestGlyph(test, theme.muted, Modifier.size(14.dp).clearAndSetSemantics { contentDescription = test.short },
+                                TestGlyph(test, if (theme.id == "heritage") theme.accent else theme.muted,
+                                    Modifier.size(14.dp).clearAndSetSemantics { contentDescription = test.short },
                                     textSize = 11.sp)
                             }
                         }
